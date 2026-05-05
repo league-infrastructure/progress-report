@@ -1,8 +1,8 @@
 /// <reference types="vitest" />
-import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
+import { defineConfig } from 'vitest/config'
 
 const apiTarget = process.env.VITE_API_URL || 'http://localhost:3000'
 
@@ -15,6 +15,9 @@ export default defineConfig({
     },
   },
   server: {
+    fs: {
+      allow: [path.resolve(__dirname, '..')],
+    },
     proxy: {
       '/api': apiTarget,
     },
@@ -24,10 +27,5 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/test-setup.ts'],
     include: ['../tests/client/**/*.test.{ts,tsx}'],
-    server: {
-      fs: {
-        allow: [path.resolve(__dirname, '..')],
-      },
-    },
   },
 })

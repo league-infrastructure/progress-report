@@ -1,20 +1,31 @@
 services:
   app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: ${APP_SLUG:-docker-nodeapp}:${APP_TAG:-latest}
-    ports:
-    - "${APP_PORT:-3000}:${PORT:-3000}"
+    image: ${IMAGE_REPO:-ghcr.io/league-infrastructure/progress-report}:${APP_TAG:-latest}
     env_file:
     - .env
     environment:
       NODE_ENV: ${NODE_ENV:-production}
       PORT: ${PORT:-3000}
       DATABASE_URL: file:/app/data/app.db
+    networks:
+    - caddy
     volumes:
     - app-data:/app/data
-    restart: unless-stopped
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+        - node.hostname == swarm2
+      restart_policy:
+        condition: on-failure
+      labels:
+      - caddy=${APP_DOMAIN}
+      - caddy.reverse_proxy={{upstreams 3000}}
 
 volumes:
   app-data:
+
+networks:
+  caddy:
+    external: true

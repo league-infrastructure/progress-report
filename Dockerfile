@@ -8,27 +8,27 @@ RUN npm ci
 COPY client/ ./
 RUN npm run build
 
-# --- Server stage (full deps; prisma generate; keep TS source) ---
+# --- Server stage (full deps; build TypeScript output) ---
 FROM node:20-alpine AS server
 RUN apk add --no-cache python3 make g++
 WORKDIR /src/server
 COPY server/package*.json ./
 RUN npm ci
 COPY server/ ./
-RUN npx prisma generate
+RUN npm run build
 
 # --- Runtime ---
 FROM node:20-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
+LABEL org.opencontainers.image.source="https://github.com/league-infrastructure/progress-report"
 
 COPY --from=server /src/server/node_modules    ./node_modules
-COPY --from=server /src/server/src             ./src
-COPY --from=server /src/server/prisma          ./prisma
-COPY --from=server /src/server/prisma.config.ts ./prisma.config.ts
+COPY --from=server /src/server/dist            ./dist
+COPY --from=server /src/server/drizzle         ./drizzle
+COPY --from=server /src/server/drizzle.config.ts ./drizzle.config.ts
 COPY --from=server /src/server/package.json    ./package.json
-COPY --from=server /src/server/tsconfig.json   ./tsconfig.json
 
 # Client static assets — server reads from ./public in production
 COPY --from=client-build /src/client/dist      ./public
@@ -38,6 +38,5 @@ RUN mkdir -p /app/data
 
 EXPOSE 3000
 
-# Run TS source directly with tsx — avoids ESM extensionless-import issues
-# from tsc's bundler-mode output. Migrations + tsx server start.
-CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node_modules/.bin/tsx src/index.ts"]
+# Run Drizzle migrations, then start the compiled server.
+CMD ["sh", "-c", "node_modules/.bin/drizzle-kit migrate && node dist/index.js"]

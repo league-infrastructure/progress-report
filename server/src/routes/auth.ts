@@ -7,6 +7,16 @@ import { runSync } from '../services/pike13Sync';
 
 export const authRouter = Router();
 
+function resolveAppUrl() {
+  const appDomain = process.env.APP_DOMAIN?.trim();
+  if (!appDomain) {
+    throw new Error('APP_DOMAIN is required for auth redirects');
+  }
+
+  const isLocalhost = /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(appDomain);
+  return `${isLocalhost ? 'http' : 'https'}://${appDomain}`;
+}
+
 // GET /api/auth/pike13 — redirect to Pike13 OAuth authorization
 authRouter.get('/pike13', (_req, res) => {
   const clientId = process.env.PIKE13_CLIENT_ID;
@@ -99,7 +109,7 @@ authRouter.get('/pike13/callback', async (req, res, next) => {
     const normalizedEmail = email.toLowerCase();
 
     if (!normalizedEmail.endsWith('@jointheleague.org')) {
-      const appUrl = (process.env.APP_URL ?? 'http://localhost:5173').replace(/\/$/, '');
+      const appUrl = resolveAppUrl();
       res.redirect(`${appUrl}/login?error=denied`);
       return;
     }
@@ -199,7 +209,7 @@ authRouter.get('/pike13/callback', async (req, res, next) => {
     req.session.user = sessionUser;
 
     // Redirect to the appropriate frontend page
-    const appUrl = (process.env.APP_URL ?? 'http://localhost:5173').replace(/\/$/, '');
+    const appUrl = resolveAppUrl();
     if (isAdmin) {
       res.redirect(`${appUrl}/admin`);
     } else {

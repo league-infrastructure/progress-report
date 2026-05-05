@@ -4,12 +4,6 @@ import { useParams, useLocation } from 'wouter'
 import type { TemplateDto } from '../types/template'
 import { Button } from '../components/ui/button'
 
-async function fetchTemplate(id: string): Promise<TemplateDto> {
-  const res = await fetch(`/api/templates/${id}`)
-  if (!res.ok) throw new Error('Failed to load template')
-  return res.json()
-}
-
 export function TemplateEditorPage() {
   const { id } = useParams<{ id?: string }>()
   const isNew = !id || id === 'new'

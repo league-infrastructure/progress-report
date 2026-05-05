@@ -153,7 +153,8 @@ export function InstructorListPage() {
     setShowConfirm(true)
   }
 
-  function thClass(key: SortKey) {
+  function thClass(_key: SortKey) {
+    void _key
     return `cursor-pointer select-none px-4 py-3 text-left font-medium text-slate-600 hover:text-slate-800 whitespace-nowrap`
   }
 

@@ -523,7 +523,6 @@ function ScheduleView() {
                   <div key={day} className="space-y-1.5 p-1.5">
                     {timeSlots.map(([timeKey, slotEvents]) => {
                       const instrBlocks = aggregateByInstructor(slotEvents)
-                      const isAnyExpanded = instrBlocks.some((b) => expandedId === b.blockKey)
                       return (
                         /* flex-wrap: expanded block claims w-full, others wrap below */
                         <div key={timeKey} className={instrBlocks.length > 1 ? 'flex flex-wrap gap-1' : ''}>

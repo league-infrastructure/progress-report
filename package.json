@@ -1,27 +1,19 @@
 {
   "name": "docker-nodeapp",
-  "version": "0.20260505.1",
+  "version": "0.20260505.5",
   "private": true,
   "scripts": {
-    "dev": "npm run dev:local",
     "ensure:local:deps": "(test -d node_modules || npm install) && (test -d server/node_modules || (cd server && npm install)) && (test -d client/node_modules || (cd client && npm install))",
-    "dev:local": "npm run ensure:local:deps && concurrently -n server,client -c green,magenta \"npm run dev:local:server\" \"npm run dev:local:client\"",
-    "dev:local:server": "set -a && . ./.env && set +a && cd server && npm run db:migrate && npm run dev",
-    "dev:local:client": "cd client && npx wait-on http://localhost:3000/api/health && npx vite --host",
-    "dev:docker": "set -a && . ./deploy.env && set +a && DOCKER_CONTEXT=$DEV_DOCKER_CONTEXT docker compose -f docker/docker-compose.yml up --build",
-    "dev:docker:down": "set -a && . ./deploy.env && set +a && DOCKER_CONTEXT=$DEV_DOCKER_CONTEXT docker compose -f docker/docker-compose.yml down",
-    "dev:docker:migrate": "set -a && . ./deploy.env && set +a && DOCKER_CONTEXT=$DEV_DOCKER_CONTEXT docker compose -f docker/docker-compose.yml exec server npm run db:migrate",
+    "dev": "npm run ensure:local:deps && concurrently -n server,client -c green,magenta \"set -a && . ./.env && set +a && cd server && npm run db:migrate && npm run dev\" \"cd client && npx wait-on http://localhost:3000/api/health && npx vite --host\"",
     "build": "cd server && npm run build && cd ../client && npm run build",
-    "build:docker": "set -a && . ./deploy.env && set +a && DOCKER_CONTEXT=$DEV_DOCKER_CONTEXT docker compose -f docker/docker-compose.prod.yml build server",
-    "secrets:add-key": "./scripts/add-age-key.sh",
-    "secrets:prod": "set -a && . ./deploy.env && set +a && ./scripts/load-secrets.sh prod",
-    "secrets:prod:rm": "set -a && . ./deploy.env && set +a && ./scripts/load-secrets.sh prod --rm",
-    "deploy": "set -a && . ./deploy.env && set +a && DOCKER_CONTEXT=$PROD_DOCKER_CONTEXT docker compose -f docker/docker-compose.prod.yml build server && DOCKER_CONTEXT=$PROD_DOCKER_CONTEXT docker stack deploy -c docker/docker-compose.prod.yml myapp",
-    "test": "echo 'Run individual test suites: test:db, test:server, test:client, test:e2e'",
-    "test:db": "cd server && npx jest --config ../tests/db/jest.config.js",
-    "test:server": "cd server && npx jest --config ../tests/server/jest.config.js",
-    "test:client": "NODE_PATH=./client/node_modules ./client/node_modules/.bin/vitest run",
-    "test:e2e": "npx playwright test"
+    "docker:build": "./scripts/build_image.sh",
+    "docker:up": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d",
+    "docker:down": "docker compose -f docker-compose.yml -f docker-compose.dev.yml down",
+    "docker:logs": "docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f",
+    "docker:deploy": "set -a && . ./.env && set +a && APP_TAG=$(node -p \"require('./package.json').version\") DOCKER_CONTEXT=${DOCKER_CONTEXT:-swarm1} docker stack deploy --with-registry-auth -c docker-compose.yml ${STACK_NAME:-progress-report}",
+    "docker:deploy:down": "set -a && . ./.env && set +a && DOCKER_CONTEXT=${DOCKER_CONTEXT:-swarm1} docker stack rm ${STACK_NAME:-progress-report}",
+    "docker:deploy:ps": "set -a && . ./.env && set +a && DOCKER_CONTEXT=${DOCKER_CONTEXT:-swarm1} docker stack services ${STACK_NAME:-progress-report}",
+    "docker:deploy:logs": "set -a && . ./.env && set +a && DOCKER_CONTEXT=${DOCKER_CONTEXT:-swarm1} docker service logs -f ${STACK_NAME:-progress-report}_app"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"

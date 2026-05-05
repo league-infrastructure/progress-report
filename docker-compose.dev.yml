@@ -1,0 +1,4 @@
+services:
+  app:
+    ports:
+    - "${APP_PORT:-5173}:${PORT:-3000}"
