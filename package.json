@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "npm run dev:local",
-    "dev:local": "concurrently -n server,client -c green,magenta \"npm run dev:local:server\" \"npm run dev:local:client\"",
+    "ensure:local:deps": "(test -d node_modules || npm install) && (test -d server/node_modules || (cd server && npm install)) && (test -d client/node_modules || (cd client && npm install))",
+    "dev:local": "npm run ensure:local:deps && concurrently -n server,client -c green,magenta \"npm run dev:local:server\" \"npm run dev:local:client\"",
     "dev:local:server": "set -a && . ./.env && set +a && cd server && npm run db:migrate && npm run dev",
     "dev:local:client": "cd client && npx wait-on http://localhost:3000/api/health && npx vite --host",
     "dev:docker": "set -a && . ./deploy.env && set +a && DOCKER_CONTEXT=$DEV_DOCKER_CONTEXT docker compose -f docker/docker-compose.yml up --build",

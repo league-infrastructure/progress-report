@@ -9,11 +9,18 @@ if (fs.existsSync(envPath)) {
   dotenv.config({ path: envPath });
 }
 
+const dbUrl = process.env.DATABASE_URL ?? 'file:./data/dev.db';
+
+if (dbUrl.startsWith('file:')) {
+  const dbPath = dbUrl.replace(/^file:/, '');
+  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+}
+
 export default defineConfig({
   schema: './src/db/schema.ts',
   out: './drizzle',
   dialect: 'sqlite',
   dbCredentials: {
-    url: process.env.DATABASE_URL ?? 'file:./data/dev.db',
+    url: dbUrl,
   },
 });
