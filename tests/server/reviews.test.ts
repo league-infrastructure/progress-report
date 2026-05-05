@@ -1,16 +1,12 @@
 import request from 'supertest';
 import express from 'express';
 import session from 'express-session';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
 import { eq } from 'drizzle-orm';
 import * as schema from '../../server/src/db/schema';
 import { reviewsRouter } from '../../server/src/routes/reviews';
 import { errorHandler } from '../../server/src/middleware/errorHandler';
 import type { SessionUser } from '../../server/src/types/session';
-
-let pool: Pool;
-let db: ReturnType<typeof drizzle<typeof schema>>;
+import { db } from '../../server/src/db';
 let instructorId: number;
 let altInstructorId: number;
 let studentId: number;
@@ -42,10 +38,6 @@ function adminUser(): SessionUser {
 }
 
 beforeAll(async () => {
-  if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL must be set');
-  pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  db = drizzle(pool, { schema });
-
   // Seed primary instructor + student + review
   const [user] = await db
     .insert(schema.users)
@@ -96,7 +88,6 @@ afterAll(async () => {
   await db.delete(schema.students).where(eq(schema.students.id, altStudentId));
   await db.delete(schema.users).where(eq(schema.users.email, 'rev-instr@test.local'));
   await db.delete(schema.users).where(eq(schema.users.email, 'rev-instr-alt@test.local'));
-  await pool.end();
 });
 
 // ── Auth guard tests ──────────────────────────────────────────────────────────

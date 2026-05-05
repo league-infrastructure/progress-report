@@ -1,15 +1,11 @@
 import request from 'supertest';
 import express from 'express';
 import session from 'express-session';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
 import * as schema from '../../server/src/db/schema';
 import { adminRouter } from '../../server/src/routes/admin';
 import { errorHandler } from '../../server/src/middleware/errorHandler';
 import type { SessionUser } from '../../server/src/types/session';
-
-let pool: Pool;
-let db: ReturnType<typeof drizzle<typeof schema>>;
+import { db } from '../../server/src/db';
 
 const ADMIN: SessionUser = {
   id: 0,
@@ -42,10 +38,6 @@ function buildTestApp() {
 }
 
 beforeAll(async () => {
-  if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL must be set');
-  pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  db = drizzle(pool, { schema });
-
   // Ensure Pike13 env vars are set for tests
   process.env.PIKE13_CLIENT_ID = 'test-client-id';
   process.env.PIKE13_CLIENT_SECRET = 'test-client-secret';
@@ -56,7 +48,6 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await db.delete(schema.pike13AdminToken);
-  await pool.end();
 });
 
 afterEach(async () => {

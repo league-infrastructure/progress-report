@@ -12,6 +12,7 @@ import {
   serviceFeedback,
   pike13AdminToken,
   volunteerEventSchedule,
+  type ReviewStatus,
 } from '../db/schema';
 import { isAdmin } from '../middleware/auth';
 import { runSync } from '../services/pike13Sync';
@@ -258,7 +259,7 @@ adminRouter.get('/admin/compliance', async (req, res, next) => {
       if (!countMap.has(row.instructorId)) {
         countMap.set(row.instructorId, { pending: 0, draft: 0, sent: 0 });
       }
-      countMap.get(row.instructorId)![row.status] = Number(row.count);
+      countMap.get(row.instructorId)![row.status as ReviewStatus] = Number(row.count);
     }
 
     const result = allInstructors.map((i) => ({

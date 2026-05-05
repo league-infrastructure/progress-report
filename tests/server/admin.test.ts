@@ -1,16 +1,12 @@
 import request from 'supertest';
 import express from 'express';
 import session from 'express-session';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
 import { eq } from 'drizzle-orm';
 import * as schema from '../../server/src/db/schema';
 import { adminRouter } from '../../server/src/routes/admin';
 import { errorHandler } from '../../server/src/middleware/errorHandler';
 import type { SessionUser } from '../../server/src/types/session';
-
-let pool: Pool;
-let db: ReturnType<typeof drizzle<typeof schema>>;
+import { db } from '../../server/src/db';
 
 // IDs created during setup
 let instructorId: number;
@@ -33,15 +29,12 @@ const ADMIN: SessionUser = { id: 0, name: 'Test Admin', email: 'admin@test.local
 const INSTRUCTOR: SessionUser = { id: 1, name: 'Test Instructor', email: 'instr@test.local', isAdmin: false, isActiveInstructor: true, instructorId: 1 };
 
 beforeAll(async () => {
-  pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  db = drizzle(pool, { schema });
-
   // Clean up any leftover data (FK order)
   await db.delete(schema.adminNotifications);
   await db.delete(schema.serviceFeedback);
   await db.delete(schema.monthlyReviews);
   await db.delete(schema.instructorStudents);
-  const existingUser = (await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.email, 'test-admin-instr@example.com')))[0];
+  const existingUser = (await db.select({ id: schema.users.id }).from(schema.users).where(eq(schema.users.email, 'test-admin-instr@test.local')))[0];
   if (existingUser) {
     await db.delete(schema.instructors).where(eq(schema.instructors.userId, existingUser.id));
     await db.delete(schema.users).where(eq(schema.users.id, existingUser.id));
@@ -50,7 +43,7 @@ beforeAll(async () => {
   // Create a test instructor user
   const [user] = await db
     .insert(schema.users)
-    .values({ email: 'test-admin-instr@example.com', name: 'Test Instructor' })
+    .values({ email: 'test-admin-instr@test.local', name: 'Test Instructor' })
     .returning();
 
   const [instr] = await db
@@ -72,8 +65,7 @@ afterAll(async () => {
   await db.delete(schema.adminNotifications).where(eq(schema.adminNotifications.id, adminNotifId));
   await db.delete(schema.instructorStudents).where(eq(schema.instructorStudents.instructorId, instructorId));
   await db.delete(schema.instructors).where(eq(schema.instructors.id, instructorId));
-  await db.delete(schema.users).where(eq(schema.users.email, 'test-admin-instr@example.com'));
-  await pool.end();
+  await db.delete(schema.users).where(eq(schema.users.email, 'test-admin-instr@test.local'));
 });
 
 // ---- Auth guards ----

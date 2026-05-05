@@ -16,6 +16,12 @@ dist/
 server/prisma/*.db
 server/prisma/*.db-journal
 
+# SQLite database files
+server/data/*.db
+server/data/*.db-journal
+server/data/*.db-shm
+server/data/*.db-wal
+
 # OS
 .DS_Store
 Thumbs.db
@@ -36,3 +42,6 @@ blob-report/
 pids/
 *.pid
 *.seed
+
+# Per-deployment env files (contain secrets from dotconfig)
+docker/.*.env

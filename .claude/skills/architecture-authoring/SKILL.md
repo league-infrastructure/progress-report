@@ -1,0 +1,1 @@
+/Users/eric/proj/league/scratch/LAP-Student-Progress-Report/.agents/skills/architecture-authoring/SKILL.md

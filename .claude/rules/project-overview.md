@@ -36,7 +36,7 @@ the initial build.
 ## Key Constraints
 
 - **Technology:** Uses the existing docker-node-template stack (Express +
-  React + TypeScript + PostgreSQL + Prisma + Docker Swarm).
+  React + TypeScript + SQLite + Drizzle + Docker Swarm).
 - **AI:** Claude API (Anthropic) powers the conversational chat layer. The
   backend calls the Claude API; the frontend presents a persistent chat
   interface.
@@ -106,15 +106,15 @@ deferred to future contributors:
 |-------|-----------|
 | Backend API | Express 4 + TypeScript (Node.js 20 LTS) |
 | Frontend SPA | Vite + React + TypeScript |
-| Database | PostgreSQL 16 Alpine via Prisma ORM |
+| Database | SQLite via Drizzle ORM (`better-sqlite3`) |
 | AI | Claude API (Anthropic) — `claude-sonnet-4-6` |
 | Auth | Express session + Passport.js (local strategy) |
 | Containerization | Docker Compose (dev), Docker Swarm (prod) |
 | Secrets | SOPS + age at rest; Docker Swarm secrets at runtime |
 | Reverse proxy | Caddy (`collegenavigator.jtlapp.net`) |
 
-All API routes prefixed with `/api`. PostgreSQL is the single data store — no
-Redis or MongoDB.
+All API routes prefixed with `/api`. SQLite is the single data store — no
+separate database service required.
 
 ## Sprint Roadmap
 

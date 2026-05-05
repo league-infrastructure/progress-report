@@ -1,2 +1,0 @@
-ALTER TABLE "monthly_reviews" ADD COLUMN "feedback_token" uuid DEFAULT gen_random_uuid() NOT NULL;--> statement-breakpoint
-ALTER TABLE "monthly_reviews" ADD CONSTRAINT "monthly_reviews_feedback_token_unique" UNIQUE("feedback_token");

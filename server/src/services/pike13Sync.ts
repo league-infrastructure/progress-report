@@ -1,5 +1,5 @@
-import { eq, sql, and } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/node-postgres';
+import { eq, sql, and, inArray } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
 import * as schema from '../db/schema';
 
 /** Pike13 custom field key for the student's GitHub account name */
@@ -95,7 +95,10 @@ export async function runSync(
   accessToken: string,
   fetchFn: typeof fetch = fetch,
 ): Promise<SyncResult> {
-  const base = (process.env.PIKE13_BASE_URL ?? 'https://pike13.com').replace(/\/$/, '');
+  // PIKE13_API_BASE is the tenant API root (e.g. https://jtl.pike13.com/api/v2/desk);
+  // we append our own /api/v2/desk/... paths, so use just the origin.
+  const apiBase = process.env.PIKE13_API_BASE ?? 'https://pike13.com';
+  const base = new URL(apiBase).origin;
   const ytdStart = `${new Date().getFullYear()}-01-01`;
   const now = new Date();
 
@@ -308,9 +311,9 @@ export async function runSync(
 
   // Delete stale events:
   // 1. Remove anything before this week's Sunday
-  await db.execute(sql`
+  db.run(sql`
     DELETE FROM volunteer_event_schedule
-    WHERE start_at < ${thisWeekSunday}
+    WHERE start_at < ${thisWeekSunday.toISOString()}
   `);
 
   // 2. Remove events in the schedule window that Pike13 no longer returns
@@ -318,26 +321,33 @@ export async function runSync(
   //    Guard: skip if Pike13 returned nothing — treat empty as a potential API error.
   if (scheduleWindowEvents.length > 0) {
     const freshIds = scheduleWindowEvents.map((occ) => String(occ.id));
-    await db.execute(sql`
-      DELETE FROM volunteer_event_schedule
-      WHERE start_at >= ${thisWeekSunday}
-      AND NOT (event_occurrence_id = ANY(${freshIds}))
-    `);
+    // Remove stale events in the current schedule window: keep only freshIds.
+    const deleteStale = db
+      .delete(schema.volunteerEventSchedule)
+      .where(
+        and(
+          sql`${schema.volunteerEventSchedule.startAt} >= ${thisWeekSunday.toISOString()}`,
+          sql`${schema.volunteerEventSchedule.eventOccurrenceId} NOT IN (${sql.join(freshIds.map((id) => sql`${id}`), sql`, `)})`,
+        ),
+      );
+    await deleteStale;
   }
 
   // 7. Volunteer hours from YTD events (any non-instructor staff member).
   //    A volunteer can be listed on two simultaneous events — only count once per time slot.
 
   // Clean up existing duplicates using a CTE (same volunteer, same start time → keep lowest id).
-  await db.execute(sql`
-    WITH ranked AS (
-      SELECT id,
-             ROW_NUMBER() OVER (PARTITION BY volunteer_name, recorded_at ORDER BY id) AS rn
-      FROM volunteer_hours
-      WHERE source = 'pike13'
-    )
+  db.run(sql`
     DELETE FROM volunteer_hours
-    WHERE id IN (SELECT id FROM ranked WHERE rn > 1)
+    WHERE id IN (
+      SELECT id FROM (
+        SELECT id,
+               ROW_NUMBER() OVER (PARTITION BY volunteer_name, recorded_at ORDER BY id) AS rn
+        FROM volunteer_hours
+        WHERE source = 'pike13'
+      ) ranked
+      WHERE rn > 1
+    )
   `);
 
   // Track (staffId, start_at) slots already processed in this sync run to prevent
@@ -423,7 +433,10 @@ export async function runSync(
   }
 
   // 10. Instructor-student assignments from event people (confirmed attendance only)
+  //     Track pairs seen in this sync run so we count each new assignment only once,
+  //     even if the same student-instructor pair appears across multiple event chunks.
   let assignmentsCreated = 0;
+  const seenAssignmentPairs = new Set<string>();
 
   for (const occ of eventOccurrences) {
     // Identify instructors on this event via pike13StaffId
@@ -461,15 +474,32 @@ export async function runSync(
       const occurrenceId = String(occ.id);
 
       for (const instructorId of instructorIds) {
-        const inserted = await db
-          .insert(schema.instructorStudents)
-          .values({ instructorId, studentId, lastSeenAt: occStart })
-          .onConflictDoUpdate({
-            target: [schema.instructorStudents.instructorId, schema.instructorStudents.studentId],
-            set: { lastSeenAt: occStart },
-          })
-          .returning({ instructorId: schema.instructorStudents.instructorId });
-        assignmentsCreated += inserted.length;
+        const pairKey = `${instructorId}:${studentId}`;
+
+        // Only attempt insert (and count) if we haven't already seen this pair in
+        // this sync run. Pairs seen before will just have their lastSeenAt updated.
+        if (!seenAssignmentPairs.has(pairKey)) {
+          seenAssignmentPairs.add(pairKey);
+
+          // Try to insert; if the row already exists this returns an empty array.
+          const inserted = await db
+            .insert(schema.instructorStudents)
+            .values({ instructorId, studentId, lastSeenAt: occStart })
+            .onConflictDoNothing()
+            .returning({ instructorId: schema.instructorStudents.instructorId });
+          assignmentsCreated += inserted.length;
+        }
+
+        // Always keep the most recent lastSeenAt across all occurrences.
+        await db
+          .update(schema.instructorStudents)
+          .set({ lastSeenAt: occStart })
+          .where(
+            and(
+              eq(schema.instructorStudents.instructorId, instructorId),
+              eq(schema.instructorStudents.studentId, studentId),
+            ),
+          );
 
         // Record individual attendance session
         await db

@@ -13,8 +13,8 @@ import express from 'express';
 import cors from 'cors';
 import pinoHttp from 'pino-http';
 import session from 'express-session';
-import connectPgSimple from 'connect-pg-simple';
-import { Pool } from 'pg';
+import BetterSQLite3Store from 'better-sqlite3-session-store';
+import { sqlite } from './db';
 import { healthRouter } from './routes/health';
 import { counterRouter } from './routes/counter';
 import { authRouter } from './routes/auth';
@@ -28,6 +28,14 @@ import { feedbackRouter } from './routes/feedback';
 import { errorHandler } from './middleware/errorHandler';
 import { startScheduler } from './services/scheduler';
 import { slackRouter } from './routes/slack';
+import type { SessionUser } from './types/session';
+
+// Test personas used by POST /api/auth/login in test mode
+const TEST_USERS: Record<string, SessionUser> = {
+  admin: { id: 0, name: 'Test Admin', email: 'admin@test.local', isAdmin: true, isActiveInstructor: false },
+  instructor: { id: 1, name: 'Test Instructor', email: 'instructor@test.local', isAdmin: false, isActiveInstructor: true, instructorId: 1 },
+  inactive: { id: 2, name: 'Inactive User', email: 'inactive@test.local', isAdmin: false, isActiveInstructor: false },
+};
 
 const app = express();
 const port = parseInt(process.env.PORT || '3000', 10);
@@ -41,14 +49,12 @@ app.use('/api', slackRouter);
 app.use(express.json());
 app.use(pinoHttp({ level: process.env.LOG_LEVEL || 'info' }));
 
-// Session middleware — use PG store when DATABASE_URL is set and not in test mode
+// Session store: SQLiteStore for persistent sessions across server restarts.
+// In test mode fall back to MemoryStore to avoid file-system side effects.
+const SQLiteStore = BetterSQLite3Store(session);
 const sessionStore =
-  process.env.DATABASE_URL && process.env.NODE_ENV !== 'test'
-    ? (() => {
-        const PgSession = connectPgSimple(session);
-        const pgPool = new Pool({ connectionString: process.env.DATABASE_URL });
-        return new PgSession({ pool: pgPool, tableName: 'sessions', createTableIfMissing: false });
-      })()
+  process.env.NODE_ENV !== 'test'
+    ? new SQLiteStore({ client: sqlite })
     : undefined; // express-session defaults to MemoryStore
 
 app.use(
@@ -64,6 +70,21 @@ app.use(
     },
   }),
 );
+
+// Test-only login endpoint: accepts { role } and creates a session with a test persona.
+// Only available in test mode (NODE_ENV=test) so it is never exposed in production.
+if (process.env.NODE_ENV === 'test') {
+  app.post('/api/auth/login', (req, res) => {
+    const { role } = req.body as { role?: string };
+    const user = role ? TEST_USERS[role] : undefined;
+    if (!user) {
+      res.status(400).json({ error: 'Invalid role' });
+      return;
+    }
+    req.session.user = user;
+    res.json(user);
+  });
+}
 
 app.use('/api', healthRouter);
 app.use('/api', counterRouter);

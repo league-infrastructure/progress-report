@@ -1,33 +1,28 @@
 /**
  * Pike13 schema constraint tests.
  *
- * Requires a running PostgreSQL instance with DATABASE_URL set.
- * Migrations must be applied before running: npm run db:migrate
+ * Uses an in-memory SQLite database (better-sqlite3) — no external
+ * database or DATABASE_URL environment variable required.
  */
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
+import path from 'path';
+import Database from 'better-sqlite3';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import * as schema from '../../server/src/db/schema';
 
-let pool: Pool;
+let sqlite: InstanceType<typeof Database>;
 let db: ReturnType<typeof drizzle<typeof schema>>;
 
-beforeAll(async () => {
-  if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL must be set for DB tests');
-  }
-  pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  db = drizzle(pool, { schema });
-
-  await db.delete(schema.volunteerHours);
-  await db.delete(schema.pike13AdminToken);
-  await db.delete(schema.serviceFeedback);
-  await db.delete(schema.monthlyReviews);
-  await db.delete(schema.instructorStudents);
-  await db.delete(schema.students);
+beforeAll(() => {
+  sqlite = new Database(':memory:');
+  db = drizzle(sqlite, { schema });
+  migrate(db, {
+    migrationsFolder: path.resolve(__dirname, '../../server/drizzle'),
+  });
 });
 
-afterAll(async () => {
-  await pool.end();
+afterAll(() => {
+  sqlite.close();
 });
 
 describe('students pike13SyncId unique constraint', () => {

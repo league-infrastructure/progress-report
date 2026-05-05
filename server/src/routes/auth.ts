@@ -10,7 +10,7 @@ export const authRouter = Router();
 // GET /api/auth/pike13 — redirect to Pike13 OAuth authorization
 authRouter.get('/pike13', (_req, res) => {
   const clientId = process.env.PIKE13_CLIENT_ID;
-  const callbackUrl = process.env.PIKE13_AUTH_CALLBACK_URL;
+  const callbackUrl = process.env.PIKE13_CALLBACK_URL;
   if (!clientId || !callbackUrl) {
     res.status(500).json({ error: 'Pike13 OAuth is not configured' });
     return;
@@ -39,7 +39,7 @@ authRouter.get('/pike13/callback', async (req, res, next) => {
       body: JSON.stringify({
         client_id: process.env.PIKE13_CLIENT_ID,
         client_secret: process.env.PIKE13_CLIENT_SECRET,
-        redirect_uri: process.env.PIKE13_AUTH_CALLBACK_URL,
+        redirect_uri: process.env.PIKE13_CALLBACK_URL,
         code,
         grant_type: 'authorization_code',
       }),
@@ -57,8 +57,11 @@ authRouter.get('/pike13/callback', async (req, res, next) => {
     };
     const accessToken = tokenData.access_token;
 
-    // Fetch the authenticated user's profile from Pike13
-    const base = (process.env.PIKE13_BASE_URL ?? 'https://pike13.com').replace(/\/$/, '');
+    // Fetch the authenticated user's profile from Pike13.
+    // PIKE13_API_BASE is the tenant API root (e.g. https://jtl.pike13.com/api/v2/desk);
+    // we want just the origin so we can hit /api/v2/front/people/me and /api/v2/me.
+    const apiBase = process.env.PIKE13_API_BASE ?? 'https://pike13.com';
+    const base = new URL(apiBase).origin;
 
     // Try /api/v2/front/people/me first, fall back to /api/v2/me
     let profileRes = await fetch(`${base}/api/v2/front/people/me`, {

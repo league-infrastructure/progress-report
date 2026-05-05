@@ -1,1 +1,0 @@
-ALTER TABLE "admin_notifications" ALTER COLUMN "from_user_id" DROP NOT NULL;

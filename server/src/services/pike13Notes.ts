@@ -1,5 +1,5 @@
 const APP_URL = (process.env.APP_URL ?? 'http://localhost:5173').replace(/\/$/, '');
-const PIKE13_BASE_URL = (process.env.PIKE13_BASE_URL ?? 'https://pike13.com').replace(/\/$/, '');
+const PIKE13_BASE_URL = new URL(process.env.PIKE13_API_BASE ?? 'https://pike13.com').origin;
 
 const NL = '<br>';
 const BLANK = '<br><br>';

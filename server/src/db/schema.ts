@@ -1,64 +1,58 @@
 import {
-  pgTable,
-  pgEnum,
-  serial,
+  sqliteTable,
   text,
   integer,
   real,
-  boolean,
-  timestamp,
-  json,
   primaryKey,
   unique,
-  uuid,
-} from 'drizzle-orm/pg-core';
+} from 'drizzle-orm/sqlite-core';
 
 // ---------- Enums ----------
 
-export const reviewStatusEnum = pgEnum('review_status', ['pending', 'draft', 'sent']);
+export type ReviewStatus = 'pending' | 'draft' | 'sent';
 
 // ---------- Tables ----------
 
-export const users = pgTable('users', {
-  id: serial('id').primaryKey(),
+export const users = sqliteTable('users', {
+  id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
   email: text('email').notNull().unique(),
   name: text('name').notNull(),
   googleId: text('google_id'),
   passwordHash: text('password_hash'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
-// connect-pg-simple requires sid/sess/expire columns
-export const sessions = pgTable('sessions', {
+// better-sqlite3-session-store requires sid/sess/expire columns
+export const sessions = sqliteTable('sessions', {
   sid: text('sid').primaryKey(),
-  sess: json('sess').notNull(),
-  expire: timestamp('expire').notNull(),
+  sess: text('sess', { mode: 'json' }).notNull(),
+  expire: integer('expire', { mode: 'timestamp' }).notNull(),
 });
 
-export const instructors = pgTable('instructors', {
-  id: serial('id').primaryKey(),
+export const instructors = sqliteTable('instructors', {
+  id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
   userId: integer('user_id')
     .notNull()
     .references(() => users.id),
-  isActive: boolean('is_active').notNull().default(false),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  isActive: integer('is_active', { mode: 'boolean' }).notNull().default(false),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
-export const students = pgTable(
+export const students = sqliteTable(
   'students',
   {
-    id: serial('id').primaryKey(),
+    id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
     name: text('name').notNull(),
     guardianEmail: text('guardian_email'),
     guardianName: text('guardian_name'),
     githubUsername: text('github_username'),
     pike13SyncId: text('pike13_sync_id'),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   },
   (t) => [unique().on(t.pike13SyncId)],
 );
 
-export const instructorStudents = pgTable(
+export const instructorStudents = sqliteTable(
   'instructor_students',
   {
     instructorId: integer('instructor_id')
@@ -67,16 +61,16 @@ export const instructorStudents = pgTable(
     studentId: integer('student_id')
       .notNull()
       .references(() => students.id),
-    assignedAt: timestamp('assigned_at').notNull().defaultNow(),
-    lastSeenAt: timestamp('last_seen_at').notNull().defaultNow(),
+    assignedAt: integer('assigned_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+    lastSeenAt: integer('last_seen_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   },
   (t) => [primaryKey({ columns: [t.instructorId, t.studentId] })],
 );
 
-export const monthlyReviews = pgTable(
+export const monthlyReviews = sqliteTable(
   'monthly_reviews',
   {
-    id: serial('id').primaryKey(),
+    id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
     instructorId: integer('instructor_id')
       .notNull()
       .references(() => instructors.id),
@@ -84,13 +78,13 @@ export const monthlyReviews = pgTable(
       .notNull()
       .references(() => students.id),
     month: text('month').notNull(), // YYYY-MM
-    status: reviewStatusEnum('status').notNull().default('pending'),
+    status: text('status').notNull().default('pending'),
     subject: text('subject'),
     body: text('body'),
-    sentAt: timestamp('sent_at'),
-    feedbackToken: uuid('feedback_token').notNull().defaultRandom(),
-    createdAt: timestamp('created_at').notNull().defaultNow(),
-    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+    sentAt: integer('sent_at', { mode: 'timestamp' }),
+    feedbackToken: text('feedback_token').notNull().$defaultFn(() => crypto.randomUUID()),
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   },
   (t) => [
     unique().on(t.instructorId, t.studentId, t.month),
@@ -98,120 +92,120 @@ export const monthlyReviews = pgTable(
   ],
 );
 
-export const reviewTemplates = pgTable('review_templates', {
-  id: serial('id').primaryKey(),
+export const reviewTemplates = sqliteTable('review_templates', {
+  id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
   instructorId: integer('instructor_id')
     .notNull()
     .references(() => instructors.id),
   name: text('name').notNull(),
   subject: text('subject').notNull(),
   body: text('body').notNull(),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
-export const serviceFeedback = pgTable('service_feedback', {
-  id: serial('id').primaryKey(),
+export const serviceFeedback = sqliteTable('service_feedback', {
+  id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
   reviewId: integer('review_id')
     .notNull()
     .references(() => monthlyReviews.id),
   rating: integer('rating').notNull(), // 1–5
   comment: text('comment'),
   suggestion: text('suggestion'), // selected service improvement suggestion
-  submittedAt: timestamp('submitted_at').notNull().defaultNow(),
+  submittedAt: integer('submitted_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
-export const adminSettings = pgTable('admin_settings', {
-  id: serial('id').primaryKey(),
+export const adminSettings = sqliteTable('admin_settings', {
+  id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
   email: text('email').notNull().unique(),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
-export const pike13Tokens = pgTable('pike13_tokens', {
-  id: serial('id').primaryKey(),
+export const pike13Tokens = sqliteTable('pike13_tokens', {
+  id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
   instructorId: integer('instructor_id')
     .notNull()
     .references(() => instructors.id),
   accessToken: text('access_token').notNull(),
   refreshToken: text('refresh_token'),
-  expiresAt: timestamp('expires_at'),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  expiresAt: integer('expires_at', { mode: 'timestamp' }),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 }, (t) => [unique().on(t.instructorId)]);
 
-export const taCheckins = pgTable(
+export const taCheckins = sqliteTable(
   'ta_checkins',
   {
-    id: serial('id').primaryKey(),
+    id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
     instructorId: integer('instructor_id')
       .notNull()
       .references(() => instructors.id),
     taName: text('ta_name').notNull(),
     weekOf: text('week_of').notNull(), // ISO date of Monday, e.g. "2026-03-02"
-    wasPresent: boolean('was_present').notNull(),
-    submittedAt: timestamp('submitted_at').notNull().defaultNow(),
+    wasPresent: integer('was_present', { mode: 'boolean' }).notNull(),
+    submittedAt: integer('submitted_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
   },
   (t) => [unique().on(t.instructorId, t.taName, t.weekOf)],
 );
 
-export const adminNotifications = pgTable('admin_notifications', {
-  id: serial('id').primaryKey(),
+export const adminNotifications = sqliteTable('admin_notifications', {
+  id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
   fromUserId: integer('from_user_id')
     .references(() => users.id),
   message: text('message').notNull(),
-  isRead: boolean('is_read').notNull().default(false),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  isRead: integer('is_read', { mode: 'boolean' }).notNull().default(false),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
-export const volunteerHours = pgTable(
+export const volunteerHours = sqliteTable(
   'volunteer_hours',
   {
-    id: serial('id').primaryKey(),
+    id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
     volunteerName: text('volunteer_name').notNull(),
     category: text('category').notNull(),
     hours: real('hours').notNull(),
     description: text('description'),
     externalId: text('external_id'),
-    recordedAt: timestamp('recorded_at').notNull().defaultNow(),
+    recordedAt: integer('recorded_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
     source: text('source').notNull().default('manual'),
   },
   (t) => [unique().on(t.source, t.externalId)],
 );
 
-export const studentAttendance = pgTable(
+export const studentAttendance = sqliteTable(
   'student_attendance',
   {
-    id: serial('id').primaryKey(),
+    id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
     studentId: integer('student_id').notNull().references(() => students.id),
     instructorId: integer('instructor_id').notNull().references(() => instructors.id),
-    attendedAt: timestamp('attended_at', { withTimezone: true }).notNull(),
+    attendedAt: integer('attended_at', { mode: 'timestamp' }).notNull(),
     eventOccurrenceId: text('event_occurrence_id').notNull(),
   },
   (t) => [unique().on(t.studentId, t.instructorId, t.eventOccurrenceId)],
 );
 
-export const volunteerSchedule = pgTable('volunteer_schedule', {
+export const volunteerSchedule = sqliteTable('volunteer_schedule', {
   volunteerName: text('volunteer_name').primaryKey(),
-  isScheduled: boolean('is_scheduled').notNull().default(false),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  isScheduled: integer('is_scheduled', { mode: 'boolean' }).notNull().default(false),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
-export const volunteerEventSchedule = pgTable('volunteer_event_schedule', {
-  id: serial('id').primaryKey(),
+export const volunteerEventSchedule = sqliteTable('volunteer_event_schedule', {
+  id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
   eventOccurrenceId: text('event_occurrence_id').notNull().unique(),
-  startAt: timestamp('start_at', { withTimezone: true }).notNull(),
-  endAt: timestamp('end_at', { withTimezone: true }).notNull(),
-  instructors: json('instructors').notNull().$type<Array<{ pike13Id: number; name: string; instructorId: number | null; studentCount: number }>>(),
-  volunteers: json('volunteers').notNull().$type<Array<{ pike13Id: number; name: string }>>(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  startAt: integer('start_at', { mode: 'timestamp' }).notNull(),
+  endAt: integer('end_at', { mode: 'timestamp' }).notNull(),
+  instructors: text('instructors', { mode: 'json' }).notNull().$type<Array<{ pike13Id: number; name: string; instructorId: number | null; studentCount: number }>>(),
+  volunteers: text('volunteers', { mode: 'json' }).notNull().$type<Array<{ pike13Id: number; name: string }>>(),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
-export const pike13AdminToken = pgTable('pike13_admin_token', {
-  id: serial('id').primaryKey(),
+export const pike13AdminToken = sqliteTable('pike13_admin_token', {
+  id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
   accessToken: text('access_token').notNull(),
   refreshToken: text('refresh_token'),
-  expiresAt: timestamp('expires_at', { withTimezone: true }),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: integer('expires_at', { mode: 'timestamp' }),
+  updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
 // ---------- Exported types ----------

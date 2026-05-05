@@ -1,61 +1,12 @@
 {
   "version": "7",
-  "dialect": "postgresql",
+  "dialect": "sqlite",
   "entries": [
     {
       "idx": 0,
-      "version": "7",
-      "when": 1772220447487,
-      "tag": "0000_new_wind_dancer",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1772478748612,
-      "tag": "0001_early_red_hulk",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1772492313010,
-      "tag": "0002_amazing_alex_wilder",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1773090675075,
-      "tag": "0003_freezing_gamma_corps",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1773091824791,
-      "tag": "0004_dark_argent",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1773193352917,
-      "tag": "0005_white_hiroim",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1775601689982,
-      "tag": "0006_gorgeous_tenebrous",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1775606318597,
-      "tag": "0007_third_old_lace",
+      "version": "6",
+      "when": 1777778762113,
+      "tag": "0000_lethal_wong",
       "breakpoints": true
     }
   ]

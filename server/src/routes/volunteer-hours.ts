@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { eq, and, ilike, gte, lte, sql } from 'drizzle-orm';
+import { eq, and, or, like, gte, lte, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { volunteerHours, volunteerSchedule } from '../db/schema';
 import { isAdmin } from '../middleware/auth';
@@ -32,7 +32,12 @@ volunteerHoursRouter.get('/admin/volunteer-hours/summary', async (req, res, next
           lte(volunteerHours.recordedAt, toDate),
         ),
       )
-      .where(sql`${volunteerSchedule.volunteerName} ~* '^(TA|VA)[\\s\\-]'`)
+      .where(or(
+        like(volunteerSchedule.volunteerName, 'TA %'),
+        like(volunteerSchedule.volunteerName, 'TA-%'),
+        like(volunteerSchedule.volunteerName, 'VA %'),
+        like(volunteerSchedule.volunteerName, 'VA-%'),
+      ))
       .groupBy(volunteerSchedule.volunteerName, volunteerSchedule.isScheduled)
       .orderBy(sql`coalesce(sum(${volunteerHours.hours}), 0) desc`);
 
@@ -48,9 +53,14 @@ volunteerHoursRouter.get('/admin/volunteer-hours', async (req, res, next) => {
     const { volunteerName, category, from, to } = req.query as Record<string, string | undefined>;
 
     const conditions = [
-      sql`${volunteerHours.volunteerName} ~* '^(TA|VA)[\\s\\-]'`,
+      or(
+        like(volunteerHours.volunteerName, 'TA %'),
+        like(volunteerHours.volunteerName, 'TA-%'),
+        like(volunteerHours.volunteerName, 'VA %'),
+        like(volunteerHours.volunteerName, 'VA-%'),
+      )!,
     ];
-    if (volunteerName) conditions.push(ilike(volunteerHours.volunteerName, `%${volunteerName}%`));
+    if (volunteerName) conditions.push(like(volunteerHours.volunteerName, `%${volunteerName}%`));
     if (category) conditions.push(eq(volunteerHours.category, category));
     if (from) conditions.push(gte(volunteerHours.recordedAt, new Date(from)));
     if (to) conditions.push(lte(volunteerHours.recordedAt, new Date(to)));

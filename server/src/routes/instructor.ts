@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { eq, and, count, gte, lt } from 'drizzle-orm';
 import { db } from '../db';
-import { monthlyReviews, instructorStudents, students, pike13Tokens, studentAttendance } from '../db/schema';
+import { monthlyReviews, instructorStudents, students, pike13Tokens, studentAttendance, type ReviewStatus } from '../db/schema';
 import { isActiveInstructor } from '../middleware/auth';
 import { runSync } from '../services/pike13Sync';
 
@@ -31,7 +31,7 @@ instructorRouter.get('/instructor/dashboard', isActiveInstructor, async (req, re
 
     const counts = { pending: 0, draft: 0, sent: 0 };
     for (const row of statusCounts) {
-      counts[row.status] = Number(row.count);
+      counts[row.status as ReviewStatus] = Number(row.count);
     }
 
     // Count assigned students

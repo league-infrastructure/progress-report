@@ -1,8 +1,0 @@
-# Development client with Vite HMR
-FROM node:20-alpine
-WORKDIR /app
-COPY client/package*.json ./
-RUN npm ci
-COPY client/ ./
-EXPOSE 5173
-CMD ["npx", "vite", "--host", "0.0.0.0"]

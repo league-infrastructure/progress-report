@@ -1,16 +1,12 @@
 import request from 'supertest';
 import express from 'express';
 import session from 'express-session';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
 import { eq } from 'drizzle-orm';
 import * as schema from '../../server/src/db/schema';
 import { volunteerHoursRouter } from '../../server/src/routes/volunteer-hours';
 import { errorHandler } from '../../server/src/middleware/errorHandler';
 import type { SessionUser } from '../../server/src/types/session';
-
-let pool: Pool;
-let db: ReturnType<typeof drizzle<typeof schema>>;
+import { db } from '../../server/src/db';
 
 function buildTestApp() {
   const a = express();
@@ -29,15 +25,12 @@ const ADMIN: SessionUser = { id: 0, name: 'Test Admin', email: 'admin@test.local
 const INSTRUCTOR: SessionUser = { id: 1, name: 'Test Instructor', email: 'instr@test.local', isAdmin: false, isActiveInstructor: true, instructorId: 1 };
 
 beforeAll(async () => {
-  pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  db = drizzle(pool, { schema });
   // Clean up any leftover volunteer hours from prior runs
   await db.delete(schema.volunteerHours);
 });
 
 afterAll(async () => {
   await db.delete(schema.volunteerHours);
-  await pool.end();
 });
 
 // ---- Auth guards ----
@@ -113,9 +106,10 @@ describe('GET /api/admin/volunteer-hours', () => {
   let createdId: number;
 
   beforeAll(async () => {
+    // Volunteer hours are filtered by TA/VA name prefix, so use a matching name.
     const [row] = await db
       .insert(schema.volunteerHours)
-      .values({ volunteerName: 'Bob', category: 'Events', hours: 3.0 })
+      .values({ volunteerName: 'TA Bob', category: 'Events', hours: 3.0 })
       .returning();
     createdId = row.id;
   });
@@ -133,7 +127,7 @@ describe('GET /api/admin/volunteer-hours', () => {
     expect(Array.isArray(res.body)).toBe(true);
     const entry = res.body.find((r: { id: number }) => r.id === createdId);
     expect(entry).toBeDefined();
-    expect(entry.volunteerName).toBe('Bob');
+    expect(entry.volunteerName).toBe('TA Bob');
   });
 
   it('filters by category', async () => {

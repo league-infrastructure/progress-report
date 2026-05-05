@@ -1,17 +1,13 @@
 import request from 'supertest';
 import express from 'express';
 import session from 'express-session';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
 import { eq } from 'drizzle-orm';
 import * as schema from '../../server/src/db/schema';
 import { templatesRouter } from '../../server/src/routes/templates';
 import { errorHandler } from '../../server/src/middleware/errorHandler';
 import type { SessionUser } from '../../server/src/types/session';
 import app from '../../server/src/index';
-
-let pool: Pool;
-let db: ReturnType<typeof drizzle<typeof schema>>;
+import { db } from '../../server/src/db';
 let instructorId: number;
 let altInstructorId: number;
 
@@ -33,10 +29,6 @@ function instrUser(id: number): SessionUser {
 }
 
 beforeAll(async () => {
-  if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL must be set');
-  pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  db = drizzle(pool, { schema });
-
   const [user] = await db
     .insert(schema.users)
     .values({ email: 'tmpl-instr@test.local', name: 'Template Instructor' })
@@ -65,7 +57,6 @@ afterAll(async () => {
   await db.delete(schema.instructors).where(eq(schema.instructors.id, altInstructorId));
   await db.delete(schema.users).where(eq(schema.users.email, 'tmpl-instr@test.local'));
   await db.delete(schema.users).where(eq(schema.users.email, 'tmpl-instr-alt@test.local'));
-  await pool.end();
 });
 
 // ── Auth guard tests ──────────────────────────────────────────────────────────

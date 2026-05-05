@@ -1,0 +1,7 @@
+creation_rules:
+  - path_regex: '(^|/)public\.env$'
+  - path_regex: '.+'
+    age: >-
+      age1v3f2rncavwjzsvlhdn6v4wxkfsm2da8sl5snl5wa3mw7zqlvhyyqmx8q0d,
+      age1h02a69gmu8hlhv4rz4u5vvqzuldk82zsgryye4ql6jq3glpwpugsu3qmvd,
+      age1ayj97g360u54r34y2075jnvnefd42h9ym6ar95gll50zjzlrsq4s0yxmln

@@ -3,15 +3,11 @@
  */
 import request from 'supertest';
 import express from 'express';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
 import { eq } from 'drizzle-orm';
 import * as schema from '../../server/src/db/schema';
 import { feedbackRouter } from '../../server/src/routes/feedback';
 import { errorHandler } from '../../server/src/middleware/errorHandler';
-
-let pool: Pool;
-let db: ReturnType<typeof drizzle<typeof schema>>;
+import { db } from '../../server/src/db';
 let instructorId: number;
 let studentId: number;
 let reviewId: number;
@@ -30,9 +26,6 @@ function buildTestApp() {
 let testApp: ReturnType<typeof buildTestApp>;
 
 beforeAll(async () => {
-  if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL must be set');
-  pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  db = drizzle(pool, { schema });
   testApp = buildTestApp();
 
   const [user] = await db
@@ -66,7 +59,6 @@ afterAll(async () => {
   await db.delete(schema.instructors).where(eq(schema.instructors.id, instructorId));
   await db.delete(schema.students).where(eq(schema.students.id, studentId));
   await db.delete(schema.users).where(eq(schema.users.email, 'fb-instr@test.local'));
-  await pool.end();
 });
 
 // Clean up feedback rows between tests to keep each test independent

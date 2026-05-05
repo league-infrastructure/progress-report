@@ -1,9 +1,11 @@
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
+import Database, { type Database as DatabaseType } from 'better-sqlite3';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
 import * as schema from './schema';
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
+const dbUrl = process.env.DATABASE_URL ?? 'file:./data/dev.db';
+const dbPath = dbUrl.replace(/^file:/, '');
 
-export const db = drizzle(pool, { schema });
+export const sqlite: DatabaseType = new Database(dbPath);
+sqlite.pragma('journal_mode = WAL');
+
+export const db = drizzle(sqlite, { schema });

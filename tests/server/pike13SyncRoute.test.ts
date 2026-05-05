@@ -1,8 +1,6 @@
 import request from 'supertest';
 import express from 'express';
 import session from 'express-session';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
 import * as schema from '../../server/src/db/schema';
 import { adminRouter } from '../../server/src/routes/admin';
 import { errorHandler } from '../../server/src/middleware/errorHandler';
@@ -13,8 +11,7 @@ jest.mock('../../server/src/services/pike13Sync');
 import { runSync } from '../../server/src/services/pike13Sync';
 const mockRunSync = runSync as jest.MockedFunction<typeof runSync>;
 
-let pool: Pool;
-let db: ReturnType<typeof drizzle<typeof schema>>;
+import { db } from '../../server/src/db';
 
 const ADMIN: SessionUser = {
   id: 0,
@@ -53,15 +50,11 @@ async function loginAs(app: express.Express, user: SessionUser) {
 }
 
 beforeAll(async () => {
-  if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL must be set');
-  pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  db = drizzle(pool, { schema });
   await db.delete(schema.pike13AdminToken);
 });
 
 afterAll(async () => {
   await db.delete(schema.pike13AdminToken);
-  await pool.end();
 });
 
 afterEach(async () => {
@@ -96,6 +89,7 @@ describe('POST /api/admin/sync/pike13 — sync', () => {
     await db.insert(schema.pike13AdminToken).values({ accessToken: 'valid-token' });
     mockRunSync.mockResolvedValueOnce({
       studentsUpserted: 10,
+      instructorsUpserted: 0,
       assignmentsCreated: 5,
       hoursCreated: 3,
     });
@@ -104,7 +98,7 @@ describe('POST /api/admin/sync/pike13 — sync', () => {
     const res = await agent.post('/api/admin/sync/pike13');
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ studentsUpserted: 10, assignmentsCreated: 5, hoursCreated: 3 });
+    expect(res.body).toEqual({ studentsUpserted: 10, instructorsUpserted: 0, assignmentsCreated: 5, hoursCreated: 3 });
     expect(mockRunSync).toHaveBeenCalledWith(expect.anything(), 'valid-token');
   });
 });

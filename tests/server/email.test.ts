@@ -6,11 +6,10 @@
 import request from 'supertest';
 import express from 'express';
 import session from 'express-session';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
 import { eq } from 'drizzle-orm';
 import * as schema from '../../server/src/db/schema';
 import type { SessionUser } from '../../server/src/types/session';
+import { db } from '../../server/src/db';
 
 // Mock the email service before importing the route (factory avoids running the real module)
 jest.mock('../../server/src/services/email', () => ({
@@ -24,8 +23,6 @@ const mockSendReviewEmail = sendReviewEmail as jest.MockedFunction<typeof sendRe
 import { reviewsRouter } from '../../server/src/routes/reviews';
 import { errorHandler } from '../../server/src/middleware/errorHandler';
 
-let pool: Pool;
-let db: ReturnType<typeof drizzle<typeof schema>>;
 let instructorId: number;
 let studentWithEmailId: number;
 let studentNoEmailId: number;
@@ -48,10 +45,6 @@ function instrUser(id: number): SessionUser {
 }
 
 beforeAll(async () => {
-  if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL must be set');
-  pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  db = drizzle(pool, { schema });
-
   const [user] = await db
     .insert(schema.users)
     .values({ email: 'email-test-instr@test.local', name: 'Email Test Instructor' })
@@ -81,7 +74,6 @@ afterAll(async () => {
   await db.delete(schema.students).where(eq(schema.students.id, studentWithEmailId));
   await db.delete(schema.students).where(eq(schema.students.id, studentNoEmailId));
   await db.delete(schema.users).where(eq(schema.users.email, 'email-test-instr@test.local'));
-  await pool.end();
 });
 
 beforeEach(() => {
