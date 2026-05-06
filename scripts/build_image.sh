@@ -191,3 +191,7 @@ echo "Pushed ${IMAGE_REPO}:${IMAGE_TAG}"
 if [[ "${PUSH_LATEST}" == "1" ]]; then
   echo "Pushed ${IMAGE_REPO}:latest"
 fi
+
+
+
+

@@ -10,7 +10,7 @@
     "docker:up": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d",
     "docker:down": "docker compose -f docker-compose.yml -f docker-compose.dev.yml down",
     "docker:logs": "docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f",
-    "docker:deploy": "set -a && . ./.env && set +a && APP_TAG=$(node -p \"require('./package.json').version\") DOCKER_CONTEXT=${DOCKER_CONTEXT:-swarm1} docker stack deploy --with-registry-auth -c docker-compose.yml ${STACK_NAME:-progress-report}",
+    "docker:deploy": "./scripts/deploy_stack.sh",
     "docker:deploy:down": "set -a && . ./.env && set +a && DOCKER_CONTEXT=${DOCKER_CONTEXT:-swarm1} docker stack rm ${STACK_NAME:-progress-report}",
     "docker:deploy:ps": "set -a && . ./.env && set +a && DOCKER_CONTEXT=${DOCKER_CONTEXT:-swarm1} docker stack services ${STACK_NAME:-progress-report}",
     "docker:deploy:logs": "set -a && . ./.env && set +a && DOCKER_CONTEXT=${DOCKER_CONTEXT:-swarm1} docker service logs -f ${STACK_NAME:-progress-report}_app"
