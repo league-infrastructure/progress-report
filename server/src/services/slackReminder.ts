@@ -1,5 +1,5 @@
 import { eq, and, notLike } from 'drizzle-orm';
-import Groq from 'groq-sdk';
+import Anthropic from '@anthropic-ai/sdk';
 import { db } from '../db';
 import { instructors, users, instructorStudents, monthlyReviews, students } from '../db/schema';
 import { sendSlackDM } from './slack';
@@ -73,16 +73,13 @@ export async function sendMonthlyReminders(
 
     let text = staticText;
 
-    if (process.env.GROQ_API_KEY) {
+    if (process.env.ANTHROPIC_API_KEY) {
       try {
-        const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-        const completion = await groq.chat.completions.create({
-          model: 'llama-3.3-70b-versatile',
+        const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+        const response = await anthropic.messages.create({
+          model: 'claude-haiku-4-5-20251001',
           max_tokens: 256,
-          messages: [
-            {
-              role: 'system',
-              content: `You write short, friendly Slack DMs for a coding education nonprofit called The LEAGUE of Amazing Programmers.
+          system: `You write short, friendly Slack DMs for a coding education nonprofit called The LEAGUE of Amazing Programmers.
 Tone: warm, encouraging, collegial — not corporate, not naggy.
 Rules:
 - Address the instructor by first name only
@@ -92,7 +89,7 @@ Rules:
 - Use Slack bold (*word*) sparingly — just for the student list header
 - Total length: 5–8 lines, no more
 - Do NOT add greetings like "Hey!" or sign-offs like "Thanks!" — get straight to it`,
-            },
+          messages: [
             {
               role: 'user',
               content: `Write a Slack reminder to ${instr.name.split(' ')[0]} to send their ${monthLabel} progress reviews.
@@ -102,7 +99,7 @@ Login link: ${appUrl}/reviews?month=${month}`,
             },
           ],
         });
-        const generated = completion.choices[0]?.message?.content?.trim();
+        const generated = (response.content[0] as { type: 'text'; text: string }).text.trim();
         if (generated) text = generated;
       } catch { /* fall through to static text */ }
     }

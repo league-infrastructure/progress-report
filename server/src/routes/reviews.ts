@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { eq, and, gte, lt } from 'drizzle-orm';
-import Groq from 'groq-sdk';
+import Anthropic from '@anthropic-ai/sdk';
 import { db } from '../db';
 import { monthlyReviews, students, instructors, users, studentAttendance, pike13Tokens } from '../db/schema';
 import { isActiveInstructor } from '../middleware/auth';
@@ -657,20 +657,17 @@ reviewsRouter.post('/reviews/:id/generate-github-draft', async (req, res, next) 
       return;
     }
 
-    if (!process.env.GROQ_API_KEY) {
-      res.status(500).json({ error: 'GROQ_API_KEY is not configured on the server' });
+    if (!process.env.ANTHROPIC_API_KEY) {
+      res.status(500).json({ error: 'ANTHROPIC_API_KEY is not configured on the server' });
       return;
     }
 
-    const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-    const completion = await client.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+    const response = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
-      messages: [
-        {
-          role: 'system',
-          content: `You are an encouraging coding instructor writing a monthly progress review for a parent/guardian.
+      system: `You are an encouraging coding instructor writing a monthly progress review for a parent/guardian.
 
 Tone rules:
 - Warm, positive, and encouraging throughout — frame slow progress as steady, consistent growth
@@ -685,7 +682,7 @@ Structure (no headers, flowing paragraphs):
 1. Progress paragraph — what they worked on, what topic they've reached, what concepts that topic covers
 2. Effort & highlights paragraph — specific things done well, how the work builds their skills
 3. Instructor notes (2–4 sentences only) — one gentle suggestion for the student if helpful, then a brief plan for how the instructor will support them next (e.g. "In our next sessions we'll build on X by introducing Y"). Keep this encouraging, never prescriptive.`,
-        },
+      messages: [
         {
           role: 'user',
           content: `Write a monthly progress review for ${studentName} (${monthLabel}) to send to their parent/guardian.
@@ -705,7 +702,7 @@ Instructions:
       ],
     });
 
-    const llmBody = (completion.choices[0]?.message?.content ?? '').trim();
+    const llmBody = (response.content[0] as { type: 'text'; text: string }).text.trim();
 
     // Greeting
     const greeting = guardianName

@@ -21,7 +21,6 @@ import sgMail from '@sendgrid/mail';
 import { isSlackConfigured } from '../services/slack';
 import { sendMonthlyReminders } from '../services/slackReminder';
 import { generateComplianceReport } from '../services/slackReport';
-import Groq from 'groq-sdk';
 
 export const adminRouter = Router();
 
