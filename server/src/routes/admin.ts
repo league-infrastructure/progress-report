@@ -12,6 +12,7 @@ import {
   serviceFeedback,
   pike13AdminToken,
   volunteerEventSchedule,
+  adminSettings,
   type ReviewStatus,
 } from '../db/schema';
 import { isAdmin } from '../middleware/auth';
@@ -659,6 +660,70 @@ adminRouter.post('/admin/slack/report', async (req, res, next) => {
 
     const result = await generateComplianceReport(month, postToChannel);
     res.json({ month, ...result });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------- Admin user management routes ----------
+
+// GET /api/admin/users — list all admin users ordered by createdAt ascending
+adminRouter.get('/admin/users', async (_req, res, next) => {
+  try {
+    const rows = await db
+      .select({ email: adminSettings.email, createdAt: adminSettings.createdAt })
+      .from(adminSettings)
+      .orderBy(adminSettings.createdAt);
+    res.json(rows.map((r) => ({ email: r.email, createdAt: r.createdAt?.toISOString() })));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/admin/users — add a new admin
+adminRouter.post('/admin/users', async (req, res, next) => {
+  try {
+    const { email } = req.body as { email?: string };
+    if (!email || typeof email !== 'string') {
+      res.status(400).json({ error: 'email (string) is required' });
+      return;
+    }
+    const normalized = email.trim().toLowerCase();
+    const existing = await db
+      .select({ id: adminSettings.id })
+      .from(adminSettings)
+      .where(eq(adminSettings.email, normalized));
+    if (existing.length > 0) {
+      res.status(409).json({ error: 'Already an admin' });
+      return;
+    }
+    const [created] = await db
+      .insert(adminSettings)
+      .values({ email: normalized })
+      .returning();
+    res.status(201).json({ email: created.email, createdAt: created.createdAt?.toISOString() });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/admin/users/:email — remove an admin (block self-removal)
+adminRouter.delete('/admin/users/:email', async (req, res, next) => {
+  try {
+    const targetEmail = decodeURIComponent(req.params.email).toLowerCase();
+    if (targetEmail === req.session.user!.email) {
+      res.status(409).json({ error: 'Cannot remove your own admin access' });
+      return;
+    }
+    const deleted = await db
+      .delete(adminSettings)
+      .where(eq(adminSettings.email, targetEmail))
+      .returning();
+    if (deleted.length === 0) {
+      res.status(404).json({ error: 'Admin not found' });
+      return;
+    }
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }
