@@ -4,6 +4,7 @@ import { db } from '../db';
 import { users, instructors, adminSettings, pike13Tokens, pike13AdminToken } from '../db/schema';
 import type { SessionUser } from '../types/session';
 import { runSync } from '../services/pike13Sync';
+import { bootstrapAdminIfConfigured } from '../utils/adminBootstrap';
 
 export const authRouter = Router();
 
@@ -133,6 +134,9 @@ authRouter.get('/pike13/callback', async (req, res, next) => {
         .returning({ id: users.id });
       userId = newUser.id;
     }
+
+    // Bootstrap admin access if email is in ADMIN_EMAILS env var
+    await bootstrapAdminIfConfigured(normalizedEmail);
 
     // Determine roles
     const [adminRow] = await db
