@@ -1,6 +1,6 @@
 {
   "name": "docker-nodeapp",
-  "version": "0.20260518.3",
+  "version": "0.20260518.4",
   "private": true,
   "scripts": {
     "ensure:local:deps": "(test -d node_modules || npm install) && (test -d server/node_modules || (cd server && npm install)) && (test -d client/node_modules || (cd client && npm install))",
