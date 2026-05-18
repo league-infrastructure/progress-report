@@ -1,13 +1,14 @@
 import { Link, useLocation } from 'wouter'
 import { useAuth } from '../hooks/useAuth'
-import { BarChart, Users, Shield, MessageSquare, Heart, Bell, Home } from 'lucide-react'
+import { BarChart, Users, Shield, MessageSquare, Heart, Bell, Home, UserCog } from 'lucide-react'
 
 const ADMIN_LINKS = [
-  { href: '/admin',                  label: 'Overview',   Icon: BarChart },
+  { href: '/admin',                  label: 'Overview',    Icon: BarChart },
   { href: '/admin/instructors',      label: 'Instructors', Icon: Users },
-  { href: '/admin/compliance',       label: 'Compliance', Icon: Shield },
-  { href: '/admin/volunteer-hours',  label: 'Volunteers', Icon: Heart },
-  { href: '/admin/feedback',         label: 'Feedback',   Icon: MessageSquare },
+  { href: '/admin/compliance',       label: 'Compliance',  Icon: Shield },
+  { href: '/admin/volunteer-hours',  label: 'Volunteers',  Icon: Heart },
+  { href: '/admin/feedback',         label: 'Feedback',    Icon: MessageSquare },
+  { href: '/admin/users',            label: 'Admin Users', Icon: UserCog },
 ]
 
 function getInitials(name: string): string {
