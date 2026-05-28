@@ -6,7 +6,7 @@ export function LoginPage() {
     <div className="login-screen">
       <div className="login-card">
         <div className="brand-mark" style={{ margin: '0 auto 14px' }}>L</div>
-        <h1>League Review Tool</h1>
+        <h1>The LEAGUE's Progress Report Tool</h1>
         <p>Monthly student reviews, TA check-ins, and guardian feedback — all in one place.</p>
         {denied && (
           <p style={{

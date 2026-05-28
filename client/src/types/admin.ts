@@ -1,3 +1,9 @@
+export interface AdminSettingDto {
+  id: number
+  email: string
+  createdAt: string
+}
+
 export interface AdminInstructorDto {
   id: number
   userId: number

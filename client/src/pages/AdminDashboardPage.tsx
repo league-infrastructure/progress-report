@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { MonthPicker } from '../components/MonthPicker'
 import { useSearch } from 'wouter'
-import { RefreshCw } from 'lucide-react'
-import type { AdminNotificationDto } from '../types/admin'
+import { RefreshCw, Trash2 } from 'lucide-react'
+import type { AdminNotificationDto, AdminSettingDto } from '../types/admin'
 import type { Pike13StatusDto, Pike13SyncResultDto } from '../types/pike13'
 
 interface AnalyticsDto {
@@ -54,6 +54,28 @@ async function fetchAnalytics(month: string): Promise<AnalyticsDto> {
   return res.json()
 }
 
+async function fetchAdmins(): Promise<AdminSettingDto[]> {
+  const res = await fetch('/api/admin/admins')
+  if (!res.ok) throw new Error('Failed to load admin list')
+  return res.json()
+}
+
+async function grantAdmin(email: string): Promise<AdminSettingDto> {
+  const res = await fetch('/api/admin/admins', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  })
+  const data = await res.json() as { error?: string }
+  if (!res.ok) throw new Error(data.error ?? 'Failed to grant admin')
+  return data as AdminSettingDto
+}
+
+async function revokeAdmin(id: number): Promise<void> {
+  const res = await fetch(`/api/admin/admins/${id}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error('Failed to revoke admin')
+}
+
 function StatCard({ label, num, sub }: { label: string; num: string | number; sub?: string }) {
   return (
     <div className="card stat">
@@ -71,6 +93,7 @@ export function AdminDashboardPage() {
   const month = params.get('month') ?? getCurrentMonth()
 
   const [showAllNotifications, setShowAllNotifications] = useState(false)
+  const [newAdminEmail, setNewAdminEmail] = useState('')
 
   const { data: notifications = [], isLoading, error } = useQuery<AdminNotificationDto[]>({
     queryKey: ['admin', 'notifications'],
@@ -96,6 +119,24 @@ export function AdminDashboardPage() {
 
   const syncMutation = useMutation({
     mutationFn: triggerPike13Sync,
+  })
+
+  const { data: admins = [] } = useQuery<AdminSettingDto[]>({
+    queryKey: ['admin', 'admins'],
+    queryFn: fetchAdmins,
+  })
+
+  const grantAdminMutation = useMutation({
+    mutationFn: (email: string) => grantAdmin(email),
+    onSuccess: () => {
+      setNewAdminEmail('')
+      queryClient.invalidateQueries({ queryKey: ['admin', 'admins'] })
+    },
+  })
+
+  const revokeAdminMutation = useMutation({
+    mutationFn: (id: number) => revokeAdmin(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin', 'admins'] }),
   })
 
   const visibleNotifications = showAllNotifications
@@ -290,6 +331,71 @@ export function AdminDashboardPage() {
               <span className="v">{analytics.totalFeedback}</span>
             </div>
           </div>
+        )}
+      </div>
+
+      {/* Admin user management */}
+      <div className="card card-table" style={{ marginTop: 24 }}>
+        <div className="card-table-head">
+          <h3 style={{ margin: 0 }}>Admin access</h3>
+        </div>
+
+        <div style={{ padding: '12px 18px', borderBottom: '1px solid var(--border)' }}>
+          <form
+            style={{ display: 'flex', gap: 8 }}
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (newAdminEmail.trim()) grantAdminMutation.mutate(newAdminEmail.trim())
+            }}
+          >
+            <input
+              type="email"
+              className="input"
+              placeholder="instructor@jointheleague.org"
+              value={newAdminEmail}
+              onChange={(e) => setNewAdminEmail(e.target.value)}
+              style={{ flex: 1 }}
+            />
+            <button
+              type="submit"
+              className="btn primary"
+              disabled={!newAdminEmail.trim() || grantAdminMutation.isPending}
+            >
+              Grant admin
+            </button>
+          </form>
+          {grantAdminMutation.isError && (
+            <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--color-danger)' }}>
+              {(grantAdminMutation.error as Error).message}
+            </p>
+          )}
+        </div>
+
+        {admins.length === 0 ? (
+          <p style={{ padding: '16px 18px', color: 'var(--color-muted)', fontSize: 14 }}>No admins configured.</p>
+        ) : (
+          <table className="tbl">
+            <tbody>
+              {admins.map((a) => (
+                <tr key={a.id}>
+                  <td style={{ fontSize: 14 }}>{a.email}</td>
+                  <td style={{ color: 'var(--color-muted)', fontSize: 12 }}>
+                    Added {new Date(a.createdAt).toLocaleDateString()}
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <button
+                      className="btn ghost sm"
+                      onClick={() => revokeAdminMutation.mutate(a.id)}
+                      disabled={revokeAdminMutation.isPending}
+                      title="Revoke admin access"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
     </div>

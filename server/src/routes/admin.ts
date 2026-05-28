@@ -12,6 +12,7 @@ import {
   serviceFeedback,
   pike13AdminToken,
   volunteerEventSchedule,
+  adminSettings,
   type ReviewStatus,
 } from '../db/schema';
 import { isAdmin } from '../middleware/auth';
@@ -21,8 +22,6 @@ import sgMail from '@sendgrid/mail';
 import { isSlackConfigured } from '../services/slack';
 import { sendMonthlyReminders } from '../services/slackReminder';
 import { generateComplianceReport } from '../services/slackReport';
-import Groq from 'groq-sdk';
-
 export const adminRouter = Router();
 
 adminRouter.use(isAdmin);
@@ -660,6 +659,58 @@ adminRouter.post('/admin/slack/report', async (req, res, next) => {
 
     const result = await generateComplianceReport(month, postToChannel);
     res.json({ month, ...result });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------- Admin user management ----------
+
+// GET /api/admin/admins — list all admin emails
+adminRouter.get('/admin/admins', async (_req, res, next) => {
+  try {
+    const admins = await db
+      .select({ id: adminSettings.id, email: adminSettings.email, createdAt: adminSettings.createdAt })
+      .from(adminSettings)
+      .orderBy(adminSettings.createdAt);
+    res.json(admins);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/admin/admins — grant admin by email
+// Body: { email: string }
+adminRouter.post('/admin/admins', async (req, res, next) => {
+  try {
+    const { email } = req.body as { email?: string };
+    if (!email || typeof email !== 'string') {
+      res.status(400).json({ error: 'email (string) is required' });
+      return;
+    }
+    const normalized = email.trim().toLowerCase();
+    const [existing] = await db.select().from(adminSettings).where(eq(adminSettings.email, normalized));
+    if (existing) {
+      res.status(409).json({ error: 'That email already has admin access' });
+      return;
+    }
+    const [created] = await db.insert(adminSettings).values({ email: normalized }).returning();
+    res.status(201).json(created);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// DELETE /api/admin/admins/:id — revoke admin
+adminRouter.delete('/admin/admins/:id', async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const [deleted] = await db.delete(adminSettings).where(eq(adminSettings.id, id)).returning();
+    if (!deleted) {
+      res.status(404).json({ error: 'Admin record not found' });
+      return;
+    }
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }
