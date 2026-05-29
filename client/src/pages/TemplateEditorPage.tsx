@@ -93,10 +93,27 @@ export function TemplateEditorPage() {
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">Body</label>
-          <p className="text-xs text-slate-400 mb-1">
-            Use <code className="bg-slate-100 px-1 rounded">{'{{studentName}}'}</code> and{' '}
-            <code className="bg-slate-100 px-1 rounded">{'{{month}}'}</code> as placeholders.
-          </p>
+          <div className="text-xs text-slate-500 mb-2 space-y-1">
+            <p className="font-medium text-slate-600">Data placeholders (filled automatically):</p>
+            <p>
+              <code className="bg-slate-100 px-1 rounded">{'{{studentName}}'}</code>{' '}
+              <code className="bg-slate-100 px-1 rounded">{'{{guardianName}}'}</code>{' '}
+              <code className="bg-slate-100 px-1 rounded">{'{{month}}'}</code>{' '}
+              <code className="bg-slate-100 px-1 rounded">{'{{instructorName}}'}</code>{' '}
+              <code className="bg-slate-100 px-1 rounded">{'{{attendanceSummary}}'}</code>{' '}
+              <code className="bg-slate-100 px-1 rounded">{'{{githubSummary}}'}</code>
+            </p>
+            <p className="font-medium text-slate-600 mt-2">AI placeholders (filled by Claude when you click "Generate from GitHub"):</p>
+            <p>
+              <code className="bg-orange-50 border border-orange-200 px-1 rounded">{'{{progress}}'}</code>{' '}— what the student worked on
+            </p>
+            <p>
+              <code className="bg-orange-50 border border-orange-200 px-1 rounded">{'{{highlights}}'}</code>{' '}— achievements and skills demonstrated
+            </p>
+            <p>
+              <code className="bg-orange-50 border border-orange-200 px-1 rounded">{'{{instructorNotes}}'}</code>{' '}— instructor's plan and suggestions
+            </p>
+          </div>
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}

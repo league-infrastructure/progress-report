@@ -11,6 +11,13 @@ export interface GeneratedDraft {
   repoCount: number;
 }
 
+const AI_PLACEHOLDERS = ['{{progress}}', '{{highlights}}', '{{instructorNotes}}'] as const;
+type AiPlaceholder = typeof AI_PLACEHOLDERS[number];
+
+function hasAiPlaceholders(text: string): boolean {
+  return AI_PLACEHOLDERS.some((p) => text.includes(p));
+}
+
 export interface ReviewSendRow {
   reviewId: number;
   studentName: string;
@@ -51,7 +58,7 @@ export async function findReviewByStudentName(
 }
 
 /** Generate a review draft body from GitHub activity + Claude. */
-export async function generateReviewDraft(reviewId: number): Promise<GeneratedDraft> {
+export async function generateReviewDraft(reviewId: number, template?: string): Promise<GeneratedDraft> {
   const [row] = await db
     .select({
       review: monthlyReviews,
@@ -222,11 +229,83 @@ export async function generateReviewDraft(reviewId: number): Promise<GeneratedDr
     ? `Current curriculum position: working on "${highestLessonName}"${allLessonNames.length > 1 ? ` (also covered: ${allLessonNames.slice(0, -1).join(', ')})` : ''}.`
     : '';
 
+  const attendanceSection = attendanceDates.length > 0
+    ? `Class sessions attended (${monthLabel}):\n${attendanceDates.map((d) => `• ${d}`).join('\n')}`
+    : '';
+  const repoLinks = [...repoData.entries()]
+    .map(([fullRepo, { shortName }]) => `• ${shortName} — github.com/${fullRepo}`)
+    .join('\n');
+  const githubSection = `GitHub activity this past month (last 30 days):\n${repoLinks}`;
+
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const message = await client.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1024,
-    system: `You are an encouraging coding instructor writing a monthly progress review for a parent/guardian.
+
+  const contextBlock = [
+    `Student: ${studentName} | Month: ${monthLabel}`,
+    attendanceDates.length > 0 ? `Attendance: ${attendanceDates.join(', ')} (${attendanceDates.length} session${attendanceDates.length === 1 ? '' : 's'})` : '',
+    lessonProgressNote,
+    '',
+    'Curriculum activity (lessons/ directory, past 30 days):',
+    commitSummary,
+  ].filter(Boolean).join('\n');
+
+  let finalBody: string;
+
+  if (template && hasAiPlaceholders(template)) {
+    // Template-guided generation: fill in only the AI placeholder sections
+    const present = AI_PLACEHOLDERS.filter((p) => template.includes(p));
+    const placeholderDescriptions: Record<AiPlaceholder, string> = {
+      '{{progress}}': 'A warm paragraph about what topics/concepts the student worked on this month',
+      '{{highlights}}': 'A paragraph highlighting specific things the student did well and how it builds their skills',
+      '{{instructorNotes}}': '2–4 sentences: one optional light suggestion framed as something to explore, then what the instructor plans to work on together next',
+    };
+    const sectionList = present.map((p) => `"${p}": ${placeholderDescriptions[p]}`).join('\n');
+
+    const message = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1024,
+      system: `You are an encouraging coding instructor writing sections of a monthly progress review for a parent/guardian.
+Tone: warm, positive, encouraging. Never mention lesson numbers — use topic names (e.g. "loops", "functions").
+Base everything ONLY on the data provided. Respond with ONLY a valid JSON object — no extra text.`,
+      messages: [{
+        role: 'user',
+        content: `Fill in the following sections for the review. Respond with a JSON object containing only these keys:
+${sectionList}
+
+Student data:
+${contextBlock}`,
+      }],
+    });
+
+    const raw = (message.content[0]?.type === 'text' ? message.content[0].text : '').trim();
+    let sections: Partial<Record<AiPlaceholder, string>> = {};
+    try {
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      sections = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+    } catch { /* leave sections empty — fall back to placeholder text */ }
+
+    // Substitute AI placeholders with generated content
+    let filled = template;
+    for (const p of present) {
+      filled = filled.replace(new RegExp(p.replace(/[{}]/g, '\\$&'), 'g'), sections[p] ?? `[${p} not generated]`);
+    }
+
+    // Substitute data placeholders
+    filled = filled
+      .replace(/\{\{studentName\}\}/g, studentName)
+      .replace(/\{\{guardianName\}\}/g, guardianName ?? 'LEAGUE Family')
+      .replace(/\{\{month\}\}/g, monthLabel)
+      .replace(/\{\{instructorName\}\}/g, instructorName)
+      .replace(/\{\{instructorEmail\}\}/g, instructorEmail)
+      .replace(/\{\{attendanceSummary\}\}/g, attendanceSection)
+      .replace(/\{\{githubSummary\}\}/g, githubSection);
+
+    finalBody = filled;
+  } else {
+    // Default free-form generation
+    const message = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1024,
+      system: `You are an encouraging coding instructor writing a monthly progress review for a parent/guardian.
 
 Tone rules:
 - Warm, positive, and encouraging throughout — frame slow progress as steady, consistent growth
@@ -240,15 +319,11 @@ Tone rules:
 Structure (no headers, flowing paragraphs):
 1. Progress paragraph — what they worked on, what topic they've reached, what concepts that topic covers
 2. Effort & highlights paragraph — specific things done well, how the work builds their skills
-3. Instructor notes (2–4 sentences only) — one gentle suggestion for the student if helpful, then a brief plan for how the instructor will support them next (e.g. "In our next sessions we'll build on X by introducing Y"). Keep this encouraging, never prescriptive.`,
-    messages: [{
-      role: 'user',
-      content: `Write a monthly progress review for ${studentName} (${monthLabel}) to send to their parent/guardian.
-${attendanceDates.length > 0 ? `\nClass attendance this month: ${attendanceDates.join(', ')} (${attendanceDates.length} session${attendanceDates.length === 1 ? '' : 's'})` : ''}
-${lessonProgressNote ? `\n${lessonProgressNote}` : ''}
-
-Curriculum activity (lessons/ directory, past 30 days):
-${commitSummary}
+3. Instructor notes (2–4 sentences only) — one gentle suggestion for the student if helpful, then a brief plan for how the instructor will support them next. Keep this encouraging, never prescriptive.`,
+      messages: [{
+        role: 'user',
+        content: `Write a monthly progress review for ${studentName} (${monthLabel}) to send to their parent/guardian.
+${contextBlock}
 
 Instructions:
 - Open with attendance and the topic they're currently working on (use the topic name, not a number)
@@ -256,24 +331,19 @@ Instructions:
 - Keep any improvement suggestion light — one sentence max, framed as "something to explore" not a gap
 - End with 2–3 sentences from the instructor on what they'll work on together next
 - No greeting, no sign-off, 3 paragraphs`,
-    }],
-  });
+      }],
+    });
 
-  const llmBody = (message.content[0]?.type === 'text' ? message.content[0].text : '').trim();
-  const greeting = guardianName ? `Dear ${guardianName},` : 'Dear LEAGUE Family,';
-  const attendanceSection = attendanceDates.length > 0
-    ? `Class sessions attended (${monthLabel}):\n${attendanceDates.map((d) => `• ${d}`).join('\n')}`
-    : '';
-  const repoLinks = [...repoData.entries()]
-    .map(([fullRepo, { shortName }]) => `• ${shortName} — github.com/${fullRepo}`)
-    .join('\n');
-  const githubSection = `GitHub activity this past month (last 30 days):\n${repoLinks}`;
-  const signOff = `Warm regards,\n${instructorName}\n${instructorEmail}`;
-  const parts = [greeting, '', llmBody];
-  if (attendanceSection) parts.push('', attendanceSection);
-  parts.push('', githubSection, '', signOff);
+    const llmBody = (message.content[0]?.type === 'text' ? message.content[0].text : '').trim();
+    const greeting = guardianName ? `Dear ${guardianName},` : 'Dear LEAGUE Family,';
+    const signOff = `Warm regards,\n${instructorName}\n${instructorEmail}`;
+    const parts = [greeting, '', llmBody];
+    if (attendanceSection) parts.push('', attendanceSection);
+    parts.push('', githubSection, '', signOff);
+    finalBody = parts.join('\n');
+  }
 
-  return { body: parts.join('\n'), commitCount: totalCommits, repoCount: repoData.size };
+  return { body: finalBody, commitCount: totalCommits, repoCount: repoData.size };
 }
 
 /** Load everything needed to send a review. */

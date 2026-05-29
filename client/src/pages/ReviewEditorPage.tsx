@@ -125,11 +125,18 @@ export function ReviewEditorPage() {
     }
   }
 
+  const AI_PLACEHOLDERS = ['{{progress}}', '{{highlights}}', '{{instructorNotes}}']
+  const bodyHasAiPlaceholders = AI_PLACEHOLDERS.some((p) => body.includes(p))
+
   async function handleGenerate() {
     setGenerateState('loading')
     setGenerateError('')
     try {
-      const res = await fetch(`/api/reviews/${id}/generate-github-draft`, { method: 'POST' })
+      const res = await fetch(`/api/reviews/${id}/generate-github-draft`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bodyHasAiPlaceholders ? { template: body } : {}),
+      })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         throw new Error((data as { error?: string }).error ?? 'Generation failed')
@@ -234,13 +241,28 @@ export function ReviewEditorPage() {
                 className="btn outline sm"
                 onClick={handleGenerate}
                 disabled={!review.githubUsername || generateState === 'loading'}
-                title={review.githubUsername ? 'Generate a draft using GitHub commits this month' : 'No GitHub username linked'}
+                title={
+                  !review.githubUsername
+                    ? 'No GitHub username linked'
+                    : bodyHasAiPlaceholders
+                    ? 'Fill in {{progress}}, {{highlights}}, {{instructorNotes}} using GitHub activity'
+                    : 'Generate a full draft using GitHub commits this month'
+                }
               >
-                <GitCommit size={14} /> {generateState === 'loading' ? 'Generating…' : 'Generate from GitHub'}
+                <GitCommit size={14} />
+                {generateState === 'loading'
+                  ? 'Generating…'
+                  : bodyHasAiPlaceholders
+                  ? 'Fill placeholders from GitHub'
+                  : 'Generate from GitHub'}
               </button>
               <div style={{ flex: 1 }} />
-              <span className="var-chip">{'{{studentName}}'}</span>
-              <span className="var-chip">{'{{month}}'}</span>
+              <span className="var-chip" title="Student's name">{'{{studentName}}'}</span>
+              <span className="var-chip" title="Guardian's name">{'{{guardianName}}'}</span>
+              <span className="var-chip" title="Month label">{'{{month}}'}</span>
+              <span className="var-chip" title="AI fills this: what the student worked on" style={{ color: 'var(--color-primary)' }}>{'{{progress}}'}</span>
+              <span className="var-chip" title="AI fills this: highlights and achievements" style={{ color: 'var(--color-primary)' }}>{'{{highlights}}'}</span>
+              <span className="var-chip" title="AI fills this: instructor notes and next steps" style={{ color: 'var(--color-primary)' }}>{'{{instructorNotes}}'}</span>
             </div>
             <textarea
               className="textarea"

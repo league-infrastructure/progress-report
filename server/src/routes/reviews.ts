@@ -368,7 +368,8 @@ reviewsRouter.post('/reviews/:id/generate-github-draft', async (req, res, next) 
       return;
     }
 
-    const result = await generateReviewDraft(id);
+    const { template } = req.body as { template?: string };
+    const result = await generateReviewDraft(id, template ?? undefined);
     res.json(result);
   } catch (err) {
     next(err);
