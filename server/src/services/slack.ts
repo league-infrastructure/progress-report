@@ -72,5 +72,5 @@ export async function sendSlackDM(email: string, text: string): Promise<boolean>
 export async function sendSlackChannelMessage(text: string): Promise<void> {
   const channel = process.env.SLACK_REVIEWS_CHANNEL;
   if (!channel) throw new Error('SLACK_REVIEWS_CHANNEL is not configured');
-  await callSlack('chat.postMessage', { channel, text });
+  await callSlack('chat.postMessage', { channel, text, mrkdwn: true });
 }

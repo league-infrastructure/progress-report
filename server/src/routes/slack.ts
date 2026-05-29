@@ -194,7 +194,7 @@ slackRouter.post(
         res.json({ response_type: 'ephemeral', text: ':hourglass: Generating report and posting to channel...' });
         generateComplianceReport(month, true)
           .then(({ text: report }) =>
-            replyAsync(response_url, `:white_check_mark: Report posted to channel.\n\`\`\`\n${report}\n\`\`\``)
+            replyAsync(response_url, `:white_check_mark: Report posted to #${process.env.SLACK_REVIEWS_CHANNEL ?? 'channel'}.`)
           )
           .catch((err) => replyAsync(response_url, `:x: Failed: ${(err as Error).message}`));
         break;
