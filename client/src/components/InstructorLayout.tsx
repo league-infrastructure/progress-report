@@ -57,7 +57,7 @@ export function InstructorLayout({ children }: InstructorLayoutProps) {
         <div className="brand">
           <div className="brand-mark">L</div>
           <div>
-            <div className="brand-name">League Review Tool</div>
+            <div className="brand-name">Progress Report Tool</div>
             <div className="brand-sub">Instructor portal</div>
           </div>
         </div>

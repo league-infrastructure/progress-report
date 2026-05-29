@@ -29,7 +29,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         <div className="brand">
           <div className="brand-mark">L</div>
           <div>
-            <div className="brand-name">League Review Tool</div>
+            <div className="brand-name">Progress Report Tool</div>
             <div className="brand-sub">Admin portal</div>
           </div>
         </div>
