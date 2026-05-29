@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'wouter'
 import { useAuth } from '../hooks/useAuth'
-import { BarChart, Users, Shield, MessageSquare, Heart, Bell, Home } from 'lucide-react'
+import { BarChart, Users, Shield, MessageSquare, Heart, Bell, Home, LogOut } from 'lucide-react'
 
 const ADMIN_LINKS = [
   { href: '/admin',                  label: 'Overview',   Icon: BarChart },
@@ -62,6 +62,17 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             <Home className="nav-ico" />
             My Dashboard
           </Link>
+          <button
+            className="nav-item"
+            style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+            onClick={async () => {
+              await fetch('/api/auth/logout', { method: 'POST' })
+              window.location.href = '/'
+            }}
+          >
+            <LogOut className="nav-ico" />
+            Sign out
+          </button>
         </div>
       </aside>
 

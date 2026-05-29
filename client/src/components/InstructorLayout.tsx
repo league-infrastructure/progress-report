@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation } from 'wouter'
 import { useAuth } from '../hooks/useAuth'
 import { useQueryClient } from '@tanstack/react-query'
-import { Home, FileText, LayoutTemplate, ClipboardCheck, RefreshCw, Bell, BarChart } from 'lucide-react'
+import { Home, FileText, LayoutTemplate, ClipboardCheck, RefreshCw, Bell, BarChart, LogOut } from 'lucide-react'
 
 const INSTRUCTOR_LINKS = [
   { href: '/dashboard', label: 'Dashboard', Icon: Home },
@@ -93,6 +93,20 @@ export function InstructorLayout({ children }: InstructorLayoutProps) {
             </Link>
           </div>
         )}
+
+        <div className="side-section" style={{ marginTop: 'auto' }}>
+          <button
+            className="nav-item"
+            style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
+            onClick={async () => {
+              await fetch('/api/auth/logout', { method: 'POST' })
+              window.location.href = '/'
+            }}
+          >
+            <LogOut className="nav-ico" />
+            Sign out
+          </button>
+        </div>
 
         <div className="sync-box">
           <div className="sync-head">
