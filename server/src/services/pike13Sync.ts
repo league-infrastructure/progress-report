@@ -310,12 +310,15 @@ export async function runSync(
   }
 
   // Delete stale events:
+  // Drizzle stores mode:'timestamp' as Unix SECONDS. We must compare against
+  // integer seconds — toISOString() (TEXT) makes all integer rows delete, and
+  // getTime() (ms) is 1000× too large. Use Math.floor(ms / 1000).
+  const thisWeekSundaySecs = Math.floor(thisWeekSunday.getTime() / 1000);
+
   // 1. Remove anything before this week's Sunday
-  // Use getTime() (integer ms) — toISOString() produces TEXT which SQLite considers
-  // greater than all INTEGER values, causing all rows to be incorrectly deleted.
   db.run(sql`
     DELETE FROM volunteer_event_schedule
-    WHERE start_at < ${thisWeekSunday.getTime()}
+    WHERE start_at < ${thisWeekSundaySecs}
   `);
 
   // 2. Remove events in the schedule window that Pike13 no longer returns
@@ -325,7 +328,7 @@ export async function runSync(
       .delete(schema.volunteerEventSchedule)
       .where(
         and(
-          sql`${schema.volunteerEventSchedule.startAt} >= ${thisWeekSunday.getTime()}`,
+          sql`${schema.volunteerEventSchedule.startAt} >= ${thisWeekSundaySecs}`,
           sql`${schema.volunteerEventSchedule.eventOccurrenceId} NOT IN (${sql.join(freshIds.map((id) => sql`${id}`), sql`, `)})`,
         ),
       );
