@@ -74,3 +74,10 @@ export async function sendSlackChannelMessage(text: string): Promise<void> {
   if (!channel) throw new Error('SLACK_REVIEWS_CHANNEL is not configured');
   await callSlack('chat.postMessage', { channel, text, mrkdwn: true });
 }
+
+/** Post a message to any channel, optionally in a thread. */
+export async function postSlackMessage(channel: string, text: string, threadTs?: string): Promise<void> {
+  const body: Record<string, unknown> = { channel, text, mrkdwn: true };
+  if (threadTs) body.thread_ts = threadTs;
+  await callSlack('chat.postMessage', body);
+}

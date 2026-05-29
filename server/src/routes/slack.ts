@@ -4,8 +4,9 @@ import { eq } from 'drizzle-orm';
 import { verifySlackSignature } from '../middleware/verifySlack';
 import { generateComplianceReport, generateStudentStatusReport } from '../services/slackReport';
 import { sendMonthlyReminders } from '../services/slackReminder';
-import { isSlackConfigured, sendSlackDM, lookupSlackUserByEmail } from '../services/slack';
+import { isSlackConfigured, sendSlackDM, lookupSlackUserByEmail, postSlackMessage } from '../services/slack';
 import { findReviewByStudentName, generateReviewDraft, sendReview, loadReviewForSend } from '../services/reviewGenerator';
+import { handleBotMessage } from '../services/slackBot';
 import { db } from '../db';
 import { monthlyReviews, instructors, users } from '../db/schema';
 
@@ -330,5 +331,67 @@ slackRouter.post(
     }
 
     res.json({});
+  },
+);
+
+// POST /api/slack/events
+// Handles Slack Events API — app_mention triggers the Progress Bot.
+slackRouter.post(
+  '/slack/events',
+  ...rawBodyMiddleware,
+  verifySlackSignature,
+  (req, res) => {
+    const body = req.body as {
+      type: string;
+      challenge?: string;
+      event?: {
+        type: string;
+        text?: string;
+        channel: string;
+        ts: string;
+        thread_ts?: string;
+        bot_id?: string;
+      };
+    };
+
+    // Slack sends this once to verify the endpoint URL
+    if (body.type === 'url_verification') {
+      res.json({ challenge: body.challenge });
+      return;
+    }
+
+    const event = body.event;
+
+    // Ignore messages from bots (including ourselves) to prevent loops
+    if (!event || event.bot_id) {
+      res.sendStatus(200);
+      return;
+    }
+
+    if (event.type === 'app_mention') {
+      res.sendStatus(200); // Must ack within 3s; process async
+
+      if (!isSlackConfigured()) return;
+
+      // Strip the @mention tag from the message text
+      const question = (event.text ?? '').replace(/<@[A-Z0-9]+>/g, '').trim();
+      if (!question) return;
+
+      const threadTs = event.thread_ts ?? event.ts;
+
+      handleBotMessage(
+        question,
+        event.channel,
+        threadTs,
+        (channel, text, ts) => postSlackMessage(channel, text, ts),
+      ).catch((err) => {
+        console.error('[slackBot] error:', err);
+        postSlackMessage(event.channel, ':x: Something went wrong. Please try again.', threadTs).catch(() => {});
+      });
+
+      return;
+    }
+
+    res.sendStatus(200);
   },
 );
