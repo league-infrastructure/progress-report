@@ -311,22 +311,21 @@ export async function runSync(
 
   // Delete stale events:
   // 1. Remove anything before this week's Sunday
+  // Use getTime() (integer ms) — toISOString() produces TEXT which SQLite considers
+  // greater than all INTEGER values, causing all rows to be incorrectly deleted.
   db.run(sql`
     DELETE FROM volunteer_event_schedule
-    WHERE start_at < ${thisWeekSunday.toISOString()}
+    WHERE start_at < ${thisWeekSunday.getTime()}
   `);
 
   // 2. Remove events in the schedule window that Pike13 no longer returns
-  //    (e.g., classes that were cancelled or deleted since the last sync).
-  //    Guard: skip if Pike13 returned nothing — treat empty as a potential API error.
   if (scheduleWindowEvents.length > 0) {
     const freshIds = scheduleWindowEvents.map((occ) => String(occ.id));
-    // Remove stale events in the current schedule window: keep only freshIds.
     const deleteStale = db
       .delete(schema.volunteerEventSchedule)
       .where(
         and(
-          sql`${schema.volunteerEventSchedule.startAt} >= ${thisWeekSunday.toISOString()}`,
+          sql`${schema.volunteerEventSchedule.startAt} >= ${thisWeekSunday.getTime()}`,
           sql`${schema.volunteerEventSchedule.eventOccurrenceId} NOT IN (${sql.join(freshIds.map((id) => sql`${id}`), sql`, `)})`,
         ),
       );
