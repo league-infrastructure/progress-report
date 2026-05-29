@@ -5,6 +5,16 @@ import {
   instructors, users, instructorStudents, monthlyReviews,
   students, volunteerEventSchedule,
 } from '../db/schema';
+import { findReviewByStudentName, generateReviewDraft, loadReviewForSend } from './reviewGenerator';
+import { sendPike13Note, buildPike13NoteText } from './pike13Notes';
+
+interface BotContext {
+  channelId: string;
+  threadTs: string;
+  appUrl: string;
+  postFn: (channel: string, text: string, threadTs: string) => Promise<void>;
+  postBlocksFn: (channel: string, blocks: unknown[], text: string, threadTs: string) => Promise<void>;
+}
 
 const TOOLS: Anthropic.Tool[] = [
   {
@@ -52,9 +62,21 @@ const TOOLS: Anthropic.Tool[] = [
       required: ['name'],
     },
   },
+  {
+    name: 'generate_review',
+    description: 'Generate a draft progress review for a student using their GitHub activity. Posts the draft in Slack with Send and Test buttons so the instructor can review and send it. Use when asked to generate, write, create, or draft a review for a student.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        student_name: { type: 'string', description: 'Student name (partial match OK).' },
+        month: { type: 'string', description: 'YYYY-MM format. Omit for current month.' },
+      },
+      required: ['student_name'],
+    },
+  },
 ];
 
-async function runTool(name: string, input: Record<string, string>): Promise<string> {
+async function runTool(name: string, input: Record<string, string>, ctx: BotContext): Promise<string> {
   const month = input.month ?? new Date().toISOString().slice(0, 7);
   const [year, mon] = month.split('-');
   const monthLabel = new Date(Number(year), Number(mon) - 1).toLocaleString('en-US', { month: 'long', year: 'numeric' });
@@ -217,6 +239,73 @@ async function runTool(name: string, input: Record<string, string>): Promise<str
     return JSON.stringify(results.length === 1 ? results[0] : results);
   }
 
+  if (name === 'generate_review') {
+    const found = await findReviewByStudentName(input.student_name, month);
+    if ('error' in found) return JSON.stringify({ error: found.error });
+
+    const { reviewId, studentName } = found;
+    const [yr, mo] = month.split('-');
+    const monthLabel = new Date(Number(yr), Number(mo) - 1).toLocaleString('en-US', { month: 'long', year: 'numeric' });
+
+    let draft: { body: string };
+    try {
+      draft = await generateReviewDraft(reviewId);
+    } catch (err) {
+      return JSON.stringify({ error: `Generation failed: ${(err as Error).message}` });
+    }
+
+    // Save draft to DB
+    await db
+      .update(monthlyReviews)
+      .set({ body: draft.body, status: 'draft', updatedAt: new Date() })
+      .where(eq(monthlyReviews.id, reviewId));
+
+    // Truncate for Slack's 3000-char block limit
+    const MAX = 2700;
+    const preview = draft.body.length > MAX
+      ? draft.body.slice(0, MAX) + `\n\n_(truncated — <${ctx.appUrl}/reviews/${reviewId}|view full draft>)_`
+      : draft.body;
+
+    const blocks = [
+      {
+        type: 'section',
+        text: { type: 'mrkdwn', text: `:pencil: *Draft ready: ${studentName} — ${monthLabel}*\n\n${preview}` },
+      },
+      {
+        type: 'actions',
+        elements: [
+          {
+            type: 'button',
+            text: { type: 'plain_text', text: 'Send to Guardian' },
+            style: 'primary',
+            action_id: 'send_review',
+            value: String(reviewId),
+            confirm: {
+              title: { type: 'plain_text', text: 'Send this review?' },
+              text: { type: 'mrkdwn', text: `Send the progress report for *${studentName}* to their guardian?` },
+              confirm: { type: 'plain_text', text: 'Send it' },
+              deny: { type: 'plain_text', text: 'Cancel' },
+            },
+          },
+          {
+            type: 'button',
+            text: { type: 'plain_text', text: 'Send Test Note' },
+            action_id: 'test_review',
+            value: String(reviewId),
+          },
+          {
+            type: 'button',
+            text: { type: 'plain_text', text: 'Edit in App' },
+            url: `${ctx.appUrl}/reviews/${reviewId}`,
+          },
+        ],
+      },
+    ];
+
+    await ctx.postBlocksFn(ctx.channelId, blocks, `Draft ready for ${studentName}`, ctx.threadTs);
+    return JSON.stringify({ ok: true, message: `Draft generated and posted for ${studentName} (${monthLabel}).` });
+  }
+
   return JSON.stringify({ error: `Unknown tool: ${name}` });
 }
 
@@ -235,11 +324,20 @@ export async function handleBotMessage(
   channelId: string,
   threadTs: string,
   postFn: (channel: string, text: string, threadTs: string) => Promise<void>,
+  postBlocksFn: (channel: string, blocks: unknown[], text: string, threadTs: string) => Promise<void>,
 ): Promise<void> {
   if (!process.env.ANTHROPIC_API_KEY) {
     await postFn(channelId, ':x: ANTHROPIC_API_KEY is not configured.', threadTs);
     return;
   }
+
+  const ctx: BotContext = {
+    channelId,
+    threadTs,
+    appUrl: (process.env.APP_URL ?? 'https://progress.jtlapp.net').replace(/\/$/, ''),
+    postFn,
+    postBlocksFn,
+  };
 
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   const currentMonth = new Date().toISOString().slice(0, 7);
@@ -261,7 +359,7 @@ export async function handleBotMessage(
     const results: Anthropic.ToolResultBlockParam[] = [];
 
     for (const call of toolCalls) {
-      const result = await runTool(call.name, call.input as Record<string, string>).catch(
+      const result = await runTool(call.name, call.input as Record<string, string>, ctx).catch(
         (err) => JSON.stringify({ error: String(err) }),
       );
       results.push({ type: 'tool_result', tool_use_id: call.id, content: result });

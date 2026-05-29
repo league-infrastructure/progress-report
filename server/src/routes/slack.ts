@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 import { verifySlackSignature } from '../middleware/verifySlack';
 import { generateComplianceReport, generateStudentStatusReport } from '../services/slackReport';
 import { sendMonthlyReminders } from '../services/slackReminder';
-import { isSlackConfigured, sendSlackDM, lookupSlackUserByEmail, postSlackMessage } from '../services/slack';
+import { isSlackConfigured, sendSlackDM, lookupSlackUserByEmail, postSlackMessage, postSlackBlocks } from '../services/slack';
 import { findReviewByStudentName, generateReviewDraft, sendReview, loadReviewForSend } from '../services/reviewGenerator';
 import { handleBotMessage } from '../services/slackBot';
 import { db } from '../db';
@@ -289,6 +289,67 @@ slackRouter.post(
     const action = payload.actions?.[0];
     if (!action) { res.json({}); return; }
 
+    if (action.action_id === 'test_review') {
+      const reviewId = parseInt(action.value, 10);
+      res.json({ text: ':hourglass: Sending test note…' });
+
+      try {
+        const row = await loadReviewForSend(reviewId);
+        const testPersonId = process.env.PIKE13_TEST_PERSON_ID;
+
+        if (!row.pike13AccessToken) {
+          if (payload.response_url) {
+            await fetch(payload.response_url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ text: ':x: No Pike13 token found for this review\'s instructor.', replace_original: false }),
+            });
+          }
+          return;
+        }
+
+        if (!testPersonId) {
+          if (payload.response_url) {
+            await fetch(payload.response_url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ text: ':x: PIKE13_TEST_PERSON_ID is not configured.', replace_original: false }),
+            });
+          }
+          return;
+        }
+
+        const { sendPike13Note, buildPike13NoteText } = await import('../services/pike13Notes');
+        await sendPike13Note({
+          accessToken: row.pike13AccessToken,
+          studentPike13Id: testPersonId,
+          noteText: buildPike13NoteText({
+            reviewBody: row.body ?? '',
+            studentName: row.studentName,
+            month: row.month,
+            feedbackToken: row.feedbackToken,
+          }),
+        });
+
+        if (payload.response_url) {
+          await fetch(payload.response_url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: `:white_check_mark: Test note sent for *${row.studentName}* to the test profile in Pike13.`, replace_original: false }),
+          });
+        }
+      } catch (err) {
+        if (payload.response_url) {
+          await fetch(payload.response_url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: `:x: Test failed: ${(err as Error).message}`, replace_original: false }),
+          });
+        }
+      }
+      return;
+    }
+
     if (action.action_id === 'send_review') {
       const reviewId = parseInt(action.value, 10);
       res.json({ text: ':hourglass: Sending review to guardian…' });
@@ -393,6 +454,7 @@ slackRouter.post(
         event.channel,
         threadTs,
         (channel, text, ts) => postSlackMessage(channel, text, ts),
+        (channel, blocks, text, ts) => postSlackBlocks(channel, blocks, text, ts),
       ).catch((err) => {
         console.error('[slackBot] error:', err);
         postSlackMessage(event.channel, ':x: Something went wrong. Please try again.', threadTs).catch(() => {});

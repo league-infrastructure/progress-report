@@ -81,3 +81,10 @@ export async function postSlackMessage(channel: string, text: string, threadTs?:
   if (threadTs) body.thread_ts = threadTs;
   await callSlack('chat.postMessage', body);
 }
+
+/** Post a Block Kit message to any channel, optionally in a thread. */
+export async function postSlackBlocks(channel: string, blocks: unknown[], text: string, threadTs?: string): Promise<void> {
+  const body: Record<string, unknown> = { channel, blocks, text };
+  if (threadTs) body.thread_ts = threadTs;
+  await callSlack('chat.postMessage', body);
+}
