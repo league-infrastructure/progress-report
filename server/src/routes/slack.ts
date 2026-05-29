@@ -334,11 +334,20 @@ slackRouter.post(
   },
 );
 
+const jsonRawBodyMiddleware = [
+  express.raw({ type: 'application/json' }),
+  (req: express.Request, _res: express.Response, next: express.NextFunction) => {
+    req.rawBody = req.body as Buffer;
+    try { req.body = JSON.parse(req.body.toString()); } catch { req.body = {}; }
+    next();
+  },
+];
+
 // POST /api/slack/events
 // Handles Slack Events API — app_mention triggers the Progress Bot.
 slackRouter.post(
   '/slack/events',
-  ...rawBodyMiddleware,
+  ...jsonRawBodyMiddleware,
   verifySlackSignature,
   (req, res) => {
     const body = req.body as {
