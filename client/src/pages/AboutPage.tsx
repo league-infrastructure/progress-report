@@ -1,4 +1,4 @@
-import { BookOpen, FileText, LayoutTemplate, ClipboardCheck, MessageSquare, Bot } from 'lucide-react'
+import { BookOpen, FileText, LayoutTemplate, ClipboardCheck, MessageSquare, Bot, GitCommit } from 'lucide-react'
 
 export function AboutPage() {
   return (
@@ -27,7 +27,7 @@ export function AboutPage() {
           <FeatureCard
             Icon={FileText}
             title="Reviews"
-            description="Write and submit progress reviews for your students. Open a student's review, fill in the form, and submit it when ready. Drafted reviews are saved automatically."
+            description="Write and submit monthly progress reviews for your students. Open a student's review, apply a template, and save your draft. Use the Generate from GitHub button to auto-draft a review from the student's recent commit activity — Claude reads their code history and writes the paragraphs for you."
           />
           <FeatureCard
             Icon={LayoutTemplate}
@@ -40,9 +40,14 @@ export function AboutPage() {
             description="Mark student attendance at the start of each class session. Check-ins feed into compliance and volunteer-hour reports."
           />
           <FeatureCard
+            Icon={GitCommit}
+            title="GitHub Draft Generation"
+            description="In the review editor, click Generate from GitHub to have Claude read the student's recent commits and write a full progress review draft. If your template uses {{progress}}, {{highlights}}, or {{instructorNotes}} placeholders, Claude fills only those sections and leaves the rest of your template intact."
+          />
+          <FeatureCard
             Icon={MessageSquare}
             title="Feedback"
-            description="Students and guardians can submit feedback after sessions. You can view feedback submitted for your students from the Feedback link."
+            description="Every progress review sent to a guardian includes a star-rating feedback link and a parent satisfaction survey link. Responses appear in the Feedback tab so you can track guardian engagement."
           />
         </div>
       </section>
@@ -54,14 +59,15 @@ export function AboutPage() {
         </h2>
         <p style={{ marginBottom: '0.75rem' }}>
           <strong>Progress Bot</strong> is a Claude-powered assistant that lives in your Slack workspace.
-          It lets you generate and post student progress reviews without ever opening a browser.
+          It pulls a student's recent GitHub commits, has Claude write a full progress review draft,
+          and lets you approve or edit it — all without opening a browser.
         </p>
 
         <h3 style={{ fontSize: '0.95rem', marginBottom: '0.5rem' }}>How to use it</h3>
         <ol style={{ paddingLeft: '1.25rem', lineHeight: 1.8 }}>
           <li>Open Slack and find the <strong>#progress-bot</strong> channel (or DM Progress Bot directly).</li>
           <li>
-            Ask it to generate a review in plain English, for example:
+            Ask it to generate a review by mentioning the student's name or GitHub username, for example:
             <blockquote style={{
               background: 'var(--color-surface-2, #f5f5f5)',
               borderLeft: '3px solid var(--color-primary, #4f46e5)',
@@ -70,19 +76,20 @@ export function AboutPage() {
               borderRadius: '0 4px 4px 0',
               fontStyle: 'italic',
             }}>
-              "Write a review for Maria Garcia — she improved her Python skills this week but struggled with loops."
+              "Generate a review for @maria_garcia"
             </blockquote>
           </li>
-          <li>Progress Bot drafts the review and posts it with <strong>Approve</strong> and <strong>Edit</strong> buttons.</li>
-          <li>Click <strong>Approve</strong> to post the review directly to the Progress Report Tool, or <strong>Edit</strong> to tweak the text first.</li>
+          <li>Progress Bot fetches the student's GitHub commits from the past 30 days and Claude writes a full draft — including progress, highlights, and instructor notes.</li>
+          <li>The draft is posted with <strong>Approve</strong> and <strong>Edit</strong> buttons.</li>
+          <li>Click <strong>Approve</strong> to save the review to the Progress Report Tool, or <strong>Edit</strong> to tweak the text first.</li>
         </ol>
 
         <h3 style={{ fontSize: '0.95rem', margin: '1rem 0 0.5rem' }}>Tips</h3>
         <ul style={{ paddingLeft: '1.25rem', lineHeight: 1.8 }}>
-          <li>You can mention multiple students in one message and the bot will draft a review per student.</li>
-          <li>The bot understands context — if you say "same as last week but she finished the project," it uses prior review tone as a reference.</li>
+          <li>The bot looks for commits in League curriculum repos (e.g. Level1-Module0, Python-Apprentice) and filters out personal or unrelated repos automatically.</li>
+          <li>If a student has no GitHub activity in the past 30 days, the bot will let you know so you can write the review manually.</li>
           <li>Reviews posted via Slack show up immediately in the Reviews tab here.</li>
-          <li>If a student isn't found, the bot will ask you to confirm the name before proceeding.</li>
+          <li>You can also generate drafts directly in the browser using the <strong>Generate from GitHub</strong> button in any review editor.</li>
         </ul>
       </section>
 
