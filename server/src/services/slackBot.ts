@@ -5,7 +5,7 @@ import {
   instructors, users, instructorStudents, monthlyReviews,
   students, volunteerEventSchedule,
 } from '../db/schema';
-import { findReviewByStudentName, generateReviewDraft, loadReviewForSend } from './reviewGenerator';
+import { findReviewByStudentName, findReviewByGithubUsername, generateReviewDraft, loadReviewForSend } from './reviewGenerator';
 import { sendPike13Note, buildPike13NoteText } from './pike13Notes';
 
 interface BotContext {
@@ -64,14 +64,15 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'generate_review',
-    description: 'Generate a draft progress review for a student using their GitHub activity. Posts the draft in Slack with Send and Test buttons so the instructor can review and send it. Use when asked to generate, write, create, or draft a review for a student.',
+    description: 'Generate a draft progress review for a student using their GitHub activity. Posts the draft in Slack with Send and Test buttons so the instructor can review and send it. Use when asked to generate, write, create, or draft a review for a student. Provide either student_name or github_username — github_username takes priority if both are given.',
     input_schema: {
       type: 'object' as const,
       properties: {
-        student_name: { type: 'string', description: 'Student name (partial match OK).' },
+        student_name: { type: 'string', description: 'Student name (partial match OK). Use if the user refers to the student by name.' },
+        github_username: { type: 'string', description: 'Student\'s GitHub username (exact match, with or without @). Use if the user provides a GitHub handle.' },
         month: { type: 'string', description: 'YYYY-MM format. Omit for current month.' },
       },
-      required: ['student_name'],
+      required: [],
     },
   },
 ];
@@ -240,7 +241,12 @@ async function runTool(name: string, input: Record<string, string>, ctx: BotCont
   }
 
   if (name === 'generate_review') {
-    const found = await findReviewByStudentName(input.student_name, month);
+    if (!input.student_name && !input.github_username) {
+      return JSON.stringify({ error: 'Please provide either a student name or a GitHub username.' });
+    }
+    const found = input.github_username
+      ? await findReviewByGithubUsername(input.github_username, month)
+      : await findReviewByStudentName(input.student_name, month);
     if ('error' in found) return JSON.stringify({ error: found.error });
 
     const { reviewId, studentName } = found;

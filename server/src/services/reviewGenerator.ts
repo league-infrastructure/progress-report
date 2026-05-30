@@ -57,6 +57,31 @@ export async function findReviewByStudentName(
   return matches[0];
 }
 
+/** Find a review by GitHub username (exact match, case-insensitive prefix before any colon). */
+export async function findReviewByGithubUsername(
+  githubUsername: string,
+  month: string,
+): Promise<{ reviewId: number; studentName: string } | { error: string }> {
+  const rows = await db
+    .select({
+      reviewId: monthlyReviews.id,
+      studentName: students.name,
+      githubUsername: students.githubUsername,
+    })
+    .from(monthlyReviews)
+    .innerJoin(students, eq(monthlyReviews.studentId, students.id))
+    .where(eq(monthlyReviews.month, month));
+
+  const lower = githubUsername.toLowerCase().replace(/^@/, '');
+  const matches = rows.filter((r) => {
+    const stored = (r.githubUsername ?? '').split(':')[0].trim().toLowerCase();
+    return stored === lower;
+  });
+
+  if (matches.length === 0) return { error: `No student found with GitHub username "@${githubUsername}" for ${month}` };
+  return { reviewId: matches[0].reviewId, studentName: matches[0].studentName };
+}
+
 /** Generate a review draft body from GitHub activity + Claude. */
 export async function generateReviewDraft(reviewId: number, template?: string): Promise<GeneratedDraft> {
   const [row] = await db
