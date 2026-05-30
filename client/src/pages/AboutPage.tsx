@@ -1,4 +1,4 @@
-import { BookOpen, FileText, LayoutTemplate, ClipboardCheck, MessageSquare, Bot, ChevronRight } from 'lucide-react'
+import { BookOpen, FileText, LayoutTemplate, ClipboardCheck, MessageSquare, Bot } from 'lucide-react'
 
 export function AboutPage() {
   return (
