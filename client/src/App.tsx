@@ -13,6 +13,8 @@ import { CompliancePage } from './pages/CompliancePage'
 import { VolunteerHoursPage } from './pages/VolunteerHoursPage'
 import { FeedbackPage } from './pages/FeedbackPage'
 import { AdminFeedbackPage } from './pages/AdminFeedbackPage'
+import { AdminReviewsPage } from './pages/AdminReviewsPage'
+import { AdminReviewEditorPage } from './pages/AdminReviewEditorPage'
 import { AboutPage } from './pages/AboutPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { ProtectedRoute } from './components/ProtectedRoute'
@@ -87,6 +89,20 @@ function App() {
         <ProtectedRoute role="admin">
           <AdminLayout>
             <AdminFeedbackPage />
+          </AdminLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/reviews/:id">
+        <ProtectedRoute role="admin">
+          <AdminLayout>
+            <AdminReviewEditorPage />
+          </AdminLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/reviews">
+        <ProtectedRoute role="admin">
+          <AdminLayout>
+            <AdminReviewsPage />
           </AdminLayout>
         </ProtectedRoute>
       </Route>

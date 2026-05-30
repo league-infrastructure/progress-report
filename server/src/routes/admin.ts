@@ -22,6 +22,7 @@ import sgMail from '@sendgrid/mail';
 import { isSlackConfigured } from '../services/slack';
 import { sendMonthlyReminders } from '../services/slackReminder';
 import { generateComplianceReport } from '../services/slackReport';
+import { generateReviewDraft, sendReview } from '../services/reviewGenerator';
 export const adminRouter = Router();
 
 adminRouter.use(isAdmin);
@@ -711,6 +712,205 @@ adminRouter.delete('/admin/admins/:id', async (req, res, next) => {
       return;
     }
     res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------- Admin student search ----------
+
+// GET /api/admin/students?q=name — all students with their assigned instructor
+adminRouter.get('/admin/students', async (req, res, next) => {
+  try {
+    const q = ((req.query.q as string) ?? '').trim().toLowerCase();
+
+    const rows = await db
+      .select({
+        id: students.id,
+        name: students.name,
+        githubUsername: students.githubUsername,
+        instructorId: instructorStudents.instructorId,
+        instructorName: users.name,
+      })
+      .from(students)
+      .leftJoin(instructorStudents, eq(instructorStudents.studentId, students.id))
+      .leftJoin(instructors, eq(instructorStudents.instructorId, instructors.id))
+      .leftJoin(users, eq(instructors.userId, users.id))
+      .orderBy(students.name);
+
+    const filtered = q ? rows.filter((r) => r.name.toLowerCase().includes(q)) : rows;
+    res.json(filtered);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------- Admin review endpoints (no instructor-ownership filter) ----------
+
+function formatAdminReview(
+  review: typeof monthlyReviews.$inferSelect,
+  studentName: string,
+  githubUsername: string | null = null,
+) {
+  return {
+    id: review.id,
+    studentId: review.studentId,
+    studentName,
+    githubUsername,
+    month: review.month,
+    status: review.status,
+    subject: review.subject,
+    body: review.body,
+    sentAt: review.sentAt ? review.sentAt.toISOString() : null,
+    createdAt: review.createdAt.toISOString(),
+    updatedAt: review.updatedAt.toISOString(),
+  };
+}
+
+// GET /api/admin/reviews?month=YYYY-MM — all reviews for the month
+adminRouter.get('/admin/reviews', async (req, res, next) => {
+  try {
+    const monthParam = req.query.month as string | undefined;
+    const month =
+      monthParam && /^\d{4}-\d{2}$/.test(monthParam)
+        ? monthParam
+        : new Date().toISOString().slice(0, 7);
+
+    const rows = await db
+      .select({
+        review: monthlyReviews,
+        studentName: students.name,
+        githubUsername: students.githubUsername,
+      })
+      .from(monthlyReviews)
+      .innerJoin(students, eq(monthlyReviews.studentId, students.id))
+      .where(eq(monthlyReviews.month, month));
+
+    res.json(rows.map((r) => formatAdminReview(r.review, r.studentName, r.githubUsername)));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/admin/reviews — create a review for any student
+// Body: { studentId, instructorId, month }
+adminRouter.post('/admin/reviews', async (req, res, next) => {
+  try {
+    const { studentId, instructorId, month } = req.body as {
+      studentId?: number;
+      instructorId?: number;
+      month?: string;
+    };
+
+    if (!studentId || !instructorId || !month || !/^\d{4}-\d{2}$/.test(month)) {
+      res.status(400).json({ error: 'studentId, instructorId, and month (YYYY-MM) are required' });
+      return;
+    }
+
+    const [student] = await db.select().from(students).where(eq(students.id, studentId));
+    if (!student) { res.status(404).json({ error: 'Student not found' }); return; }
+
+    const [review] = await db
+      .insert(monthlyReviews)
+      .values({ instructorId, studentId, month })
+      .onConflictDoNothing()
+      .returning();
+
+    if (!review) {
+      const [existing] = await db
+        .select()
+        .from(monthlyReviews)
+        .where(
+          and(
+            eq(monthlyReviews.instructorId, instructorId),
+            eq(monthlyReviews.studentId, studentId),
+            eq(monthlyReviews.month, month),
+          ),
+        );
+      res.json(formatAdminReview(existing, student.name, student.githubUsername));
+      return;
+    }
+
+    res.status(201).json(formatAdminReview(review, student.name, student.githubUsername));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/admin/reviews/:id
+adminRouter.get('/admin/reviews/:id', async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+
+    const [row] = await db
+      .select({ review: monthlyReviews, studentName: students.name, githubUsername: students.githubUsername })
+      .from(monthlyReviews)
+      .innerJoin(students, eq(monthlyReviews.studentId, students.id))
+      .where(eq(monthlyReviews.id, id));
+
+    if (!row) { res.status(404).json({ error: 'Review not found' }); return; }
+    res.json(formatAdminReview(row.review, row.studentName, row.githubUsername));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// PUT /api/admin/reviews/:id
+adminRouter.put('/admin/reviews/:id', async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+
+    const [existing] = await db
+      .select({ review: monthlyReviews, studentName: students.name, githubUsername: students.githubUsername })
+      .from(monthlyReviews)
+      .innerJoin(students, eq(monthlyReviews.studentId, students.id))
+      .where(eq(monthlyReviews.id, id));
+
+    if (!existing) { res.status(404).json({ error: 'Review not found' }); return; }
+    if (existing.review.status === 'sent') {
+      res.status(409).json({ error: 'Cannot edit a sent review' });
+      return;
+    }
+
+    const { subject, body } = req.body as { subject?: string; body?: string };
+    const [updated] = await db
+      .update(monthlyReviews)
+      .set({ subject, body, status: 'draft', updatedAt: new Date() })
+      .where(eq(monthlyReviews.id, id))
+      .returning();
+
+    res.json(formatAdminReview(updated, existing.studentName, existing.githubUsername));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/admin/reviews/:id/send
+adminRouter.post('/admin/reviews/:id/send', async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    await sendReview(id);
+    const [row] = await db
+      .select({ review: monthlyReviews, studentName: students.name, githubUsername: students.githubUsername })
+      .from(monthlyReviews)
+      .innerJoin(students, eq(monthlyReviews.studentId, students.id))
+      .where(eq(monthlyReviews.id, id));
+    if (!row) { res.status(404).json({ error: 'Review not found' }); return; }
+    res.json(formatAdminReview(row.review, row.studentName, row.githubUsername));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/admin/reviews/:id/generate-github-draft
+adminRouter.post('/admin/reviews/:id/generate-github-draft', async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const [ownership] = await db.select({ id: monthlyReviews.id }).from(monthlyReviews).where(eq(monthlyReviews.id, id));
+    if (!ownership) { res.status(404).json({ error: 'Review not found' }); return; }
+    const { template } = req.body as { template?: string };
+    const result = await generateReviewDraft(id, template ?? undefined);
+    res.json(result);
   } catch (err) {
     next(err);
   }

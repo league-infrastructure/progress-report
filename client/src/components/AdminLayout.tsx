@@ -1,10 +1,11 @@
 import { Link, useLocation } from 'wouter'
 import { useAuth } from '../hooks/useAuth'
-import { BarChart, Users, Shield, MessageSquare, Heart, Bell, Home, LogOut, HelpCircle } from 'lucide-react'
+import { BarChart, Users, Shield, MessageSquare, Heart, Bell, Home, LogOut, HelpCircle, FileText } from 'lucide-react'
 
 const ADMIN_LINKS = [
   { href: '/admin',                  label: 'Overview',   Icon: BarChart },
   { href: '/admin/instructors',      label: 'Instructors', Icon: Users },
+  { href: '/admin/reviews',          label: 'Reviews',    Icon: FileText },
   { href: '/admin/compliance',       label: 'Compliance', Icon: Shield },
   { href: '/admin/volunteer-hours',  label: 'Volunteers', Icon: Heart },
   { href: '/admin/feedback',         label: 'Feedback',   Icon: MessageSquare },
@@ -41,7 +42,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         <div className="side-section">
           <h5>Admin</h5>
           {ADMIN_LINKS.map(({ href, label, Icon }) => {
-            const isActive = location === href
+            const isActive = location === href || (href !== '/admin' && location.startsWith(href))
             return (
               <Link
                 key={href}
