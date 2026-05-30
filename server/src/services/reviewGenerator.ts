@@ -119,13 +119,6 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
   };
   if (process.env.GITHUB_TOKEN) ghHeaders['Authorization'] = `Bearer ${process.env.GITHUB_TOKEN}`;
 
-  const ghRes = await fetch(
-    `https://api.github.com/users/${encodeURIComponent(githubUsername)}/events?per_page=100`,
-    { headers: ghHeaders },
-  );
-  if (ghRes.status === 404) throw new Error(`GitHub user "${githubUsername}" not found`);
-  if (!ghRes.ok) throw new Error(`GitHub API returned ${ghRes.status}`);
-
   interface GithubEvent {
     type: string;
     created_at: string;
@@ -135,8 +128,25 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
   interface EnrichedCommit { sha: string; message: string; filesChanged: string[]; additions: number; deletions: number; }
   interface RepoData { shortName: string; commits: EnrichedCommit[]; }
 
-  const events = (await ghRes.json()) as GithubEvent[];
-  const pushEvents = events.filter((e) => {
+  // Paginate the Events API — GitHub returns up to 10 pages of 100 events each.
+  // A single page misses activity that's buried behind recent non-push events.
+  const allEvents: GithubEvent[] = [];
+  for (let page = 1; page <= 10; page++) {
+    const pageRes = await fetch(
+      `https://api.github.com/users/${encodeURIComponent(githubUsername)}/events?per_page=100&page=${page}`,
+      { headers: ghHeaders },
+    );
+    if (page === 1 && pageRes.status === 404) throw new Error(`GitHub user "${githubUsername}" not found`);
+    if (!pageRes.ok) break;
+    const pageEvents = (await pageRes.json()) as GithubEvent[];
+    if (pageEvents.length === 0) break;
+    allEvents.push(...pageEvents);
+    // Stop early if we've passed the 30-day window
+    const oldest = pageEvents[pageEvents.length - 1];
+    if (new Date(oldest.created_at) < since) break;
+  }
+
+  const pushEvents = allEvents.filter((e) => {
     if (e.type !== 'PushEvent') return false;
     const d = new Date(e.created_at);
     return d >= since && d <= now;
