@@ -13,6 +13,7 @@ import {
   pike13AdminToken,
   volunteerEventSchedule,
   adminSettings,
+  studentAttendance,
   type ReviewStatus,
 } from '../db/schema';
 import { isAdmin } from '../middleware/auth';
@@ -719,10 +720,18 @@ adminRouter.delete('/admin/admins/:id', async (req, res, next) => {
 
 // ---------- Admin student search ----------
 
-// GET /api/admin/students?q=name — all students with their assigned instructor
+// GET /api/admin/students?q=name — active students (checked in within the past 30 days)
 adminRouter.get('/admin/students', async (req, res, next) => {
   try {
     const q = ((req.query.q as string) ?? '').trim().toLowerCase();
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    // Only include students who have a check-in in the past 30 days
+    const recentCheckins = await db
+      .selectDistinct({ studentId: studentAttendance.studentId })
+      .from(studentAttendance)
+      .where(gte(studentAttendance.attendedAt, thirtyDaysAgo));
+    const activeStudentIds = new Set(recentCheckins.map((r) => r.studentId));
 
     const rows = await db
       .select({
@@ -742,6 +751,7 @@ adminRouter.get('/admin/students', async (req, res, next) => {
     // Deduplicate: one row per student, keeping the most-recently-seen instructor assignment
     const seen = new Map<number, typeof rows[0]>();
     for (const row of rows) {
+      if (!activeStudentIds.has(row.id)) continue;
       const existing = seen.get(row.id);
       if (!existing) {
         seen.set(row.id, row);
