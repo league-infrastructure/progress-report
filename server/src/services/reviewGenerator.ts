@@ -158,10 +158,19 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
     }
   }
 
-  // Filter to League curriculum repos only (owner or fork-parent org starts with "league").
-  // Fail-open: if the API check itself fails, keep the repo rather than blocking generation.
+  // Filter to League curriculum repos only.
+  // A repo is considered a League curriculum repo if ANY of the following are true:
+  //   1. The repo name matches a known curriculum pattern (e.g. Level1-Module0, Python-Apprentice)
+  //   2. The repo owner org starts with "league"
+  //   3. The repo is a fork whose parent org starts with "league"
+  // Fail-open: if the GitHub API check itself errors, keep the repo.
   const leagueOrgPrefix = (process.env.LEAGUE_GITHUB_ORG_PREFIX ?? 'league').toLowerCase();
-  for (const fullRepo of [...repoData.keys()]) {
+  const LEAGUE_REPO_PATTERN = /^(level\d+[-_]module\d+|.*apprentice.*|.*league.*|.*curriculum.*)/i;
+
+  const isLeagueRepoName = (shortName: string) => LEAGUE_REPO_PATTERN.test(shortName);
+
+  for (const [fullRepo, { shortName }] of [...repoData.entries()]) {
+    if (isLeagueRepoName(shortName)) continue; // Name match — keep without API call
     try {
       const repoRes = await fetch(`https://api.github.com/repos/${fullRepo}`, { headers: ghHeaders });
       if (!repoRes.ok) continue; // Can't verify — leave it in
