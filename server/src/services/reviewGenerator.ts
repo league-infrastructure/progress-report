@@ -133,6 +133,26 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
     }
   }
 
+  // Filter to League curriculum repos only (owner or fork-parent org starts with "league")
+  const leagueOrgPrefix = (process.env.LEAGUE_GITHUB_ORG_PREFIX ?? 'league').toLowerCase();
+  for (const fullRepo of [...repoData.keys()]) {
+    try {
+      const repoRes = await fetch(`https://api.github.com/repos/${fullRepo}`, { headers: ghHeaders });
+      if (!repoRes.ok) { repoData.delete(fullRepo); continue; }
+      const info = await repoRes.json() as {
+        fork: boolean;
+        owner: { login: string };
+        parent?: { owner: { login: string } };
+      };
+      const ownerOrg = info.owner.login.toLowerCase();
+      const parentOrg = info.parent?.owner.login.toLowerCase() ?? '';
+      const isLeague = ownerOrg.startsWith(leagueOrgPrefix) || parentOrg.startsWith(leagueOrgPrefix);
+      if (!isLeague) repoData.delete(fullRepo);
+    } catch { repoData.delete(fullRepo); }
+  }
+
+  if (repoData.size === 0) throw new Error(`No League curriculum repos found for @${githubUsername} in the past 30 days`);
+
   for (const [fullRepo, entry] of repoData) {
     try {
       const listRes = await fetch(
@@ -193,25 +213,42 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
   const lessonNumber = (f: string) => { const m = f.match(/lessons?\/([\d]+)/i); return m ? parseInt(m[1], 10) : null; };
   const lessonName = (f: string) => { const m = f.match(/lessons?\/([^/]+)/i); if (!m) return null; return m[1].replace(/^\d+[_\-]?/, '').replace(/_/g, ' ').trim() || m[1]; };
   const cleanLessonPath = (f: string) => f.replace(/(lessons?\/)[\d]+[_\-]?/i, '$1');
+  const isNonInfraFile = (f: string) => !INFRA.test(f.split('/').pop() ?? f);
 
   let highestLesson = 0;
   const lessonsSeen = new Map<number, string>();
   let totalCommits = 0;
 
+  // First pass: try to find lessons/-style files (Python/JS curriculum structure)
+  let useLessonFilter = false;
+  for (const [, { commits }] of repoData) {
+    for (const c of commits) {
+      if (c.filesChanged.some((f) => isLessonFile(f) && isNonInfraFile(f))) { useLessonFilter = true; break; }
+    }
+    if (useLessonFilter) break;
+  }
+
   const commitSummary = [...repoData.entries()].slice(0, 3).map(([, { shortName, commits }]) => {
     const lines: string[] = [];
     for (const c of commits.slice(0, 8)) {
       totalCommits++;
-      const lessonFiles = c.filesChanged.filter((f) => isLessonFile(f) && !INFRA.test(f.split('/').pop() ?? f));
-      for (const f of lessonFiles) {
-        const n = lessonNumber(f);
-        if (n !== null) { lessonsSeen.set(n, lessonName(f) ?? String(n)); if (n > highestLesson) highestLesson = n; }
+      const relevantFiles = useLessonFilter
+        ? c.filesChanged.filter((f) => isLessonFile(f) && isNonInfraFile(f))
+        : c.filesChanged.filter(isNonInfraFile);
+      for (const f of relevantFiles) {
+        if (useLessonFilter) {
+          const n = lessonNumber(f);
+          if (n !== null) { lessonsSeen.set(n, lessonName(f) ?? String(n)); if (n > highestLesson) highestLesson = n; }
+        }
       }
-      if (lessonFiles.length === 0) continue;
-      const fileSummary = lessonFiles.slice(0, 4).map((f) => {
-        const parts = cleanLessonPath(f).split('/');
-        const idx = parts.findIndex((p) => /^lessons?$/i.test(p));
-        return idx >= 0 ? parts.slice(idx, idx + 3).join('/') : parts.slice(-2).join('/');
+      if (relevantFiles.length === 0) continue;
+      const fileSummary = relevantFiles.slice(0, 4).map((f) => {
+        if (useLessonFilter) {
+          const parts = cleanLessonPath(f).split('/');
+          const idx = parts.findIndex((p) => /^lessons?$/i.test(p));
+          return idx >= 0 ? parts.slice(idx, idx + 3).join('/') : parts.slice(-2).join('/');
+        }
+        return f.split('/').slice(-2).join('/');
       }).filter((v, i, a) => a.indexOf(v) === i).join(', ');
       const stat = (c.additions || c.deletions) ? ` +${c.additions}/-${c.deletions}` : '';
       lines.push(`  - ${c.message} [${fileSummary}]${stat}`);
@@ -220,7 +257,7 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
     return `Repository: ${shortName}\n${lines.join('\n')}`;
   }).filter(Boolean).join('\n\n');
 
-  if (!commitSummary) throw new Error(`No curriculum (lessons/) activity found for @${githubUsername} in the past 30 days`);
+  if (!commitSummary) throw new Error(`No curriculum activity found for @${githubUsername} in the past 30 days`);
   if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY is not configured');
 
   const highestLessonName = lessonsSeen.get(highestLesson);
@@ -244,7 +281,7 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
     attendanceDates.length > 0 ? `Attendance: ${attendanceDates.join(', ')} (${attendanceDates.length} session${attendanceDates.length === 1 ? '' : 's'})` : '',
     lessonProgressNote,
     '',
-    'Curriculum activity (lessons/ directory, past 30 days):',
+    'Curriculum activity (past 30 days):',
     commitSummary,
   ].filter(Boolean).join('\n');
 

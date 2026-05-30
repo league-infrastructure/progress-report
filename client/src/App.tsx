@@ -13,6 +13,7 @@ import { CompliancePage } from './pages/CompliancePage'
 import { VolunteerHoursPage } from './pages/VolunteerHoursPage'
 import { FeedbackPage } from './pages/FeedbackPage'
 import { AdminFeedbackPage } from './pages/AdminFeedbackPage'
+import { AboutPage } from './pages/AboutPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { AdminLayout } from './components/AdminLayout'
@@ -94,6 +95,16 @@ function App() {
           <AdminLayout>
             <AdminDashboardPage />
           </AdminLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/about">
+        <ProtectedRoute role="instructor">
+          <InstructorLayout><AboutPage /></InstructorLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/about">
+        <ProtectedRoute role="admin">
+          <AdminLayout><AboutPage /></AdminLayout>
         </ProtectedRoute>
       </Route>
       <Route path="/feedback/:token" component={FeedbackPage} />

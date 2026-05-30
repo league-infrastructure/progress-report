@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'wouter'
 import { useAuth } from '../hooks/useAuth'
-import { BarChart, Users, Shield, MessageSquare, Heart, Bell, Home, LogOut } from 'lucide-react'
+import { BarChart, Users, Shield, MessageSquare, Heart, Bell, Home, LogOut, HelpCircle } from 'lucide-react'
 
 const ADMIN_LINKS = [
   { href: '/admin',                  label: 'Overview',   Icon: BarChart },
@@ -8,6 +8,10 @@ const ADMIN_LINKS = [
   { href: '/admin/compliance',       label: 'Compliance', Icon: Shield },
   { href: '/admin/volunteer-hours',  label: 'Volunteers', Icon: Heart },
   { href: '/admin/feedback',         label: 'Feedback',   Icon: MessageSquare },
+]
+
+const HELP_LINKS = [
+  { href: '/admin/about', label: 'About & Help', Icon: HelpCircle },
 ]
 
 function getInitials(name: string): string {
@@ -50,6 +54,21 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               </Link>
             )
           })}
+        </div>
+
+        <div className="side-section">
+          <h5>Help</h5>
+          {HELP_LINKS.map(({ href, label, Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className="nav-item"
+              aria-current={location === href ? 'page' : undefined}
+            >
+              <Icon className="nav-ico" />
+              {label}
+            </Link>
+          ))}
         </div>
 
         <div className="side-section" style={{ marginTop: 'auto' }}>

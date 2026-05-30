@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation } from 'wouter'
 import { useAuth } from '../hooks/useAuth'
 import { useQueryClient } from '@tanstack/react-query'
-import { Home, FileText, LayoutTemplate, ClipboardCheck, RefreshCw, Bell, BarChart, LogOut } from 'lucide-react'
+import { Home, FileText, LayoutTemplate, ClipboardCheck, RefreshCw, Bell, BarChart, LogOut, HelpCircle } from 'lucide-react'
 
 const INSTRUCTOR_LINKS = [
   { href: '/dashboard', label: 'Dashboard', Icon: Home },
@@ -62,6 +62,20 @@ export function InstructorLayout({ children }: InstructorLayoutProps) {
           </div>
         </div>
 
+        {user?.isAdmin && (
+          <div className="side-section">
+            <h5>Admin</h5>
+            <Link
+              href="/admin"
+              className="nav-item"
+              aria-current={location.startsWith('/admin') ? 'page' : undefined}
+            >
+              <BarChart className="nav-ico" />
+              Admin Panel
+            </Link>
+          </div>
+        )}
+
         <div className="side-section">
           <h5>Instructor</h5>
           {INSTRUCTOR_LINKS.map(({ href, label, Icon }) => {
@@ -80,21 +94,21 @@ export function InstructorLayout({ children }: InstructorLayoutProps) {
           })}
         </div>
 
-        {user?.isAdmin && (
-          <div className="side-section">
-            <h5>Admin</h5>
-            <Link
-              href="/admin"
-              className="nav-item"
-              aria-current={location.startsWith('/admin') ? 'page' : undefined}
-            >
-              <BarChart className="nav-ico" />
-              Admin Panel
-            </Link>
-          </div>
-        )}
+        <div style={{ flex: 1 }} />
 
-        <div className="side-section" style={{ marginTop: 'auto' }}>
+        <div className="side-section">
+          <h5>Help</h5>
+          <Link
+            href="/about"
+            className="nav-item"
+            aria-current={location === '/about' ? 'page' : undefined}
+          >
+            <HelpCircle className="nav-ico" />
+            About
+          </Link>
+        </div>
+
+        <div className="side-section">
           <button
             className="nav-item"
             style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}
@@ -107,26 +121,20 @@ export function InstructorLayout({ children }: InstructorLayoutProps) {
             Sign out
           </button>
         </div>
-
-        <div className="sync-box">
-          <div className="sync-head">
-            <RefreshCw size={14} /> Pike13 sync
-          </div>
-          {syncResult && (
-            <small style={{ color: syncResult.ok ? 'var(--color-success)' : 'var(--color-danger)' }}>
-              {syncResult.text}
-            </small>
-          )}
-          <button className="sync-btn" onClick={handleSync} disabled={syncing}>
-            <RefreshCw size={13} className={syncing ? 'spin' : ''} />
-            {syncing ? 'Syncing…' : 'Sync now'}
-          </button>
-        </div>
       </aside>
 
       <div className="main">
         <div className="topbar">
           <div className="spacer" />
+          {syncResult && (
+            <small style={{ color: syncResult.ok ? 'var(--color-success)' : 'var(--color-danger)' }}>
+              {syncResult.text}
+            </small>
+          )}
+          <button className="btn ghost sm" onClick={handleSync} disabled={syncing} title="Sync Pike13 data">
+            <RefreshCw size={14} className={syncing ? 'spin' : ''} />
+            {syncing ? 'Syncing…' : 'Sync Pike13'}
+          </button>
           <button className="btn ghost sm" title="Notifications">
             <Bell size={15} />
           </button>
