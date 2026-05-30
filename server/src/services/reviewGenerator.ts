@@ -168,6 +168,32 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
     }
   }
 
+  // Fallback: PushEvent payload.commits can be empty (e.g. force-pushes or GitHub API quirk
+  // where size/after are null). When a repo has push events but no commits from the payload,
+  // fetch commits directly from the repo API using the since date — avoids the ?author= filter
+  // issue and works for any push type.
+  for (const [fullRepo, entry] of repoData) {
+    if (entry.commits.length > 0) continue;
+    try {
+      const commitsRes = await fetch(
+        `https://api.github.com/repos/${fullRepo}/commits?since=${since.toISOString()}&per_page=20`,
+        { headers: ghHeaders },
+      );
+      if (!commitsRes.ok) continue;
+      const commitsList = await commitsRes.json() as Array<{
+        sha: string;
+        commit: { message: string; author: { date: string } };
+      }>;
+      for (const c of commitsList) {
+        const msg = (c.commit.message ?? '').split('\n')[0].trim();
+        if (!msg || msg.toLowerCase().startsWith('merge ')) continue;
+        if (!entry.commits.find((x) => x.fullSha === c.sha)) {
+          entry.commits.push({ sha: c.sha.slice(0, 7), fullSha: c.sha, message: msg, filesChanged: [], additions: 0, deletions: 0 });
+        }
+      }
+    } catch { /* skip */ }
+  }
+
   // Filter to League curriculum repos only.
   // A repo is considered a League curriculum repo if ANY of the following are true:
   //   1. The repo name matches a known curriculum pattern (e.g. Level1-Module0, Python-Apprentice)
