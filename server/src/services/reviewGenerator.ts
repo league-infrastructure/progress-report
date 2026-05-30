@@ -158,12 +158,13 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
     }
   }
 
-  // Filter to League curriculum repos only (owner or fork-parent org starts with "league")
+  // Filter to League curriculum repos only (owner or fork-parent org starts with "league").
+  // Fail-open: if the API check itself fails, keep the repo rather than blocking generation.
   const leagueOrgPrefix = (process.env.LEAGUE_GITHUB_ORG_PREFIX ?? 'league').toLowerCase();
   for (const fullRepo of [...repoData.keys()]) {
     try {
       const repoRes = await fetch(`https://api.github.com/repos/${fullRepo}`, { headers: ghHeaders });
-      if (!repoRes.ok) { repoData.delete(fullRepo); continue; }
+      if (!repoRes.ok) continue; // Can't verify — leave it in
       const info = await repoRes.json() as {
         fork: boolean;
         owner: { login: string };
@@ -173,10 +174,10 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
       const parentOrg = info.parent?.owner.login.toLowerCase() ?? '';
       const isLeague = ownerOrg.startsWith(leagueOrgPrefix) || parentOrg.startsWith(leagueOrgPrefix);
       if (!isLeague) repoData.delete(fullRepo);
-    } catch { repoData.delete(fullRepo); }
+    } catch { /* Can't verify — leave it in */ }
   }
 
-  if (repoData.size === 0) throw new Error(`No League curriculum repos found for @${githubUsername} in the past 30 days`);
+  if (repoData.size === 0) throw new Error(`No League curriculum repos found for @${githubUsername} in the past 30 days. The student may have push activity but only on personal repos.`);
 
   for (const [fullRepo, entry] of repoData) {
     try {
