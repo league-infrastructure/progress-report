@@ -125,7 +125,7 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
     repo: { name: string };
     payload: { ref?: string; commits?: Array<{ sha: string; message: string }> };
   }
-  interface EnrichedCommit { sha: string; message: string; filesChanged: string[]; additions: number; deletions: number; }
+  interface EnrichedCommit { sha: string; fullSha: string; message: string; filesChanged: string[]; additions: number; deletions: number; }
   interface RepoData { shortName: string; commits: EnrichedCommit[]; }
 
   // Paginate the Events API — GitHub returns up to 10 pages of 100 events each.
@@ -162,8 +162,8 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
     for (const c of event.payload.commits ?? []) {
       const msg = (c.message ?? '').split('\n')[0].trim();
       if (!msg || msg.toLowerCase().startsWith('merge ')) continue;
-      if (!entry.commits.find((x) => x.message === msg)) {
-        entry.commits.push({ sha: (c.sha ?? '').slice(0, 7), message: msg, filesChanged: [], additions: 0, deletions: 0 });
+      if (!entry.commits.find((x) => x.fullSha === c.sha)) {
+        entry.commits.push({ sha: (c.sha ?? '').slice(0, 7), fullSha: c.sha ?? '', message: msg, filesChanged: [], additions: 0, deletions: 0 });
       }
     }
   }
@@ -198,33 +198,27 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
 
   if (repoData.size === 0) throw new Error(`No League curriculum repos found for @${githubUsername} in the past 30 days. The student may have push activity but only on personal repos.`);
 
+  // Enrich commits with file details using SHAs already known from Events API.
+  // Avoids the ?author= filter on the commits list endpoint, which silently returns
+  // nothing when the student's git config email doesn't match their GitHub login.
   for (const [fullRepo, entry] of repoData) {
-    try {
-      const listRes = await fetch(
-        `https://api.github.com/repos/${fullRepo}/commits?author=${encodeURIComponent(githubUsername)}&since=${since.toISOString()}&until=${now.toISOString()}&per_page=30`,
-        { headers: ghHeaders },
-      );
-      if (!listRes.ok) continue;
-      const list = await listRes.json() as Array<{ sha: string; commit: { message: string } }>;
-      for (const c of list.slice(0, 5)) {
-        const msg = c.commit.message.split('\n')[0].trim();
-        if (!msg || msg.toLowerCase().startsWith('merge ')) continue;
-        try {
-          const detailRes = await fetch(`https://api.github.com/repos/${fullRepo}/commits/${c.sha}`, { headers: ghHeaders });
-          if (!detailRes.ok) continue;
-          const detail = await detailRes.json() as { stats?: { additions: number; deletions: number }; files?: Array<{ filename: string }> };
-          const existing = entry.commits.find((x) => x.message === msg);
-          const enriched: EnrichedCommit = {
-            sha: c.sha.slice(0, 7), message: msg,
-            filesChanged: (detail.files ?? []).map((f) => f.filename),
-            additions: detail.stats?.additions ?? 0,
-            deletions: detail.stats?.deletions ?? 0,
-          };
-          if (existing) Object.assign(existing, enriched);
-          else if (entry.commits.length < 15) entry.commits.push(enriched);
-        } catch { /* skip */ }
-      }
-    } catch { /* skip */ }
+    for (const commit of entry.commits.slice(0, 8)) {
+      if (!commit.fullSha) continue;
+      try {
+        const detailRes = await fetch(
+          `https://api.github.com/repos/${fullRepo}/commits/${commit.fullSha}`,
+          { headers: ghHeaders },
+        );
+        if (!detailRes.ok) continue;
+        const detail = await detailRes.json() as {
+          stats?: { additions: number; deletions: number };
+          files?: Array<{ filename: string }>;
+        };
+        commit.filesChanged = (detail.files ?? []).map((f) => f.filename);
+        commit.additions = detail.stats?.additions ?? 0;
+        commit.deletions = detail.stats?.deletions ?? 0;
+      } catch { /* skip */ }
+    }
   }
 
   for (const [key, entry] of repoData) {
@@ -286,7 +280,13 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
           if (n !== null) { lessonsSeen.set(n, lessonName(f) ?? String(n)); if (n > highestLesson) highestLesson = n; }
         }
       }
-      if (relevantFiles.length === 0) continue;
+      // If no relevant files were found, include the commit by message alone
+      // so Claude can still write about the student's work.
+      const stat = (c.additions || c.deletions) ? ` +${c.additions}/-${c.deletions}` : '';
+      if (relevantFiles.length === 0) {
+        lines.push(`  - ${c.message}${stat}`);
+        continue;
+      }
       const fileSummary = relevantFiles.slice(0, 4).map((f) => {
         if (useLessonFilter) {
           const parts = cleanLessonPath(f).split('/');
@@ -295,7 +295,6 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
         }
         return f.split('/').slice(-2).join('/');
       }).filter((v, i, a) => a.indexOf(v) === i).join(', ');
-      const stat = (c.additions || c.deletions) ? ` +${c.additions}/-${c.deletions}` : '';
       lines.push(`  - ${c.message} [${fileSummary}]${stat}`);
     }
     if (lines.length === 0) return null;
