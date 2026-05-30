@@ -4,6 +4,8 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY ?? '');
 
 const APP_URL = process.env.APP_URL ?? 'http://localhost:5173';
 
+const SURVEY_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSeBj4wargR6PVK2-c4NtoBwNFcg1Dc6FT_DXKhgae5lDAE54g/viewform';
+
 function buildEmailHtml(params: {
   studentName: string;
   month: string;
@@ -88,6 +90,24 @@ function buildEmailHtml(params: {
             </td>
           </tr>
 
+          <!-- Survey CTA -->
+          <tr>
+            <td style="padding:0 32px 28px 32px;text-align:center;background-color:#fafafa;">
+              <p style="margin:0 0 6px 0;font-size:15px;font-weight:700;color:#1e293b;">
+                Parent Satisfaction Survey
+              </p>
+              <p style="margin:0 0 16px 0;font-size:14px;color:#6b7280;">
+                Help us improve — share your thoughts in our short parent survey.
+              </p>
+              <a
+                href="${SURVEY_URL}"
+                style="display:inline-block;background-color:#1e293b;color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 32px;border-radius:8px;letter-spacing:0.02em;"
+              >
+                Take the Survey
+              </a>
+            </td>
+          </tr>
+
           <!-- Footer -->
           <tr>
             <td style="padding:20px 32px;background-color:#1e293b;text-align:center;">
@@ -119,7 +139,7 @@ export async function sendReviewEmail(params: {
     to: params.toEmail,
     from: process.env.SENDGRID_FROM_EMAIL!,
     subject: `[LEAGUE] Progress Report — ${params.studentName}, ${params.month}`,
-    text: [params.reviewBody, '', '---', 'Please rate our service:', feedbackUrl].join('\n'),
+    text: [params.reviewBody, '', '---', 'Please rate our service:', feedbackUrl, '', 'Parent satisfaction survey:', SURVEY_URL].join('\n'),
     html: buildEmailHtml({
       studentName: params.studentName,
       month: params.month,
@@ -142,7 +162,7 @@ export async function sendTestReviewEmail(params: {
     to: params.toEmail,
     from: process.env.SENDGRID_FROM_EMAIL!,
     subject: `[TEST] Progress Report — ${params.studentName}, ${params.month}`,
-    text: [`[TEST EMAIL]\n`, params.reviewBody, '', '---', 'Please rate our service:', feedbackUrl].join('\n'),
+    text: [`[TEST EMAIL]\n`, params.reviewBody, '', '---', 'Please rate our service:', feedbackUrl, '', 'Parent satisfaction survey:', SURVEY_URL].join('\n'),
     html: buildEmailHtml({
       studentName: params.studentName,
       month: `${params.month} [TEST]`,

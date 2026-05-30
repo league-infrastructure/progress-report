@@ -53,6 +53,8 @@ export function buildPike13NoteText(params: {
 
   const bodyHtml = reviewBody.trim().replace(/\n/g, NL);
 
+  const surveyUrl = 'https://docs.google.com/forms/d/e/1FAIpQLSeBj4wargR6PVK2-c4NtoBwNFcg1Dc6FT_DXKhgae5lDAE54g/viewform';
+
   return (
     `<b>THE LEAGUE OF AMAZING PROGRAMMERS</b>${NL}` +
     `<b>Monthly Progress Report — ${monthLabel} | Student: ${studentName}</b>` +
@@ -63,6 +65,10 @@ export function buildPike13NoteText(params: {
     `We value your feedback on ${studentName}'s experience with LEAGUE.${NL}` +
     `It only takes 30 seconds — rate us 1-5 stars and leave a comment:${NL}` +
     feedbackUrl +
+    BLANK +
+    `<b>PARENT SATISFACTION SURVEY</b>${NL}` +
+    `Help us improve by taking our short parent survey:${NL}` +
+    surveyUrl +
     BLANK +
     'jointheleague.org'
   );
