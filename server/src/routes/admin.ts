@@ -731,6 +731,7 @@ adminRouter.get('/admin/students', async (req, res, next) => {
         githubUsername: students.githubUsername,
         instructorId: instructorStudents.instructorId,
         instructorName: users.name,
+        lastSeenAt: instructorStudents.lastSeenAt,
       })
       .from(students)
       .leftJoin(instructorStudents, eq(instructorStudents.studentId, students.id))
@@ -738,7 +739,19 @@ adminRouter.get('/admin/students', async (req, res, next) => {
       .leftJoin(users, eq(instructors.userId, users.id))
       .orderBy(students.name);
 
-    const filtered = q ? rows.filter((r) => r.name.toLowerCase().includes(q)) : rows;
+    // Deduplicate: one row per student, keeping the most-recently-seen instructor assignment
+    const seen = new Map<number, typeof rows[0]>();
+    for (const row of rows) {
+      const existing = seen.get(row.id);
+      if (!existing) {
+        seen.set(row.id, row);
+      } else if (row.lastSeenAt && (!existing.lastSeenAt || row.lastSeenAt > existing.lastSeenAt)) {
+        seen.set(row.id, row);
+      }
+    }
+    const deduped = [...seen.values()];
+
+    const filtered = q ? deduped.filter((r) => r.name.toLowerCase().includes(q)) : deduped;
     res.json(filtered);
   } catch (err) {
     next(err);
