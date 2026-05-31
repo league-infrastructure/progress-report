@@ -64,7 +64,7 @@ const TOOLS: Anthropic.Tool[] = [
   },
   {
     name: 'generate_review',
-    description: 'Generate a draft progress review for a student using their GitHub activity. Posts the draft in Slack with Send and Test buttons so the instructor can review and send it. Use when asked to generate, write, create, or draft a review for a student. Provide either student_name or github_username — github_username takes priority if both are given.',
+    description: 'Generate a draft progress review for a student using their GitHub activity. Automatically uses the instructor\'s saved review template if one exists — no need to ask. Posts the draft in Slack with Send and Test buttons so the instructor can review and send it. Use when asked to generate, write, create, or draft a review for a student, or when asked to use a saved template to generate a review. Provide either student_name or github_username — github_username takes priority if both are given.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -323,6 +323,7 @@ Guidelines:
 - Never use markdown headers (#) or triple backticks
 - Keep answers under ~250 words unless a full report is specifically requested
 - If you don't have the info needed, say so and suggest what to ask instead
+- When generating a review, always use generate_review — it automatically applies the instructor's saved template. If someone asks you to use their template, reassure them it will be used and call generate_review.
 - Current month and date are provided in each request`;
 
 export async function handleBotMessage(
