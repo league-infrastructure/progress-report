@@ -17,12 +17,20 @@ async function fetchTemplates(): Promise<TemplateDto[]> {
   return res.json()
 }
 
+function normalizePlaceholders(text: string): string {
+  return text.replace(/\{\{\s*([^{}]+?)\s*\}\}/g, (_, key: string) => {
+    const parts = key.trim().split(/\s+/)
+    const camel = parts[0] + parts.slice(1).map((p) => p[0].toUpperCase() + p.slice(1)).join('')
+    return '{{' + camel + '}}'
+  })
+}
+
 function applyTemplate(template: TemplateDto, studentName: string, month: string): { subject: string; body: string } {
   return {
-    subject: template.subject
+    subject: normalizePlaceholders(template.subject)
       .replace(/\{\{studentName\}\}/g, studentName)
       .replace(/\{\{month\}\}/g, month),
-    body: template.body
+    body: normalizePlaceholders(template.body)
       .replace(/\{\{studentName\}\}/g, studentName)
       .replace(/\{\{month\}\}/g, month),
   }

@@ -1,7 +1,7 @@
-import { and, eq, gte, lt } from 'drizzle-orm';
+import { and, desc, eq, gte, lt } from 'drizzle-orm';
 import Anthropic from '@anthropic-ai/sdk';
 import { db } from '../db';
-import { monthlyReviews, students, instructors, users, studentAttendance, pike13Tokens } from '../db/schema';
+import { monthlyReviews, students, instructors, users, studentAttendance, pike13Tokens, reviewTemplates } from '../db/schema';
 import { sendPike13Note, buildPike13NoteText } from './pike13Notes';
 import { sendReviewEmail } from './email';
 
@@ -14,8 +14,25 @@ export interface GeneratedDraft {
 const AI_PLACEHOLDERS = ['{{progress}}', '{{highlights}}', '{{instructorNotes}}'] as const;
 type AiPlaceholder = typeof AI_PLACEHOLDERS[number];
 
+// Maps each AI placeholder to the simple JSON key used in the Claude prompt.
+// Using simple keys avoids Claude returning different casing or omitting the braces.
+const PLACEHOLDER_KEYS: Record<AiPlaceholder, string> = {
+  '{{progress}}': 'progress',
+  '{{highlights}}': 'highlights',
+  '{{instructorNotes}}': 'instructorNotes',
+};
+
 function hasAiPlaceholders(text: string): boolean {
   return AI_PLACEHOLDERS.some((p) => text.includes(p));
+}
+
+// Normalizes whitespace inside {{ }} so "{{student name}}" → "{{studentName}}".
+function normalizePlaceholders(text: string): string {
+  return text.replace(/\{\{\s*([^{}]+?)\s*\}\}/g, (_, key: string) => {
+    const parts = key.trim().split(/\s+/);
+    const camel = parts[0] + parts.slice(1).map((p) => p[0].toUpperCase() + p.slice(1)).join('');
+    return '{{' + camel + '}}';
+  });
 }
 
 export interface ReviewSendRow {
@@ -101,6 +118,18 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
 
   if (!row) throw new Error('Review not found');
   if (!row.githubUsername) throw new Error('This student has no GitHub username linked in Pike13');
+
+  // If no template was passed (e.g. from Slack bot/command), use the instructor's
+  // most recently updated template so the Slack paths benefit from template-guided generation.
+  if (!template) {
+    const [tpl] = await db
+      .select({ body: reviewTemplates.body })
+      .from(reviewTemplates)
+      .where(eq(reviewTemplates.instructorId, row.review.instructorId))
+      .orderBy(desc(reviewTemplates.updatedAt))
+      .limit(1);
+    if (tpl) template = tpl.body;
+  }
 
   const { studentName, guardianName, instructorName, instructorEmail, review } = row;
   const githubUsername = row.githubUsername.split(':')[0].trim();
@@ -358,14 +387,19 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
   let finalBody: string;
 
   if (template && hasAiPlaceholders(template)) {
+    // Normalize placeholder formatting (e.g. "{{student name}}" → "{{studentName}}")
+    // before any substitution so user typos don't silently produce unfilled placeholders.
+    template = normalizePlaceholders(template);
+
     // Template-guided generation: fill in only the AI placeholder sections
-    const present = AI_PLACEHOLDERS.filter((p) => template.includes(p));
+    const present = AI_PLACEHOLDERS.filter((p) => template!.includes(p));
     const placeholderDescriptions: Record<AiPlaceholder, string> = {
       '{{progress}}': 'A warm paragraph about what topics/concepts the student worked on this month',
       '{{highlights}}': 'A paragraph highlighting specific things the student did well and how it builds their skills',
       '{{instructorNotes}}': '2–4 sentences: one optional light suggestion framed as something to explore, then what the instructor plans to work on together next',
     };
-    const sectionList = present.map((p) => `"${p}": ${placeholderDescriptions[p]}`).join('\n');
+    // Use simple keys (no braces) in the JSON contract so Claude returns them reliably.
+    const sectionList = present.map((p) => `"${PLACEHOLDER_KEYS[p]}": ${placeholderDescriptions[p]}`).join('\n');
 
     const message = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
@@ -391,9 +425,10 @@ ${contextBlock}`,
     } catch { /* leave sections empty — fall back to placeholder text */ }
 
     // Substitute AI placeholders with generated content
-    let filled = template;
+    let filled = template!;
     for (const p of present) {
-      filled = filled.replace(new RegExp(p.replace(/[{}]/g, '\\$&'), 'g'), sections[p] ?? `[${p} not generated]`);
+      const value = (sections as Record<string, string>)[PLACEHOLDER_KEYS[p]] ?? `[${p} not generated]`;
+      filled = filled.replace(new RegExp(p.replace(/[{}]/g, '\\$&'), 'g'), value);
     }
 
     // Substitute data placeholders
