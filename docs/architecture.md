@@ -155,7 +155,7 @@ scripts/deploy_stack.sh
   → docker stack deploy --with-registry-auth
       → Docker Swarm service updated on swarm2
           → SQLite on named volume app-data
-          → Caddy routes report.jointheleague.org → container port 3000
+          → Caddy routes progress.jtlapp.net → container port 3000
 ```
 
 Migrations run automatically at container startup before `node dist/index.js`.

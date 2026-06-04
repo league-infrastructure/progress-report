@@ -126,4 +126,4 @@ clasi init
 
 Use `/se` in Claude Code for process guidance.
 
-Production URL: `https://report.jointheleague.org`
+Production URL: `https://progress.jtlapp.net`
