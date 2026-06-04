@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearch, useLocation } from 'wouter'
 import { MonthPicker } from '../components/MonthPicker'
@@ -56,6 +56,7 @@ export function AdminReviewsPage() {
   const month = params.get('month') ?? getCurrentMonth()
   const queryClient = useQueryClient()
   const [query, setQuery] = useState('')
+  const [selectedInstructorId, setSelectedInstructorId] = useState<number | null>(null)
 
   const { data: allStudents = [], isLoading: studentsLoading } = useQuery<AdminStudentDto[]>({
     queryKey: ['admin-students'],
@@ -76,11 +77,37 @@ export function AdminReviewsPage() {
     },
   })
 
-  const reviewMap = new Map(reviews.map((r) => [r.studentId, r]))
+  const reviewMap = useMemo(() => new Map(reviews.map((r) => [r.studentId, r])), [reviews])
+
+  // Build instructor list and per-instructor counts from allStudents + reviewMap
+  const instructorStats = useMemo(() => {
+    const map = new Map<number, { name: string; sent: number; draft: number; pending: number; total: number }>()
+    for (const s of allStudents) {
+      if (!s.instructorId || !s.instructorName) continue
+      if (!map.has(s.instructorId)) {
+        map.set(s.instructorId, { name: s.instructorName, sent: 0, draft: 0, pending: 0, total: 0 })
+      }
+      const entry = map.get(s.instructorId)!
+      entry.total++
+      const review = reviewMap.get(s.id)
+      if (!review || review.status === 'pending') entry.pending++
+      else if (review.status === 'draft') entry.draft++
+      else if (review.status === 'sent') entry.sent++
+    }
+    return [...map.entries()].sort((a, b) => a[1].name.localeCompare(b[1].name))
+  }, [allStudents, reviewMap])
+
+  const byInstructor = selectedInstructorId !== null
+    ? allStudents.filter((s) => s.instructorId === selectedInstructorId)
+    : allStudents
 
   const filtered = query.trim()
-    ? allStudents.filter((s) => s.name.toLowerCase().includes(query.trim().toLowerCase()))
-    : allStudents
+    ? byInstructor.filter((s) => s.name.toLowerCase().includes(query.trim().toLowerCase()))
+    : byInstructor
+
+  const selectedStats = selectedInstructorId !== null
+    ? instructorStats.find(([id]) => id === selectedInstructorId)?.[1]
+    : null
 
   const isLoading = studentsLoading || reviewsLoading
 
@@ -96,6 +123,57 @@ export function AdminReviewsPage() {
         </div>
       </div>
 
+      {/* Instructor filter pills */}
+      {!isLoading && instructorStats.length > 0 && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+          <button
+            className={selectedInstructorId === null ? 'btn primary sm' : 'btn outline sm'}
+            onClick={() => setSelectedInstructorId(null)}
+          >
+            All instructors
+          </button>
+          {instructorStats.map(([id, stats]) => (
+            <button
+              key={id}
+              className={selectedInstructorId === id ? 'btn primary sm' : 'btn outline sm'}
+              onClick={() => setSelectedInstructorId(selectedInstructorId === id ? null : id)}
+            >
+              {stats.name}
+              <span style={{
+                marginLeft: 6,
+                padding: '1px 6px',
+                borderRadius: 10,
+                fontSize: 11,
+                background: selectedInstructorId === id ? 'rgba(255,255,255,0.25)' : 'var(--slate-100)',
+                color: selectedInstructorId === id ? 'inherit' : 'var(--color-muted)',
+                fontWeight: 600,
+              }}>
+                {stats.sent}/{stats.total}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Per-instructor summary bar */}
+      {selectedStats && (
+        <div style={{
+          display: 'flex',
+          gap: 20,
+          marginBottom: 16,
+          padding: '10px 14px',
+          borderRadius: 8,
+          background: 'var(--slate-50)',
+          border: '1px solid var(--slate-200)',
+          fontSize: 13,
+        }}>
+          <span><strong>{selectedStats.total}</strong> <span style={{ color: 'var(--color-muted)' }}>total</span></span>
+          <span style={{ color: 'var(--color-success)' }}><strong>{selectedStats.sent}</strong> sent</span>
+          <span style={{ color: 'var(--color-warning, #d97706)' }}><strong>{selectedStats.draft}</strong> draft</span>
+          <span style={{ color: 'var(--color-muted)' }}><strong>{selectedStats.pending}</strong> pending</span>
+        </div>
+      )}
+
       <div style={{ marginBottom: 16, position: 'relative' }}>
         <Search
           size={15}
@@ -110,11 +188,10 @@ export function AdminReviewsPage() {
         />
         <input
           className="input"
-          placeholder="Search students…"
+          placeholder={selectedInstructorId !== null ? 'Search students…' : 'Search students…'}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           style={{ paddingLeft: 32 }}
-          autoFocus
         />
       </div>
 
@@ -131,7 +208,7 @@ export function AdminReviewsPage() {
       {!isLoading && filtered.length > 0 && (
         <div className="card card-table">
           <div className="card-table-head">
-            <h3>All Students</h3>
+            <h3>{selectedInstructorId !== null ? `${selectedStats?.name}'s Students` : 'All Students'}</h3>
             <div className="muted">{filtered.length} student{filtered.length !== 1 ? 's' : ''}</div>
           </div>
           <table className="tbl">
@@ -139,7 +216,7 @@ export function AdminReviewsPage() {
               <tr>
                 <th>Student</th>
                 <th>GitHub</th>
-                <th>Instructor</th>
+                {selectedInstructorId === null && <th>Instructor</th>}
                 <th>Status</th>
                 <th></th>
               </tr>
@@ -160,7 +237,9 @@ export function AdminReviewsPage() {
                         ? <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13 }}>@{s.githubUsername}</span>
                         : '—'}
                     </td>
-                    <td className="muted">{s.instructorName ?? <span style={{ color: 'var(--color-danger)' }}>Unassigned</span>}</td>
+                    {selectedInstructorId === null && (
+                      <td className="muted">{s.instructorName ?? <span style={{ color: 'var(--color-danger)' }}>Unassigned</span>}</td>
+                    )}
                     <td>
                       {review ? <StatusBadge status={review.status} /> : <span className="muted">—</span>}
                     </td>

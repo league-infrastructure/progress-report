@@ -1,7 +1,7 @@
-import { eq, and, notLike } from 'drizzle-orm';
+import { eq, and, notLike, count, gte, lt } from 'drizzle-orm';
 import Anthropic from '@anthropic-ai/sdk';
 import { db } from '../db';
-import { instructors, users, instructorStudents, monthlyReviews, students } from '../db/schema';
+import { instructors, users, instructorStudents, monthlyReviews, students, studentAttendance } from '../db/schema';
 import { sendSlackDM } from './slack';
 
 export interface ReminderResult {
@@ -21,6 +21,81 @@ export async function sendMonthlyReminders(
   });
 
   const appUrl = (process.env.APP_URL ?? 'http://localhost:5173').replace(/\/$/, '');
+
+  const monthStart = new Date(Number(year), Number(mon) - 1, 1);
+  const monthEnd = new Date(Number(year), Number(mon), 1);
+
+  // --- Pre-compute primary instructor per student ---
+  // Primary = instructor who had the student the most times this month.
+  // Tiebreak = instructor who has had the student the most times historically.
+  // If a student has no attendance yet this month, fall back to all-time counts.
+
+  const monthlyRows = await db
+    .select({
+      studentId: studentAttendance.studentId,
+      instructorId: studentAttendance.instructorId,
+      n: count(),
+    })
+    .from(studentAttendance)
+    .where(and(gte(studentAttendance.attendedAt, monthStart), lt(studentAttendance.attendedAt, monthEnd)))
+    .groupBy(studentAttendance.studentId, studentAttendance.instructorId);
+
+  const allTimeRows = await db
+    .select({
+      studentId: studentAttendance.studentId,
+      instructorId: studentAttendance.instructorId,
+      n: count(),
+    })
+    .from(studentAttendance)
+    .groupBy(studentAttendance.studentId, studentAttendance.instructorId);
+
+  // studentId → Map<instructorId, count>
+  const monthlyByStudent = new Map<number, Map<number, number>>();
+  for (const r of monthlyRows) {
+    if (!monthlyByStudent.has(r.studentId)) monthlyByStudent.set(r.studentId, new Map());
+    monthlyByStudent.get(r.studentId)!.set(r.instructorId, Number(r.n));
+  }
+
+  const allTimeByStudent = new Map<number, Map<number, number>>();
+  for (const r of allTimeRows) {
+    if (!allTimeByStudent.has(r.studentId)) allTimeByStudent.set(r.studentId, new Map());
+    allTimeByStudent.get(r.studentId)!.set(r.instructorId, Number(r.n));
+  }
+
+  // Returns the instructor ID that "owns" this student for the month.
+  // Falls back to `defaultInstructorId` if no attendance data exists.
+  function primaryInstructorFor(studentId: number, defaultInstructorId: number): number {
+    const monthly = monthlyByStudent.get(studentId);
+    const allTime = allTimeByStudent.get(studentId);
+    const combined = allTime ?? monthly;
+    if (!combined || combined.size === 0) return defaultInstructorId;
+
+    let best = defaultInstructorId;
+    let bestMonthly = -1;
+    let bestAllTime = -1;
+
+    for (const [instrId, allTimeCount] of combined) {
+      const monthlyCount = monthly?.get(instrId) ?? 0;
+      if (
+        monthlyCount > bestMonthly ||
+        (monthlyCount === bestMonthly && allTimeCount > bestAllTime)
+      ) {
+        best = instrId;
+        bestMonthly = monthlyCount;
+        bestAllTime = allTimeCount;
+      }
+    }
+
+    return best;
+  }
+
+  // All sent reviews this month (any instructor) — used to avoid double-reminding
+  // when one instructor already sent a review for a student who appears in two lists.
+  const allSentThisMonth = await db
+    .select({ studentId: monthlyReviews.studentId })
+    .from(monthlyReviews)
+    .where(and(eq(monthlyReviews.month, month), eq(monthlyReviews.status, 'sent')));
+  const sentStudentIds = new Set(allSentThisMonth.map((r) => r.studentId));
 
   const allInstructors = await db
     .select({ id: instructors.id, name: users.name, email: users.email })
@@ -45,18 +120,13 @@ export async function sendMonthlyReminders(
 
     if (assignedStudents.length === 0) continue;
 
-    const sentReviews = await db
-      .select({ studentId: monthlyReviews.studentId })
-      .from(monthlyReviews)
-      .where(
-        and(
-          eq(monthlyReviews.instructorId, instr.id),
-          eq(monthlyReviews.month, month),
-          eq(monthlyReviews.status, 'sent'),
-        ),
-      );
-    const sentIds = new Set(sentReviews.map((r) => r.studentId));
-    const pending = assignedStudents.filter((s) => !sentIds.has(s.id));
+    // Filter to students where this instructor is the primary for the month,
+    // and no review has been sent for them yet.
+    const pending = assignedStudents.filter(
+      (s) =>
+        primaryInstructorFor(s.id, instr.id) === instr.id &&
+        !sentStudentIds.has(s.id),
+    );
 
     if (pending.length === 0) continue;
 

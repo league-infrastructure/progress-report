@@ -1,4 +1,4 @@
-import { eq, sql, and, inArray } from 'drizzle-orm';
+import { eq, sql, and, inArray, asc, lt } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import * as schema from '../db/schema';
 
@@ -39,6 +39,7 @@ interface Pike13StaffMember {
 
 interface Pike13EventOccurrence {
   id: number;
+  name?: string;  // Service/event name from Pike13 (e.g. "Make Up Class")
   start_at: string;
   end_at: string;
   staff_members?: Array<{ id: number; name: string }>;
@@ -89,6 +90,11 @@ async function fetchPike13All<T>(
 /** TA/VA names use a "TA" or "VA" prefix (followed by a dash or space) in this Pike13 account.
  *  Matches: "TA-Drake", "TA Drake", "VA-Sam", "VA Sam", case-insensitively. */
 const isTaOrVa = (name: string) => /^(TA|VA)[\s\-]/i.test(name);
+
+/** Make-up class events contain "make up", "makeup", or "make-up" in the name.
+ *  Students attending these should not be assigned to the substitute instructor. */
+const isMakeupClass = (name: string | undefined): boolean =>
+  /make[\s\-]?up/i.test(name ?? '');
 
 export async function runSync(
   db: DrizzleDb,
@@ -175,14 +181,20 @@ export async function runSync(
   }
 
   // 3. Build pike13StaffId → instructorId map via email lookup
+  // Order by instructors.id ASC so the lowest-ID (first-created) record wins when a user
+  // has duplicate instructor rows — this matches the auth flow which also picks the first row.
   const instructorRows = await db
     .select({ id: schema.instructors.id, email: schema.users.email })
     .from(schema.instructors)
-    .innerJoin(schema.users, eq(schema.instructors.userId, schema.users.id));
+    .innerJoin(schema.users, eq(schema.instructors.userId, schema.users.id))
+    .orderBy(asc(schema.instructors.id));
 
-  const emailToInstructorId = new Map(
-    instructorRows.map((r) => [r.email.toLowerCase(), r.id]),
-  );
+  // Build email → instructorId — first/lowest-ID row wins per email (consistent with auth)
+  const emailToInstructorId = new Map<string, number>();
+  for (const r of instructorRows) {
+    const key = r.email.toLowerCase();
+    if (!emailToInstructorId.has(key)) emailToInstructorId.set(key, r.id);
+  }
 
   // staff_members in event_occurrences only have {id, name} — no email.
   // Resolve instructor id via the email we got from desk/staff_members.
@@ -441,6 +453,10 @@ export async function runSync(
   const seenAssignmentPairs = new Set<string>();
 
   for (const occ of eventOccurrences) {
+    // Skip make-up classes entirely — students attend under their regular instructor,
+    // not the instructor covering the make-up session.
+    if (isMakeupClass(occ.name)) continue;
+
     // Identify instructors on this event via pike13StaffId
     const instructorIds: number[] = [];
     for (const staff of occ.staff_members ?? []) {
@@ -492,7 +508,8 @@ export async function runSync(
           assignmentsCreated += inserted.length;
         }
 
-        // Always keep the most recent lastSeenAt across all occurrences.
+        // Advance lastSeenAt only if this event is more recent (events within a
+        // weekly chunk may arrive out of chronological order from the Pike13 API).
         await db
           .update(schema.instructorStudents)
           .set({ lastSeenAt: occStart })
@@ -500,6 +517,7 @@ export async function runSync(
             and(
               eq(schema.instructorStudents.instructorId, instructorId),
               eq(schema.instructorStudents.studentId, studentId),
+              lt(schema.instructorStudents.lastSeenAt, occStart),
             ),
           );
 

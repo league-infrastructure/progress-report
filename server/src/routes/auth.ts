@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { eq } from 'drizzle-orm';
+import { eq, asc } from 'drizzle-orm';
 import { db } from '../db';
 import { users, instructors, adminSettings, pike13Tokens, pike13AdminToken } from '../db/schema';
 import type { SessionUser } from '../types/session';
@@ -141,11 +141,14 @@ authRouter.get('/pike13/callback', async (req, res, next) => {
       .where(eq(adminSettings.email, normalizedEmail));
     const isAdmin = !!adminRow;
 
-    // Find or create an active instructor record — anyone who logs in via Pike13 is active
+    // Find or create an active instructor record — anyone who logs in via Pike13 is active.
+    // Order by id ASC so we always pick the lowest-ID (first-created) record, which matches
+    // what the sync uses when building its emailToInstructorId map.
     let [instructorRow] = await db
       .select()
       .from(instructors)
-      .where(eq(instructors.userId, userId));
+      .where(eq(instructors.userId, userId))
+      .orderBy(asc(instructors.id));
 
     if (!instructorRow) {
       const [newInstructor] = await db

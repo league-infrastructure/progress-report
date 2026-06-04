@@ -17,11 +17,24 @@ async function fetchTemplates(): Promise<TemplateDto[]> {
   return res.json()
 }
 
+const CANONICAL_PLACEHOLDER_NAMES: Record<string, string> = {
+  studentname: 'studentName',
+  guardianname: 'guardianName',
+  month: 'month',
+  instructorname: 'instructorName',
+  instructoremail: 'instructorEmail',
+  attendancesummary: 'attendanceSummary',
+  githubsummary: 'githubSummary',
+  progress: 'progress',
+  highlights: 'highlights',
+  instructornotes: 'instructorNotes',
+}
+
 function normalizePlaceholders(text: string): string {
   return text.replace(/\{\{\s*([^{}]+?)\s*\}\}/g, (_, key: string) => {
     const parts = key.trim().split(/\s+/)
     const camel = parts[0] + parts.slice(1).map((p) => p[0].toUpperCase() + p.slice(1)).join('')
-    return '{{' + camel + '}}'
+    return '{{' + (CANONICAL_PLACEHOLDER_NAMES[camel.toLowerCase()] ?? camel) + '}}'
   })
 }
 
