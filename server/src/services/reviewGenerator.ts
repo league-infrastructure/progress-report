@@ -26,12 +26,28 @@ function hasAiPlaceholders(text: string): boolean {
   return AI_PLACEHOLDERS.some((p) => text.includes(p));
 }
 
-// Normalizes whitespace inside {{ }} so "{{student name}}" → "{{studentName}}".
+// Maps lowercased (no-space) placeholder names to their canonical camelCase form.
+// Handles typos like {{studentname}}, {{StudentName}}, {{student name}}, etc.
+const CANONICAL_PLACEHOLDER_NAMES: Record<string, string> = {
+  studentname: 'studentName',
+  guardianname: 'guardianName',
+  month: 'month',
+  instructorname: 'instructorName',
+  instructoremail: 'instructorEmail',
+  attendancesummary: 'attendanceSummary',
+  githubsummary: 'githubSummary',
+  progress: 'progress',
+  highlights: 'highlights',
+  instructornotes: 'instructorNotes',
+};
+
+// Normalizes placeholder formatting: collapses spaces and fixes casing.
+// "{{student name}}" → "{{studentName}}", "{{studentname}}" → "{{studentName}}"
 function normalizePlaceholders(text: string): string {
   return text.replace(/\{\{\s*([^{}]+?)\s*\}\}/g, (_, key: string) => {
     const parts = key.trim().split(/\s+/);
     const camel = parts[0] + parts.slice(1).map((p) => p[0].toUpperCase() + p.slice(1)).join('');
-    return '{{' + camel + '}}';
+    return '{{' + (CANONICAL_PLACEHOLDER_NAMES[camel.toLowerCase()] ?? camel) + '}}';
   });
 }
 
@@ -139,8 +155,16 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
     month: 'long', year: 'numeric', timeZone: 'UTC',
   });
 
+  // Scope GitHub activity to the review's selected month rather than a rolling
+  // 30-day window. The instructor picks the month when creating the review, so
+  // the draft should cover that calendar month (e.g. all of May, not the trailing
+  // 30 days). Boundaries are computed in UTC to match GitHub's event timestamps.
   const now = new Date();
-  const since = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const since = new Date(Date.UTC(parseInt(yr), parseInt(mo) - 1, 1));
+  const monthEndUtc = new Date(Date.UTC(parseInt(yr), parseInt(mo), 1));
+  // Don't look past the end of the month, and never into the future (for an
+  // in-progress current month, cap the window at "now").
+  const until = monthEndUtc < now ? monthEndUtc : now;
 
   const ghHeaders: Record<string, string> = {
     Accept: 'application/vnd.github.v3+json',
@@ -170,7 +194,7 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
     const pageEvents = (await pageRes.json()) as GithubEvent[];
     if (pageEvents.length === 0) break;
     allEvents.push(...pageEvents);
-    // Stop early if we've passed the 30-day window
+    // Stop early once we've paged past the start of the review month
     const oldest = pageEvents[pageEvents.length - 1];
     if (new Date(oldest.created_at) < since) break;
   }
@@ -178,9 +202,9 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
   const pushEvents = allEvents.filter((e) => {
     if (e.type !== 'PushEvent') return false;
     const d = new Date(e.created_at);
-    return d >= since && d <= now;
+    return d >= since && d <= until;
   });
-  if (pushEvents.length === 0) throw new Error(`No GitHub push activity found for @${githubUsername} in the past 30 days`);
+  if (pushEvents.length === 0) throw new Error(`No GitHub push activity found for @${githubUsername} in ${monthLabel}`);
 
   const repoData = new Map<string, RepoData>();
   for (const event of pushEvents) {
@@ -205,7 +229,7 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
     if (entry.commits.length > 0) continue;
     try {
       const commitsRes = await fetch(
-        `https://api.github.com/repos/${fullRepo}/commits?since=${since.toISOString()}&per_page=20`,
+        `https://api.github.com/repos/${fullRepo}/commits?since=${since.toISOString()}&until=${until.toISOString()}&per_page=20`,
         { headers: ghHeaders },
       );
       if (!commitsRes.ok) continue;
@@ -251,7 +275,7 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
     } catch { /* Can't verify — leave it in */ }
   }
 
-  if (repoData.size === 0) throw new Error(`No League curriculum repos found for @${githubUsername} in the past 30 days. The student may have push activity but only on personal repos.`);
+  if (repoData.size === 0) throw new Error(`No League curriculum repos found for @${githubUsername} in ${monthLabel}. The student may have push activity but only on personal repos.`);
 
   // Enrich commits with file details using SHAs already known from Events API.
   // Avoids the ?author= filter on the commits list endpoint, which silently returns
@@ -356,7 +380,7 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
     return `Repository: ${shortName}\n${lines.join('\n')}`;
   }).filter(Boolean).join('\n\n');
 
-  if (!commitSummary) throw new Error(`No curriculum activity found for @${githubUsername} in the past 30 days`);
+  if (!commitSummary) throw new Error(`No curriculum activity found for @${githubUsername} in ${monthLabel}`);
   if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY is not configured');
 
   const highestLessonName = lessonsSeen.get(highestLesson);
@@ -371,7 +395,7 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
   const repoLinks = [...repoData.entries()]
     .map(([fullRepo, { shortName }]) => `• ${shortName} — github.com/${fullRepo}`)
     .join('\n');
-  const githubSection = `GitHub activity this past month (last 30 days):\n${repoLinks}`;
+  const githubSection = `GitHub activity (${monthLabel}):\n${repoLinks}`;
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -380,7 +404,7 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
     attendanceDates.length > 0 ? `Attendance: ${attendanceDates.join(', ')} (${attendanceDates.length} session${attendanceDates.length === 1 ? '' : 's'})` : '',
     lessonProgressNote,
     '',
-    'Curriculum activity (past 30 days):',
+    `Curriculum activity (${monthLabel}):`,
     commitSummary,
   ].filter(Boolean).join('\n');
 

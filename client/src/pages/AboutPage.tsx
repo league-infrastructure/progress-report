@@ -79,7 +79,7 @@ export function AboutPage() {
               "Generate a review for @maria_garcia"
             </blockquote>
           </li>
-          <li>Progress Bot fetches the student's GitHub commits from the past 30 days and Claude writes a full draft — including progress, highlights, and instructor notes.</li>
+          <li>Progress Bot fetches the student's GitHub commits for the review's selected month and Claude writes a full draft — including progress, highlights, and instructor notes.</li>
           <li>The draft is posted with <strong>Approve</strong> and <strong>Edit</strong> buttons.</li>
           <li>Click <strong>Approve</strong> to save the review to the Progress Report Tool, or <strong>Edit</strong> to tweak the text first.</li>
         </ol>
@@ -87,7 +87,7 @@ export function AboutPage() {
         <h3 style={{ fontSize: '0.95rem', margin: '1rem 0 0.5rem' }}>Tips</h3>
         <ul style={{ paddingLeft: '1.25rem', lineHeight: 1.8 }}>
           <li>The bot looks for commits in League curriculum repos (e.g. Level1-Module0, Python-Apprentice) and filters out personal or unrelated repos automatically.</li>
-          <li>If a student has no GitHub activity in the past 30 days, the bot will let you know so you can write the review manually.</li>
+          <li>If a student has no GitHub activity in the selected month, the bot will let you know so you can write the review manually.</li>
           <li>Reviews posted via Slack show up immediately in the Reviews tab here.</li>
           <li>You can also generate drafts directly in the browser using the <strong>Generate from GitHub</strong> button in any review editor.</li>
         </ul>
