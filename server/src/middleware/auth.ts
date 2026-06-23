@@ -9,7 +9,6 @@ export function isAuthenticated(req: Request, res: Response, next: NextFunction)
 }
 
 export function isAdmin(req: Request, res: Response, next: NextFunction): void {
-  console.log('[isAdmin] session.user =', JSON.stringify(req.session.user));
   if (!req.session.user) {
     res.status(401).json({ error: 'Unauthenticated' });
     return;

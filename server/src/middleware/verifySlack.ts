@@ -13,7 +13,13 @@ export function verifySlackSignature(req: Request, res: Response, next: NextFunc
   const signingSecret = process.env.SLACK_SIGNING_SECRET;
 
   if (!signingSecret) {
-    // Allow through in dev without a signing secret, but warn loudly.
+    // Fail closed in production: without the signing secret we cannot
+    // authenticate the request, so reject it rather than allowing unsigned
+    // calls to reach the Slack mutation handlers. In dev, allow through.
+    if (process.env.NODE_ENV === 'production') {
+      res.status(503).json({ error: 'Slack integration not configured' });
+      return;
+    }
     console.warn('[slack] SLACK_SIGNING_SECRET not set — skipping signature verification (dev only)');
     next();
     return;

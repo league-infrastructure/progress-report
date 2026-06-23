@@ -21,6 +21,12 @@ server/data/*.db
 server/data/*.db-journal
 server/data/*.db-shm
 server/data/*.db-wal
+# Catch-all for SQLite databases anywhere (e.g. a stray repo-root data/ dir)
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+/data/
 
 # OS
 .DS_Store

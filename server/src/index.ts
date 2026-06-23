@@ -39,8 +39,28 @@ const TEST_USERS: Record<string, SessionUser> = {
 
 const app = express();
 const port = parseInt(process.env.PORT || '3000', 10);
+const isProduction = process.env.NODE_ENV === 'production';
 
-app.use(cors());
+// Behind the Caddy reverse proxy in production, trust the proxy so secure
+// cookies and req.protocol reflect the original HTTPS request.
+if (isProduction) {
+  app.set('trust proxy', 1);
+}
+
+// Restrict CORS to an explicit allowlist. The SPA is served same-origin in
+// every environment (Vite proxies /api in dev; Express serves the built app in
+// prod), so cross-origin access is opt-in via ALLOWED_ORIGINS only. With no
+// allowlist configured, no cross-origin requests are permitted.
+const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+app.use(
+  cors({
+    origin: allowedOrigins.length > 0 ? allowedOrigins : false,
+    credentials: true,
+  }),
+);
 
 // Slack slash-command route must be mounted before express.json() so it can
 // capture the raw body for signature verification (Slack signs the raw bytes).
@@ -57,15 +77,23 @@ const sessionStore =
     ? new SQLiteStore({ client: sqlite })
     : undefined; // express-session defaults to MemoryStore
 
+// Fail closed: never sign production sessions with the well-known dev fallback,
+// which would let anyone forge session cookies.
+const sessionSecret = process.env.SESSION_SECRET;
+if (!sessionSecret && isProduction) {
+  throw new Error('SESSION_SECRET must be set in production');
+}
+
 app.use(
   session({
     store: sessionStore,
-    secret: process.env.SESSION_SECRET || 'dev-secret-change-me',
+    secret: sessionSecret || 'dev-secret-change-me',
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
       sameSite: 'lax',
+      secure: isProduction, // HTTPS-only cookie in production (served via Caddy)
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     },
   }),
