@@ -1,8 +1,5 @@
 import { useSearch, useLocation } from 'wouter'
-
-function getCurrentMonth(): string {
-  return new Date().toISOString().slice(0, 7)
-}
+import { getDefaultMonth } from '../lib/utils'
 
 /** Returns the last N calendar months as YYYY-MM strings, most recent first. */
 function getMonthOptions(count = 12): string[] {
@@ -32,7 +29,7 @@ export function MonthPicker({ className }: MonthPickerProps) {
   const [, setLocation] = useLocation()
 
   const params = new URLSearchParams(search)
-  const selected = params.get('month') ?? getCurrentMonth()
+  const selected = params.get('month') ?? getDefaultMonth()
   const options = getMonthOptions(12)
 
   function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {

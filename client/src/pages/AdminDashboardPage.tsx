@@ -5,6 +5,7 @@ import { useSearch } from 'wouter'
 import { RefreshCw, Trash2 } from 'lucide-react'
 import type { AdminNotificationDto, AdminSettingDto } from '../types/admin'
 import type { Pike13StatusDto, Pike13SyncResultDto } from '../types/pike13'
+import { getDefaultMonth } from '../lib/utils'
 
 interface AnalyticsDto {
   month: string
@@ -15,10 +16,6 @@ interface AnalyticsDto {
   feedbackRate: number
   avgRating: number | null
   topSuggestions: Array<{ suggestion: string | null; count: number }>
-}
-
-function getCurrentMonth(): string {
-  return new Date().toISOString().slice(0, 7)
 }
 
 async function fetchNotifications(unreadOnly = false): Promise<AdminNotificationDto[]> {
@@ -90,7 +87,7 @@ export function AdminDashboardPage() {
   const queryClient = useQueryClient()
   const search = useSearch()
   const params = new URLSearchParams(search)
-  const month = params.get('month') ?? getCurrentMonth()
+  const month = params.get('month') ?? getDefaultMonth()
 
   const [showAllNotifications, setShowAllNotifications] = useState(false)
   const [newAdminEmail, setNewAdminEmail] = useState('')

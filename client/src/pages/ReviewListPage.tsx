@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearch, useLocation } from 'wouter'
 import { MonthPicker } from '../components/MonthPicker'
 import { Plus } from 'lucide-react'
+import { getDefaultMonth } from '../lib/utils'
 import type { ReviewDto } from '../types/review'
 
 interface StudentDto {
@@ -9,10 +10,6 @@ interface StudentDto {
   name: string
   githubUsername: string | null
   attendanceDates: string[]
-}
-
-function getCurrentMonth(): string {
-  return new Date().toISOString().slice(0, 7)
 }
 
 async function fetchReviews(month: string): Promise<ReviewDto[]> {
@@ -57,7 +54,7 @@ export function ReviewListPage() {
   const search = useSearch()
   const [, setLocation] = useLocation()
   const params = new URLSearchParams(search)
-  const month = params.get('month') ?? getCurrentMonth()
+  const month = params.get('month') ?? getDefaultMonth()
   const queryClient = useQueryClient()
 
   const { data: reviews = [], isLoading: reviewsLoading } = useQuery<ReviewDto[]>({

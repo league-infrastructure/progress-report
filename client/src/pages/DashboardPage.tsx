@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link, useSearch } from 'wouter'
 import { MonthPicker } from '../components/MonthPicker'
 import { Bell, RefreshCw } from 'lucide-react'
+import { getDefaultMonth } from '../lib/utils'
 import type { PendingCheckinResponse } from '../types/checkin'
 
 interface DashboardData {
@@ -18,10 +19,6 @@ interface StudentRow {
   name: string
   githubUsername: string | null
   assignedAt: string
-}
-
-function getCurrentMonth(): string {
-  return new Date().toISOString().slice(0, 7)
 }
 
 async function fetchDashboard(month: string): Promise<DashboardData> {
@@ -54,7 +51,7 @@ function StatCard({ label, value }: { label: string; value: number }) {
 export function DashboardPage() {
   const search = useSearch()
   const params = new URLSearchParams(search)
-  const month = params.get('month') ?? getCurrentMonth()
+  const month = params.get('month') ?? getDefaultMonth()
   const queryClient = useQueryClient()
 
   const [checkinDismissed, setCheckinDismissed] = useState(false)

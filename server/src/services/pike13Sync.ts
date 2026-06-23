@@ -96,6 +96,13 @@ const isTaOrVa = (name: string) => /^(TA|VA)[\s\-]/i.test(name);
 const isMakeupClass = (name: string | undefined): boolean =>
   /make[\s\-]?up/i.test(name ?? '');
 
+/** Only Python and Java classes require monthly progress reviews. Match any
+ *  event whose name contains "python" or "java" (case-insensitive). "java" is
+ *  matched with a negative lookahead so "JavaScript" classes are NOT included —
+ *  JavaScript is a distinct language and out of scope. */
+const isPythonOrJavaClass = (name: string | undefined): boolean =>
+  /python|java(?!script)/i.test(name ?? '');
+
 export async function runSync(
   db: DrizzleDb,
   accessToken: string,
@@ -457,6 +464,10 @@ export async function runSync(
     // not the instructor covering the make-up session.
     if (isMakeupClass(occ.name)) continue;
 
+    // Only Python and Java classes require monthly reviews. Skip every other
+    // class so its students are never assigned to an instructor for review.
+    if (!isPythonOrJavaClass(occ.name)) continue;
+
     // Identify instructors on this event via pike13StaffId
     const instructorIds: number[] = [];
     for (const staff of occ.staff_members ?? []) {
@@ -526,6 +537,32 @@ export async function runSync(
           .insert(schema.studentAttendance)
           .values({ studentId, instructorId, attendedAt: occStart, eventOccurrenceId: occurrenceId })
           .onConflictDoNothing();
+      }
+    }
+  }
+
+  // Prune assignments no longer backed by a Python/Java class in this sync
+  // window — e.g. students who left, or assignments created before Python/Java
+  // scoping existed. Guard on a non-empty result set so a sync that returned no
+  // Python/Java events (or failed upstream) can never wipe every assignment.
+  if (seenAssignmentPairs.size > 0) {
+    const existingAssignments = await db
+      .select({
+        instructorId: schema.instructorStudents.instructorId,
+        studentId: schema.instructorStudents.studentId,
+      })
+      .from(schema.instructorStudents);
+
+    for (const row of existingAssignments) {
+      if (!seenAssignmentPairs.has(`${row.instructorId}:${row.studentId}`)) {
+        await db
+          .delete(schema.instructorStudents)
+          .where(
+            and(
+              eq(schema.instructorStudents.instructorId, row.instructorId),
+              eq(schema.instructorStudents.studentId, row.studentId),
+            ),
+          );
       }
     }
   }

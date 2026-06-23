@@ -233,6 +233,7 @@ describe('Instructor-student assignments', () => {
       event_occurrences: [
         {
           id: 200,
+          name: 'Python 1',
           start_at: '2026-03-01T10:00:00Z',
           end_at: '2026-03-01T11:00:00Z',
           staff_members: [{ id: 999, name: 'Test Instructor' }],
@@ -263,6 +264,7 @@ describe('Instructor-student assignments', () => {
       event_occurrences: [
         {
           id: 201,
+          name: 'Java 1',
           start_at: '2026-03-01T10:00:00Z',
           end_at: '2026-03-01T11:00:00Z',
           staff_members: [{ id: 999, name: 'Test Instructor' }],
@@ -275,5 +277,103 @@ describe('Instructor-student assignments', () => {
     const result2 = await runSync(db, 'tok', fetchFn);
 
     expect(result2.assignmentsCreated).toBe(0);
+  });
+});
+
+// ---- Python/Java class filter ----
+
+describe('Python/Java class filter', () => {
+  it('does not assign students from non-Python/Java classes', async () => {
+    const fetchFn = buildFetch({
+      staff_members: [{ id: 999, name: 'Test Instructor', email: INSTRUCTOR_EMAIL }],
+      people: [{ id: 50, name: 'Scratch Student' }],
+      event_occurrences: [
+        {
+          id: 300,
+          name: 'Scratch Basics',
+          start_at: '2026-03-01T10:00:00Z',
+          end_at: '2026-03-01T11:00:00Z',
+          staff_members: [{ id: 999, name: 'Test Instructor' }],
+          people: [{ id: 50, name: 'Scratch Student', visit_state: 'completed' }],
+        },
+      ],
+    });
+
+    const result = await runSync(db, 'tok', fetchFn);
+
+    expect(result.assignmentsCreated).toBe(0);
+    const assignments = await db.select().from(schema.instructorStudents);
+    expect(assignments).toHaveLength(0);
+  });
+
+  it('does not assign students from JavaScript classes (java != javascript)', async () => {
+    const fetchFn = buildFetch({
+      staff_members: [{ id: 999, name: 'Test Instructor', email: INSTRUCTOR_EMAIL }],
+      people: [{ id: 51, name: 'JS Student' }],
+      event_occurrences: [
+        {
+          id: 301,
+          name: 'JavaScript 1',
+          start_at: '2026-03-01T10:00:00Z',
+          end_at: '2026-03-01T11:00:00Z',
+          staff_members: [{ id: 999, name: 'Test Instructor' }],
+          people: [{ id: 51, name: 'JS Student', visit_state: 'completed' }],
+        },
+      ],
+    });
+
+    const result = await runSync(db, 'tok', fetchFn);
+
+    expect(result.assignmentsCreated).toBe(0);
+    expect(await db.select().from(schema.instructorStudents)).toHaveLength(0);
+  });
+
+  it('prunes a pre-existing assignment that is no longer in a Python/Java class', async () => {
+    // First sync: student is in a Python class → assignment created.
+    const pythonFetch = buildFetch({
+      staff_members: [{ id: 999, name: 'Test Instructor', email: INSTRUCTOR_EMAIL }],
+      people: [{ id: 52, name: 'Switcher Student' }],
+      event_occurrences: [
+        {
+          id: 302,
+          name: 'Python 2',
+          start_at: '2026-03-01T10:00:00Z',
+          end_at: '2026-03-01T11:00:00Z',
+          staff_members: [{ id: 999, name: 'Test Instructor' }],
+          people: [{ id: 52, name: 'Switcher Student', visit_state: 'completed' }],
+        },
+      ],
+    });
+    await runSync(db, 'tok', pythonFetch);
+    expect(await db.select().from(schema.instructorStudents)).toHaveLength(1);
+
+    // Second sync: only a non-Python/Java class is returned, but at least one
+    // Python/Java assignment elsewhere keeps the prune guard active.
+    const otherStudentFetch = buildFetch({
+      staff_members: [{ id: 999, name: 'Test Instructor', email: INSTRUCTOR_EMAIL }],
+      people: [{ id: 53, name: 'Java Student' }],
+      event_occurrences: [
+        {
+          id: 303,
+          name: 'Java 3',
+          start_at: '2026-04-01T10:00:00Z',
+          end_at: '2026-04-01T11:00:00Z',
+          staff_members: [{ id: 999, name: 'Test Instructor' }],
+          people: [{ id: 53, name: 'Java Student', visit_state: 'completed' }],
+        },
+      ],
+    });
+    await runSync(db, 'tok', otherStudentFetch);
+
+    // The original Python student is gone; only the new Java student remains.
+    const remaining = await db
+      .select({ studentId: schema.instructorStudents.studentId })
+      .from(schema.instructorStudents);
+    expect(remaining).toHaveLength(1);
+    const [javaStudent] = await db
+      .select()
+      .from(schema.students)
+      .where(eq(schema.students.pike13SyncId, '53'));
+    expect(remaining[0].studentId).toBe(javaStudent.id);
   });
 });

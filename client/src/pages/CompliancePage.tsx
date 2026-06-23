@@ -2,11 +2,8 @@ import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useSearch } from 'wouter'
 import { MonthPicker } from '../components/MonthPicker'
+import { getDefaultMonth } from '../lib/utils'
 import type { ComplianceRow } from '../types/admin'
-
-function getCurrentMonth(): string {
-  return new Date().toISOString().slice(0, 7)
-}
 
 interface ComplianceResponse {
   month: string
@@ -30,7 +27,7 @@ function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; s
 export function CompliancePage() {
   const search = useSearch()
   const params = new URLSearchParams(search)
-  const month = params.get('month') ?? getCurrentMonth()
+  const month = params.get('month') ?? getDefaultMonth()
 
   const [sortKey, setSortKey] = useState<SortKey>('name')
   const [sortDir, setSortDir] = useState<SortDir>('asc')
