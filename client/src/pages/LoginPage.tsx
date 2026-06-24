@@ -25,9 +25,9 @@ export function LoginPage() {
         )}
 
         {/* Instructors & Admins — Pike13 */}
-        <div style={{ textAlign: 'left', marginBottom: 8 }}>
+        <div style={{ marginBottom: 8 }}>
           <h5 style={{ margin: '0 0 6px', color: 'var(--color-text-muted, #64748b)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Instructors &amp; Admins
+            Instructors
           </h5>
           <a href="/api/auth/pike13" className="btn primary lg" style={{ width: '100%' }}>
             Sign in with Pike13
@@ -42,7 +42,7 @@ export function LoginPage() {
         </div>
 
         {/* Students — GitHub */}
-        <div style={{ textAlign: 'left' }}>
+        <div>
           <h5 style={{ margin: '0 0 6px', color: 'var(--color-text-muted, #64748b)', fontSize: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             Students
           </h5>
