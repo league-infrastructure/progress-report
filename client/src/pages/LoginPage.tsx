@@ -4,8 +4,12 @@ export function LoginPage() {
 
   return (
     <div className="login-screen">
-      <div className="login-card">
-        <div className="brand-mark" style={{ margin: '0 auto 12px' }}>L</div>
+      <div className="login-split">
+        <div className="login-aside">
+          <img src="/strudent_logo.png" alt="League of Amazing Programmers students" />
+        </div>
+        <div className="login-card">
+          <img src="/league_logo.png" className="login-logo" alt="The LEAGUE of Amazing Programmers" />
         <h1>The LEAGUE of Amazing Programmers</h1>
         <p style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: 12.5, fontWeight: 600, color: 'var(--color-muted)' }}>
           Class Management Platform
@@ -67,6 +71,7 @@ export function LoginPage() {
             Take the Python placement test
           </a>
         </div>
+      </div>
       </div>
     </div>
   )
