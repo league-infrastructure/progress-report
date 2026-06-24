@@ -1,8 +1,8 @@
 import { Router } from 'express';
-import { eq, asc } from 'drizzle-orm';
+import { eq, asc, sql } from 'drizzle-orm';
 import { db } from '../db';
-import { users, instructors, adminSettings, pike13Tokens, pike13AdminToken } from '../db/schema';
-import type { SessionUser } from '../types/session';
+import { users, instructors, adminSettings, pike13Tokens, pike13AdminToken, students } from '../db/schema';
+import type { SessionUser, QuizSessionUser } from '../types/session';
 import { runSync } from '../services/pike13Sync';
 
 export const authRouter = Router();
@@ -211,6 +211,40 @@ authRouter.get('/pike13/callback', async (req, res, next) => {
     };
     req.session.user = sessionUser;
 
+    // Also set a quizUser session for staff (instructor or admin).
+    // Optionally honour comma-separated email allowlists in env vars.
+    const adminAllowlist = (process.env.ADMIN_ALLOWLIST ?? '')
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+    const instructorAllowlist = (process.env.INSTRUCTOR_ALLOWLIST ?? '')
+      .split(',')
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+
+    const isAllowlistAdmin =
+      adminAllowlist.length > 0 && adminAllowlist.includes(normalizedEmail);
+    const isAllowlistInstructor =
+      instructorAllowlist.length > 0 && instructorAllowlist.includes(normalizedEmail);
+
+    const effectiveAdmin = isAdmin || isAllowlistAdmin;
+    const effectiveInstructor = instructorRow.isActive || isAllowlistInstructor;
+
+    let quizRole: 'admin' | 'instructor' | undefined;
+    if (effectiveAdmin) {
+      quizRole = 'admin';
+    } else if (effectiveInstructor) {
+      quizRole = 'instructor';
+    }
+
+    if (quizRole) {
+      const quizUser: QuizSessionUser = {
+        role: quizRole,
+        instructorId: instructorRow.id,
+      };
+      req.session.quizUser = quizUser;
+    }
+
     // Redirect to the appropriate frontend page
     const appUrl = resolveAppUrl();
     if (isAdmin) {
@@ -218,6 +252,138 @@ authRouter.get('/pike13/callback', async (req, res, next) => {
     } else {
       res.redirect(`${appUrl}/dashboard`);
     }
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/auth/github — redirect to GitHub OAuth authorization
+authRouter.get('/github', (_req, res) => {
+  const clientId = process.env.GITHUB_CLIENT_ID;
+  const appDomain = process.env.APP_DOMAIN?.trim();
+  if (!clientId || !appDomain) {
+    res.status(503).json({ error: 'GitHub OAuth is not configured (missing GITHUB_CLIENT_ID or APP_DOMAIN)' });
+    return;
+  }
+  const isLocalhost = /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(appDomain);
+  const baseUrl = `${isLocalhost ? 'http' : 'https'}://${appDomain}`;
+  const callbackUrl = `${baseUrl}/api/auth/github/callback`;
+  const authUrl =
+    `https://github.com/login/oauth/authorize` +
+    `?client_id=${encodeURIComponent(clientId)}` +
+    `&redirect_uri=${encodeURIComponent(callbackUrl)}` +
+    `&scope=read:user`;
+  res.redirect(authUrl);
+});
+
+// GET /api/auth/github/callback — exchange code, resolve student identity, create quiz session
+authRouter.get('/github/callback', async (req, res, next) => {
+  try {
+    const clientId = process.env.GITHUB_CLIENT_ID;
+    const clientSecret = process.env.GITHUB_CLIENT_SECRET;
+    if (!clientId || !clientSecret) {
+      res.status(503).json({ error: 'GitHub OAuth is not configured (missing GITHUB_CLIENT_ID or GITHUB_CLIENT_SECRET)' });
+      return;
+    }
+
+    const code = req.query.code as string | undefined;
+    if (!code) {
+      res.status(400).json({ error: 'Missing code parameter' });
+      return;
+    }
+
+    const appDomain = process.env.APP_DOMAIN?.trim();
+    if (!appDomain) {
+      res.status(503).json({ error: 'APP_DOMAIN is required for auth redirects' });
+      return;
+    }
+    const isLocalhost = /^(localhost|127\.0\.0\.1)(:\d+)?$/.test(appDomain);
+    const baseUrl = `${isLocalhost ? 'http' : 'https'}://${appDomain}`;
+    const callbackUrl = `${baseUrl}/api/auth/github/callback`;
+
+    // Exchange authorization code for access token
+    const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        client_id: clientId,
+        client_secret: clientSecret,
+        code,
+        redirect_uri: callbackUrl,
+      }),
+    });
+
+    if (!tokenRes.ok) {
+      res.status(502).json({ error: 'Failed to exchange code with GitHub' });
+      return;
+    }
+
+    const tokenData = (await tokenRes.json()) as {
+      access_token?: string;
+      error?: string;
+      error_description?: string;
+    };
+
+    if (!tokenData.access_token) {
+      console.error('[auth] GitHub token exchange error:', tokenData);
+      res.status(502).json({ error: 'GitHub OAuth token exchange failed', detail: tokenData.error_description ?? tokenData.error });
+      return;
+    }
+
+    // Fetch the authenticated user's GitHub profile
+    const profileRes = await fetch('https://api.github.com/user', {
+      headers: {
+        Authorization: `Bearer ${tokenData.access_token}`,
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+    });
+
+    if (!profileRes.ok) {
+      res.status(502).json({ error: 'Failed to fetch GitHub user profile' });
+      return;
+    }
+
+    const profile = (await profileRes.json()) as {
+      login: string;
+      name?: string | null;
+      id: number;
+    };
+
+    const githubLogin = profile.login;
+    const displayName = profile.name ?? githubLogin;
+
+    // Find a students row where githubUsername matches (case-insensitive)
+    const allMatches = await db
+      .select()
+      .from(students)
+      .where(sql`lower(${students.githubUsername}) = lower(${githubLogin})`);
+
+    let studentId: number;
+
+    if (allMatches.length > 0) {
+      studentId = allMatches[0].id;
+    } else {
+      // Create a minimal student record
+      const [newStudent] = await db
+        .insert(students)
+        .values({ name: displayName, githubUsername: githubLogin })
+        .returning({ id: students.id });
+      studentId = newStudent.id;
+    }
+
+    // Set quiz session — do NOT touch req.session.user
+    const quizUser: QuizSessionUser = {
+      role: 'student',
+      studentId,
+      githubLogin,
+    };
+    req.session.quizUser = quizUser;
+
+    res.redirect(`${baseUrl}/quiz/dashboard`);
   } catch (err) {
     next(err);
   }

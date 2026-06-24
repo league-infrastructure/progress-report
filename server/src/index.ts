@@ -28,6 +28,7 @@ import { feedbackRouter } from './routes/feedback';
 import { errorHandler } from './middleware/errorHandler';
 import { startScheduler } from './services/scheduler';
 import { slackRouter } from './routes/slack';
+import { seedQuiz } from './db/seed-quiz';
 import type { SessionUser } from './types/session';
 
 // Test personas used by POST /api/auth/login in test mode
@@ -139,6 +140,9 @@ if (process.env.NODE_ENV === 'production') {
 
 // Only start listening when run directly (not imported by tests)
 if (require.main === module) {
+  seedQuiz().catch((err: unknown) =>
+    console.error('[startup] quiz seed failed:', err),
+  );
   app.listen(port, '0.0.0.0', () => {
     console.log(`Server listening on http://localhost:${port}`);
   });
