@@ -34,6 +34,11 @@ async function getJSON<T>(url: string): Promise<T> {
   return res.json()
 }
 
+// Mirror the server grader for the instructor's self-test preview.
+function normalizePreview(s: string): string {
+  return (s ?? '').toLowerCase().trim().replace(/\s+/g, ' ').replace(/[‘’‛′`]/g, "'").replace(/[“”″]/g, '"')
+}
+
 export function InstructorQuizTabPage() {
   const [filter, setFilter] = useState('')
   const [studentId, setStudentId] = useState<number | null>(null)
@@ -49,6 +54,11 @@ export function InstructorQuizTabPage() {
   const [addErr, setAddErr] = useState<string | null>(null)
   const [preview, setPreview] = useState<{ lessonName: string; questions: PreviewQ[] } | null>(null)
   const [previewBusy, setPreviewBusy] = useState(false)
+  const [previewAnswers, setPreviewAnswers] = useState<Record<string, string>>({})
+  const [previewResult, setPreviewResult] = useState<{
+    score: number; passed: boolean; correctCount: number
+    results: { q: PreviewQ; given: string; correct: boolean }[]
+  } | null>(null)
 
   const { data: roster, error: rosterError, refetch: refetchRoster } = useQuery<Student[]>({
     queryKey: ['quiz', 'instructor', 'roster'],
@@ -122,7 +132,7 @@ export function InstructorQuizTabPage() {
 
   async function handlePreview() {
     if (!lessonId) return
-    setPreviewBusy(true); setPreview(null); setErr(null)
+    setPreviewBusy(true); setPreview(null); setPreviewResult(null); setPreviewAnswers({}); setErr(null)
     try {
       const data = await getJSON<{ lessonName: string; questions: PreviewQ[] }>(
         `/api/quiz/instructor/preview?lessonId=${lessonId}`,
@@ -133,6 +143,21 @@ export function InstructorQuizTabPage() {
     } finally {
       setPreviewBusy(false)
     }
+  }
+
+  function submitPreview() {
+    if (!preview) return
+    const results = preview.questions.map((q) => {
+      const given = previewAnswers[q.id] ?? ''
+      const correct =
+        q.type === 'multiple_choice'
+          ? given.trim() === q.answer.trim()
+          : normalizePreview(given) === normalizePreview(q.answer)
+      return { q, given, correct }
+    })
+    const correctCount = results.filter((r) => r.correct).length
+    const score = results.length ? Math.round((correctCount / results.length) * 100) : 0
+    setPreviewResult({ score, passed: score >= 70, correctCount, results })
   }
 
   return (
@@ -225,34 +250,73 @@ export function InstructorQuizTabPage() {
         )}
       </div>
 
-      {/* Quiz preview (instructor view — answers shown) */}
+      {/* Quiz preview — the same experience a student gets (take, then grade) */}
       {preview && (
         <div className="mb-8 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
           <div className="mb-1 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-slate-800">Preview · {preview.lessonName}</h2>
-            <button onClick={() => setPreview(null)} className="text-sm text-slate-500 hover:underline">Close</button>
+            <button onClick={() => { setPreview(null); setPreviewResult(null) }} className="text-sm text-slate-500 hover:underline">Close</button>
           </div>
-          <p className="mb-3 text-xs text-slate-400">A fresh 10-question sample. Correct answers are highlighted (instructor view only).</p>
-          <ol className="space-y-4">
-            {preview.questions.map((q, i) => (
-              <li key={q.id} className="rounded border border-slate-200 p-3">
-                <p className="font-medium text-slate-800">{i + 1}. {q.question}</p>
-                {q.code && <pre className="my-2 overflow-x-auto rounded bg-slate-900 p-2 text-xs text-slate-100">{q.code}</pre>}
-                {q.options.length > 0 ? (
-                  <ul className="mt-1 space-y-0.5 text-sm">
-                    {q.options.map((opt) => (
-                      <li key={opt} className={opt === q.answer ? 'font-semibold text-green-700' : 'text-slate-600'}>
-                        {opt === q.answer ? '✓ ' : '• '}{opt}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="mt-1 text-sm text-green-700">Answer: {q.answer}</p>
-                )}
-                <p className="mt-1 text-xs text-slate-500">{q.explanation}</p>
-              </li>
-            ))}
-          </ol>
+
+          {previewResult ? (
+            <>
+              <div className={`mb-4 rounded-lg p-3 ${previewResult.passed ? 'bg-green-50' : 'bg-red-50'}`}>
+                <span className="text-2xl font-bold">{previewResult.score}%</span>{' '}
+                <span className={previewResult.passed ? 'text-green-700' : 'text-red-700'}>
+                  {previewResult.passed ? 'Pass' : 'Fail'} ({previewResult.correctCount}/{previewResult.results.length})
+                </span>
+              </div>
+              <ol className="space-y-3">
+                {previewResult.results.map(({ q, given, correct }, i) => (
+                  <li key={q.id} className="rounded border border-slate-200 p-3 text-sm">
+                    <p className="font-medium text-slate-700">
+                      {i + 1}. {correct ? <span className="text-green-600">✓</span> : <span className="text-red-600">✗</span>} {q.question}
+                    </p>
+                    <p className="text-slate-600">Your answer: {given || <em className="text-slate-400">blank</em>}</p>
+                    {!correct && <p className="text-slate-600">Correct: {q.answer}</p>}
+                    <p className="mt-1 text-xs text-slate-500">{q.explanation}</p>
+                  </li>
+                ))}
+              </ol>
+              <button onClick={() => { setPreviewResult(null); setPreviewAnswers({}) }}
+                className="mt-4 rounded border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
+                Retake
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="mb-3 text-xs text-slate-400">A fresh 10-question sample — exactly what a student sees. Answer and submit to grade it.</p>
+              <ol className="space-y-5">
+                {preview.questions.map((q, i) => (
+                  <li key={q.id} className="rounded-lg border border-slate-200 p-4">
+                    <p className="font-medium text-slate-800">{i + 1}. {q.question}</p>
+                    {q.code && <pre className="my-2 overflow-x-auto rounded bg-slate-900 p-2 text-xs text-slate-100">{q.code}</pre>}
+                    {q.options.length > 0 ? (
+                      <div className="mt-2 space-y-1">
+                        {q.options.map((opt) => (
+                          <label key={opt} className="flex items-center gap-2 text-sm text-slate-700">
+                            <input type="radio" name={`pv-${q.id}`} value={opt}
+                              checked={previewAnswers[q.id] === opt}
+                              onChange={() => setPreviewAnswers((a) => ({ ...a, [q.id]: opt }))} />
+                            {opt}
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <input type="text" className="mt-2 w-full rounded border border-slate-300 px-3 py-1.5 text-sm"
+                        value={previewAnswers[q.id] ?? ''}
+                        onChange={(e) => setPreviewAnswers((a) => ({ ...a, [q.id]: e.target.value }))}
+                        placeholder="Your answer" />
+                    )}
+                  </li>
+                ))}
+              </ol>
+              <button onClick={submitPreview}
+                className="mt-4 rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">
+                Submit
+              </button>
+            </>
+          )}
         </div>
       )}
 
