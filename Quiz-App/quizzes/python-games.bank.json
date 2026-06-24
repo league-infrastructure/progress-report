@@ -1,0 +1,1580 @@
+{
+  "level": "python-games",
+  "repo": "Python-Games",
+  "generated_from": "python-games-quiz-concepts.json",
+  "lesson_count": 6,
+  "question_count": 83,
+  "lessons": [
+    {
+      "id": "python-games/01_Physics_for_Games",
+      "name": "01_Physics_for_Games",
+      "module": "01_Physics_for_Games",
+      "path": "lessons/01_Physics_for_Games",
+      "order": 1,
+      "concepts": [
+        {
+          "id": "pva",
+          "name": "Position, Velocity, and Acceleration",
+          "summary": "Position is where an object is, velocity is how fast and which way it moves, and acceleration is how the velocity changes over time. To make motion look real you add a bit of acceleration to velocity each frame, then add velocity to position each frame.",
+          "key_points": [
+            "Position, velocity, and acceleration each have separate x and y parts in a 2D game",
+            "Velocity changes position; acceleration changes velocity",
+            "You ADD acceleration to velocity and ADD velocity to position each frame",
+            "Without acceleration, motion starts and stops instantly and looks fake"
+          ],
+          "example_code": "acceleration = .1\nfor i in range(100):\n    car.v += acceleration   # change velocity a little each step\n    car.x += velocity       # change position by the velocity"
+        },
+        {
+          "id": "game-loop-render",
+          "name": "The Game Loop and Drawing a Frame",
+          "summary": "A Pygame program runs a loop that handles events, updates positions, clears the screen, draws everything, and then shows the new frame. Clearing the screen each frame stops objects from leaving trails behind them.",
+          "key_points": [
+            "The event loop (for event in pygame.event.get()) reads things like the close button",
+            "event.type == pygame.QUIT means the player clicked the window's X",
+            "screen.fill(color) clears the previous frame so nothing leaves a trail",
+            "pygame.display.flip() shows the newly drawn frame on screen"
+          ],
+          "example_code": "for event in pygame.event.get():\n    if event.type == pygame.QUIT:\n        running = False\nscreen.fill(BACKGROUND_COLOR)\npygame.draw.rect(screen, SQUARE_COLOR, (x, y, SQUARE_SIZE, SQUARE_SIZE))\npygame.display.flip()\nclock.tick(FPS)"
+        },
+        {
+          "id": "delta-time",
+          "name": "Frame Rate and Delta Time",
+          "summary": "Games redraw the screen many times a second. FPS is frames per second, and clock.tick(FPS) keeps the speed steady on every computer. The time step d_t = 1/FPS is multiplied into motion so things move the same real-world speed no matter the frame rate.",
+          "key_points": [
+            "clock = pygame.time.Clock() and clock.tick(FPS) cap the frame rate",
+            "d_t = 1 / FPS is how long one frame lasts",
+            "Multiplying speed by d_t keeps motion consistent across computers"
+          ],
+          "example_code": "FPS = 60\nd_t = 1 / FPS  # Time step for physics calculations\n...\nx = x + d_x\nclock.tick(FPS)"
+        },
+        {
+          "id": "keyboard-input",
+          "name": "Reading Keyboard Input",
+          "summary": "pygame.key.get_pressed() returns an array telling you which keys are held down right now. You check entries like keys[pygame.K_LEFT] to decide how to move the player.",
+          "key_points": [
+            "keys = pygame.key.get_pressed() gives the state of every key",
+            "Constants like pygame.K_LEFT, pygame.K_RIGHT, pygame.K_SPACE name keys",
+            "Holding a key keeps moving the object while it is pressed"
+          ],
+          "example_code": "keys = pygame.key.get_pressed()\nif keys[pygame.K_LEFT]:\n    d_x = -v * d_t\nif keys[pygame.K_RIGHT]:\n    d_x = v * d_t"
+        },
+        {
+          "id": "edge-bounce",
+          "name": "Edge Collisions and Bouncing",
+          "summary": "A simple collision is hitting the edge of the screen. You detect it when a position goes past the screen size or below zero, and you make the object bounce by reversing (negating) its velocity in that direction.",
+          "key_points": [
+            "Detect an edge collision when x or y passes the screen size or goes below 0",
+            "Bounce by reversing the velocity in the colliding direction",
+            "Reversing only the colliding direction's velocity gives a realistic bounce"
+          ],
+          "example_code": "if x_pos <= 0 or x_pos + square_size >= screen_width:\n    velocity_x = -velocity_x\nif y_pos <= 0:\n    velocity_y = -velocity_y"
+        },
+        {
+          "id": "gravity-jump",
+          "name": "Gravity and Jumping",
+          "summary": "Gravity is a downward acceleration added to the y velocity every frame. Because the top of the screen is y=0, moving up means a negative y velocity. A jump sets a negative y velocity, then gravity slows the rise, stops it, and pulls the object back down.",
+          "key_points": [
+            "On screen y=0 is the top, so up is a NEGATIVE y velocity",
+            "Gravity is added to velocity_y each frame: velocity_y += gravity * d_t",
+            "A jump sets velocity_y to a negative starting value",
+            "Landing on the ground stops the fall by setting velocity to 0"
+          ],
+          "example_code": "velocity_y = -settings.jump_velocity_y     # jump upward\n...\nvelocity_y += settings.gravity * settings.d_t  # gravity pulls down\ny_pos += velocity_y * settings.d_t"
+        }
+      ],
+      "question_count": 15,
+      "questions": [
+        {
+          "id": "python-games/01_Physics_for_Games/q01",
+          "type": "multiple_choice",
+          "category": "theory",
+          "question": "In a Pygame physics program, what does acceleration directly change?",
+          "code": null,
+          "options": [
+            "The position",
+            "The velocity",
+            "The screen color",
+            "The frame rate"
+          ],
+          "answer": "The velocity",
+          "explanation": "Acceleration is added to velocity each frame, and velocity then changes position.",
+          "concept_id": "pva"
+        },
+        {
+          "id": "python-games/01_Physics_for_Games/q02",
+          "type": "short_answer",
+          "category": "theory",
+          "question": "Why do we add a little acceleration to velocity each frame instead of setting velocity to full speed all at once?",
+          "code": null,
+          "options": [],
+          "answer": "So the object speeds up or slows down gradually, which makes the motion look realistic.",
+          "explanation": "Smoothly changing velocity each frame avoids unrealistic instant starts and stops.",
+          "concept_id": "pva"
+        },
+        {
+          "id": "python-games/01_Physics_for_Games/q03",
+          "type": "multiple_choice",
+          "category": "game_dev",
+          "question": "What kind of motion does this code produce for the red square?",
+          "code": "a = (-K * (x_pos - center)) / mass\nvelocity += a * d_t\nx_pos += velocity * d_t",
+          "options": [
+            "It moves at a constant speed forever",
+            "It oscillates back and forth around the center like it is attached to a spring",
+            "It falls straight down",
+            "It never moves"
+          ],
+          "answer": "It oscillates back and forth around the center like it is attached to a spring",
+          "explanation": "The acceleration always points back toward the center, producing spring-like oscillation.",
+          "concept_id": "pva"
+        },
+        {
+          "id": "python-games/01_Physics_for_Games/q04",
+          "type": "short_answer",
+          "category": "theory",
+          "question": "All of an object's motion in these 2D games can be described by movement in which two directions?",
+          "code": null,
+          "options": [],
+          "answer": "The x direction (left and right) and the y direction (up and down).",
+          "explanation": "2D games split motion into independent x and y components.",
+          "concept_id": "pva"
+        },
+        {
+          "id": "python-games/01_Physics_for_Games/q05",
+          "type": "multiple_choice",
+          "category": "coding",
+          "question": "If FPS = 60, what is the value of d_t = 1 / FPS?",
+          "code": null,
+          "options": [
+            "60",
+            "About 0.0167 (which is 1/60)",
+            "600",
+            "1"
+          ],
+          "answer": "About 0.0167 (which is 1/60)",
+          "explanation": "d_t is the fraction of a second each frame takes: 1 divided by frames per second.",
+          "concept_id": "delta-time"
+        },
+        {
+          "id": "python-games/01_Physics_for_Games/q06",
+          "type": "multiple_choice",
+          "category": "game_dev",
+          "question": "What is the purpose of clock.tick(FPS) at the end of the game loop?",
+          "code": null,
+          "options": [
+            "It draws the player",
+            "It caps the frame rate so the game runs at a consistent speed on all computers",
+            "It reads the keyboard",
+            "It clears the screen"
+          ],
+          "answer": "It caps the frame rate so the game runs at a consistent speed on all computers",
+          "explanation": "tick(FPS) limits how many frames run per second.",
+          "concept_id": "delta-time"
+        },
+        {
+          "id": "python-games/01_Physics_for_Games/q07",
+          "type": "short_answer",
+          "category": "coding",
+          "question": "Which Pygame function returns an array of all keys and whether each one is currently pressed?",
+          "code": null,
+          "options": [],
+          "answer": "pygame.key.get_pressed()",
+          "explanation": "You read it with constants like keys[pygame.K_LEFT].",
+          "concept_id": "keyboard-input"
+        },
+        {
+          "id": "python-games/01_Physics_for_Games/q08",
+          "type": "multiple_choice",
+          "category": "coding",
+          "question": "Which key, when held, moves the square to the right in this code?",
+          "code": "keys = pygame.key.get_pressed()\nif keys[pygame.K_LEFT]:\n    d_x = -v * d_t\nif keys[pygame.K_RIGHT]:\n    d_x = v * d_t",
+          "options": [
+            "pygame.K_LEFT",
+            "pygame.K_RIGHT",
+            "pygame.K_UP",
+            "pygame.K_SPACE"
+          ],
+          "answer": "pygame.K_RIGHT",
+          "explanation": "K_RIGHT sets a positive d_x, moving the square right.",
+          "concept_id": "keyboard-input"
+        },
+        {
+          "id": "python-games/01_Physics_for_Games/q09",
+          "type": "multiple_choice",
+          "category": "game_dev",
+          "question": "Because the top of the screen is y=0, what velocity makes an object move UP?",
+          "code": null,
+          "options": [
+            "A positive y velocity",
+            "A negative y velocity",
+            "A zero velocity",
+            "A positive x velocity"
+          ],
+          "answer": "A negative y velocity",
+          "explanation": "Up is toward y=0, so decreasing y (negative velocity) moves the object up.",
+          "concept_id": "gravity-jump"
+        },
+        {
+          "id": "python-games/01_Physics_for_Games/q10",
+          "type": "multiple_choice",
+          "category": "coding",
+          "question": "Which line correctly applies gravity each frame so the object falls faster over time?",
+          "code": null,
+          "options": [
+            "velocity_y = gravity",
+            "velocity_y += gravity * d_t",
+            "y_pos = gravity",
+            "velocity_y -= gravity * d_t"
+          ],
+          "answer": "velocity_y += gravity * d_t",
+          "explanation": "Gravity is an acceleration added to the y velocity every frame.",
+          "concept_id": "gravity-jump"
+        },
+        {
+          "id": "python-games/01_Physics_for_Games/q11",
+          "type": "short_answer",
+          "category": "game_dev",
+          "question": "To make a ball bounce off the left or right wall of the screen, what do you do to its x velocity?",
+          "code": null,
+          "options": [],
+          "answer": "Reverse (negate) it, for example velocity_x = -velocity_x.",
+          "explanation": "Negating the velocity sends the object back in the opposite direction.",
+          "concept_id": "edge-bounce"
+        },
+        {
+          "id": "python-games/01_Physics_for_Games/q12",
+          "type": "multiple_choice",
+          "category": "coding",
+          "question": "Which condition detects that the square has hit the bottom (the ground)?",
+          "code": null,
+          "options": [
+            "y_pos <= 0",
+            "y_pos + square_size > screen_height",
+            "x_pos <= 0",
+            "velocity_y == 0"
+          ],
+          "answer": "y_pos + square_size > screen_height",
+          "explanation": "The bottom edge of the square passing screen_height means it reached the ground.",
+          "concept_id": "edge-bounce"
+        },
+        {
+          "id": "python-games/01_Physics_for_Games/q13",
+          "type": "multiple_choice",
+          "category": "game_dev",
+          "question": "What does pygame.display.flip() do in the game loop?",
+          "code": null,
+          "options": [
+            "It flips the player upside down",
+            "It shows the newly drawn frame on the screen",
+            "It reverses the velocity",
+            "It quits the game"
+          ],
+          "answer": "It shows the newly drawn frame on the screen",
+          "explanation": "flip() swaps the freshly drawn surface in so the player sees the new frame.",
+          "concept_id": "game-loop-render"
+        },
+        {
+          "id": "python-games/01_Physics_for_Games/q14",
+          "type": "multiple_choice",
+          "category": "coding",
+          "question": "Why is screen.fill(BACKGROUND_COLOR) called at the start of every frame?",
+          "code": null,
+          "options": [
+            "To slow the game down",
+            "To clear the previous frame so the moving square does not leave a trail",
+            "To read the keyboard",
+            "To create the window"
+          ],
+          "answer": "To clear the previous frame so the moving square does not leave a trail",
+          "explanation": "Filling the screen erases the old drawing before the new one.",
+          "concept_id": "game-loop-render"
+        },
+        {
+          "id": "python-games/01_Physics_for_Games/q15",
+          "type": "short_answer",
+          "category": "coding",
+          "question": "Which event type tells the program that the player clicked the window's close button?",
+          "code": null,
+          "options": [],
+          "answer": "pygame.QUIT",
+          "explanation": "Checking event.type == pygame.QUIT lets the loop stop running.",
+          "concept_id": "game-loop-render"
+        }
+      ]
+    },
+    {
+      "id": "python-games/02_Classes_and_Objects",
+      "name": "02_Classes_and_Objects",
+      "module": "02_Classes_and_Objects",
+      "path": "lessons/02_Classes_and_Objects",
+      "order": 2,
+      "concepts": [
+        {
+          "id": "classes-objects",
+          "name": "Classes and Objects",
+          "summary": "A class is a blueprint (a new data type) and an object is one thing built from that blueprint. Every object has identity (its name), state (its variables/attributes), and behavior (its functions/methods). You use the dot (.) to reach an object's parts.",
+          "key_points": [
+            "A class is a blueprint/datatype; an object is an instance made from it",
+            "Objects have identity (name), state (attributes), and behavior (methods)",
+            "The dot (.) accesses an object's attributes and methods",
+            "Pygame is designed to be object-oriented"
+          ],
+          "example_code": "class Person:\n    def __init__(self, name: str, age: int):\n        self.name = name\n        self.age = age\n    def say_hello(self, message: str):\n        print(f\"Hello, my name is {self.name}.\")\n\nalice = Person(\"Alice\", 14)\nalice.say_hello(\"Bonjour!\")"
+        },
+        {
+          "id": "init-self",
+          "name": "The __init__ Method and self",
+          "summary": "__init__ is the initializer that runs automatically when an object is created; it sets up the object's starting attributes. The first parameter, self, refers to the specific object being worked on, and self.name = name stores data inside that object.",
+          "key_points": [
+            "__init__ runs automatically when an object is created",
+            "self refers to the particular object the method is acting on",
+            "self.attribute = value stores state inside the object"
+          ],
+          "example_code": "def __init__(self, name: str, age: int):\n    self.name = name\n    self.age = age"
+        },
+        {
+          "id": "inheritance-super",
+          "name": "Inheritance and super()",
+          "summary": "Inheritance lets a new (derived) class reuse an existing (base) class and then add or change behavior. A derived class is a 'kind of' the base class. super() calls the parent class's version of a method.",
+          "key_points": [
+            "class Parent(Person): means Parent inherits from Person",
+            "A derived class is a 'kind of' its base class",
+            "super().__init__(...) calls the parent's initializer",
+            "The derived class gets all the parent's attributes and methods plus its own"
+          ],
+          "example_code": "class Parent(Person):\n    def __init__(self, name: str, age: int, children: list):\n        super().__init__(name, age)\n        self.children = children"
+        },
+        {
+          "id": "polymorphism",
+          "name": "Polymorphism",
+          "summary": "Polymorphism means 'many forms': the same method name can do different things in different classes, and any function written for a base class also works on its derived classes. So a function for a Person also works on a Parent or a Child.",
+          "key_points": [
+            "The same method name can behave differently in different classes",
+            "A function for a base class also accepts objects of its derived classes",
+            "Overriding a method in a child gives it different behavior than the parent"
+          ],
+          "example_code": "def get_name_and_age(person: Person):\n    print(f\"{person.name} is {person.age} years old.\")\n\nget_name_and_age(mom)      # a Parent\nget_name_and_age(charlie)  # a Child"
+        }
+      ],
+      "question_count": 14,
+      "questions": [
+        {
+          "id": "python-games/02_Classes_and_Objects/q01",
+          "type": "multiple_choice",
+          "category": "theory",
+          "question": "Which statement best describes the relationship between a class and an object?",
+          "code": null,
+          "options": [
+            "A class is a copy of an object",
+            "A class is a blueprint and an object is built from it",
+            "An object is a blueprint for a class",
+            "They are exactly the same thing"
+          ],
+          "answer": "A class is a blueprint and an object is built from it",
+          "explanation": "A class defines the type; an object is one instance made from that blueprint.",
+          "concept_id": "classes-objects"
+        },
+        {
+          "id": "python-games/02_Classes_and_Objects/q02",
+          "type": "short_answer",
+          "category": "theory",
+          "question": "Name the three things every object has, according to the lesson.",
+          "code": null,
+          "options": [],
+          "answer": "Identity, state (attributes), and behavior (methods).",
+          "explanation": "These three together define what an object is in OOP.",
+          "concept_id": "classes-objects"
+        },
+        {
+          "id": "python-games/02_Classes_and_Objects/q03",
+          "type": "multiple_choice",
+          "category": "coding",
+          "question": "Given the Person class, which line creates a Person object named Alice who is 14?",
+          "code": "class Person:\n    def __init__(self, name, age):\n        self.name = name\n        self.age = age",
+          "options": [
+            "Person.name = \"Alice\"",
+            "alice = Person(\"Alice\", 14)",
+            "alice = Person.new(\"Alice\", 14)",
+            "Person(\"Alice\").age = 14"
+          ],
+          "answer": "alice = Person(\"Alice\", 14)",
+          "explanation": "Calling the class like a function runs __init__ and builds the object.",
+          "concept_id": "classes-objects"
+        },
+        {
+          "id": "python-games/02_Classes_and_Objects/q04",
+          "type": "multiple_choice",
+          "category": "coding",
+          "question": "Which symbol do you use to access an object's attribute or method, like getting alice's name?",
+          "code": null,
+          "options": [
+            "The comma (,)",
+            "The dot (.)",
+            "The colon (:)",
+            "The arrow (->)"
+          ],
+          "answer": "The dot (.)",
+          "explanation": "alice.name uses the dot to reach the name attribute inside the object.",
+          "concept_id": "classes-objects"
+        },
+        {
+          "id": "python-games/02_Classes_and_Objects/q05",
+          "type": "multiple_choice",
+          "category": "coding",
+          "question": "When does the __init__ method run?",
+          "code": null,
+          "options": [
+            "Every frame",
+            "When the program ends",
+            "Automatically when a new object is created",
+            "Only when you call it by name"
+          ],
+          "answer": "Automatically when a new object is created",
+          "explanation": "__init__ is the initializer that runs as the object is built.",
+          "concept_id": "init-self"
+        },
+        {
+          "id": "python-games/02_Classes_and_Objects/q06",
+          "type": "short_answer",
+          "category": "theory",
+          "question": "Inside a method, what does the parameter self refer to?",
+          "code": null,
+          "options": [],
+          "answer": "The specific object the method is being called on.",
+          "explanation": "self lets a method read and change that object's own attributes.",
+          "concept_id": "init-self"
+        },
+        {
+          "id": "python-games/02_Classes_and_Objects/q07",
+          "type": "short_answer",
+          "category": "coding",
+          "question": "What does the line self.name = name do inside __init__?",
+          "code": null,
+          "options": [],
+          "answer": "It stores the name value as an attribute (state) on the object being created.",
+          "explanation": "It saves data inside the object so it can be used later.",
+          "concept_id": "init-self"
+        },
+        {
+          "id": "python-games/02_Classes_and_Objects/q08",
+          "type": "multiple_choice",
+          "category": "coding",
+          "question": "What will this code print?",
+          "code": "class Person:\n    def __init__(self, name, age):\n        self.name = name\n        self.age = age\n\nalice = Person(\"Alice\", 14)\nprint(alice.name)",
+          "options": [
+            "name",
+            "Alice",
+            "14",
+            "Person"
+          ],
+          "answer": "Alice",
+          "explanation": "alice.name returns the value stored when the object was created.",
+          "concept_id": "init-self"
+        },
+        {
+          "id": "python-games/02_Classes_and_Objects/q09",
+          "type": "multiple_choice",
+          "category": "theory",
+          "question": "What does the line class Parent(Person): mean?",
+          "code": null,
+          "options": [
+            "Parent contains a Person variable",
+            "Parent inherits from Person",
+            "Person inherits from Parent",
+            "Parent and Person are unrelated"
+          ],
+          "answer": "Parent inherits from Person",
+          "explanation": "Putting Person in the parentheses makes Parent a derived class of Person.",
+          "concept_id": "inheritance-super"
+        },
+        {
+          "id": "python-games/02_Classes_and_Objects/q10",
+          "type": "short_answer",
+          "category": "coding",
+          "question": "What does super().__init__(name, age) do inside a derived class's __init__?",
+          "code": null,
+          "options": [],
+          "answer": "It calls the parent class's initializer to set up the inherited attributes.",
+          "explanation": "super() reuses the parent's setup code instead of rewriting it.",
+          "concept_id": "inheritance-super"
+        },
+        {
+          "id": "python-games/02_Classes_and_Objects/q11",
+          "type": "multiple_choice",
+          "category": "theory",
+          "question": "Even though the Parent class never defines its own name or age variable, why can a Parent object still use say_hello?",
+          "code": null,
+          "options": [
+            "Because say_hello is a built-in Python function",
+            "Because it is inherited from the Person class",
+            "Because Pygame adds it automatically",
+            "Because Parent is a copy of say_hello"
+          ],
+          "answer": "Because it is inherited from the Person class",
+          "explanation": "A derived class inherits the attributes and methods of its base class.",
+          "concept_id": "inheritance-super"
+        },
+        {
+          "id": "python-games/02_Classes_and_Objects/q12",
+          "type": "multiple_choice",
+          "category": "theory",
+          "question": "What does polymorphism mean?",
+          "code": null,
+          "options": [
+            "A class can have many objects",
+            "The same method name can do different things in different classes",
+            "Objects can change color",
+            "A program can have many classes"
+          ],
+          "answer": "The same method name can do different things in different classes",
+          "explanation": "'Poly' means many and 'morph' means form, so the method takes many forms.",
+          "concept_id": "polymorphism"
+        },
+        {
+          "id": "python-games/02_Classes_and_Objects/q13",
+          "type": "multiple_choice",
+          "category": "coding",
+          "question": "The function get_name_and_age(person) was written for a Person. Why can you also pass it a Parent or a Child object?",
+          "code": null,
+          "options": [
+            "Because Parent and Child are kinds of Person (polymorphism)",
+            "Because all functions accept any object",
+            "Because Parent and Child have no __init__",
+            "Because you used super()"
+          ],
+          "answer": "Because Parent and Child are kinds of Person (polymorphism)",
+          "explanation": "Derived classes can be used anywhere their base class is expected.",
+          "concept_id": "polymorphism"
+        },
+        {
+          "id": "python-games/02_Classes_and_Objects/q14",
+          "type": "short_answer",
+          "category": "theory",
+          "question": "In the code tina = Turtle() and tina.forward(150), name the class, the object, and the method.",
+          "code": null,
+          "options": [],
+          "answer": "Class: Turtle; object: tina; method: forward().",
+          "explanation": "Turtle is the blueprint, tina is the instance, forward() is its behavior.",
+          "concept_id": "classes-objects"
+        }
+      ]
+    },
+    {
+      "id": "python-games/03_Vectors",
+      "name": "03_Vectors",
+      "module": "03_Vectors",
+      "path": "lessons/03_Vectors",
+      "order": 3,
+      "concepts": [
+        {
+          "id": "vector-basics",
+          "name": "What a Vector Is",
+          "summary": "A vector combines an x and a y value into one object. You can think of it as a point (x, y) in space, or as a line with a length (magnitude) and a direction (angle). A plain single number, like 8, is called a scalar.",
+          "key_points": [
+            "A 2D vector holds an x value and a y value together",
+            "It can be seen as a point OR as a direction-and-magnitude",
+            "magnitude is the length: sqrt(x**2 + y**2)",
+            "A regular single number is called a scalar"
+          ],
+          "example_code": "class Vector:\n    def __init__(self, x, y):\n        self.x = x\n        self.y = y\n    @property\n    def magnitude(self):\n        return math.sqrt(self.x**2 + self.y**2)"
+        },
+        {
+          "id": "vector-math",
+          "name": "Vector Math: Scaling and Adding",
+          "summary": "Two key operations: multiplying a vector by a scalar (scaling) makes it longer or shorter without changing direction, and adding two vectors adds their x parts together and their y parts together.",
+          "key_points": [
+            "vector * scalar multiplies both x and y by the scalar (scaling)",
+            "vector + vector adds the x's together and the y's together",
+            "Scaling changes length but not direction",
+            "Adding a movement vector to a position vector moves the object"
+          ],
+          "example_code": "v1 = Vector2(10, 10)\nv2 = Vector2(20, 20)\nprint(v1 + v2)  # Vector2(30, 30)"
+        },
+        {
+          "id": "pygame-vector2",
+          "name": "Pygame's Vector2",
+          "summary": "Instead of writing your own vector class, games use pygame.math.Vector2, which has many built-in features. You store positions and velocities as Vector2 objects and update them with simple addition like p1 += move.",
+          "key_points": [
+            "from pygame.math import Vector2 imports the class",
+            "Vector2(100, 100) makes a vector at x=100, y=100",
+            "p1 += move is the same as p1 = p1 + move",
+            "Using vectors keeps position/velocity code shorter and clearer"
+          ],
+          "example_code": "p1 = Vector2(100, 100)\nmove = Vector2(10, 0)  # 10 pixels right\np1 += move  # p1 is now (110, 100)"
+        },
+        {
+          "id": "vector-rotation",
+          "name": "Rotating Vectors",
+          "summary": "Because a vector has a direction, you can rotate it. rotate_ip(angle) rotates the vector in place (changes it), while rotate(angle) returns a new rotated vector. Rotation is how you point movement or thrust in any direction.",
+          "key_points": [
+            "rotate_ip(angle) rotates the vector in place (modifies it)",
+            "rotate(angle) returns a NEW rotated vector instead",
+            "The _ip suffix means 'in place'",
+            "An easy way to aim a vector: make it the right length pointing right, then rotate it"
+          ],
+          "example_code": "move = Vector2(100, 0)  # 100-unit vector pointing right\nmove.rotate_ip(45)      # rotate to 45 degrees in place\np1 += move"
+        }
+      ],
+      "question_count": 14,
+      "questions": [
+        {
+          "id": "python-games/03_Vectors/q01",
+          "type": "multiple_choice",
+          "category": "theory",
+          "question": "What does a 2D vector contain?",
+          "code": null,
+          "options": [
+            "A single number",
+            "An x value and a y value",
+            "Only an angle",
+            "A color"
+          ],
+          "answer": "An x value and a y value",
+          "explanation": "A 2D vector groups an x and a y together into one object.",
+          "concept_id": "vector-basics"
+        },
+        {
+          "id": "python-games/03_Vectors/q02",
+          "type": "short_answer",
+          "category": "theory",
+          "question": "What is the special word for a plain single number (like 8), as opposed to a vector?",
+          "code": null,
+          "options": [],
+          "answer": "A scalar.",
+          "explanation": "Multiplying a vector by a scalar scales its length.",
+          "concept_id": "vector-basics"
+        },
+        {
+          "id": "python-games/03_Vectors/q03",
+          "type": "multiple_choice",
+          "category": "theory",
+          "question": "The lesson says a vector can be thought of in two equal ways. Which pair is correct?",
+          "code": null,
+          "options": [
+            "A color and a size",
+            "A point in space, or a direction and magnitude",
+            "A speed and a frame rate",
+            "An image and a rectangle"
+          ],
+          "answer": "A point in space, or a direction and magnitude",
+          "explanation": "A point (x,y) and a line with length and direction from the origin describe the same vector.",
+          "concept_id": "vector-basics"
+        },
+        {
+          "id": "python-games/03_Vectors/q04",
+          "type": "short_answer",
+          "category": "coding",
+          "question": "What is the formula for the magnitude (length) of a vector with components x and y?",
+          "code": null,
+          "options": [],
+          "answer": "sqrt(x**2 + y**2)",
+          "explanation": "Magnitude is the Pythagorean distance of the vector from the origin.",
+          "concept_id": "vector-basics"
+        },
+        {
+          "id": "python-games/03_Vectors/q05",
+          "type": "multiple_choice",
+          "category": "coding",
+          "question": "What does Vector2(10, 10) + Vector2(20, 20) equal?",
+          "code": null,
+          "options": [
+            "Vector2(30, 30)",
+            "Vector2(10, 20)",
+            "Vector2(200, 200)",
+            "Vector2(0, 0)"
+          ],
+          "answer": "Vector2(30, 30)",
+          "explanation": "Adding vectors adds the x parts and the y parts: 10+20 and 10+20.",
+          "concept_id": "vector-math"
+        },
+        {
+          "id": "python-games/03_Vectors/q06",
+          "type": "multiple_choice",
+          "category": "theory",
+          "question": "Multiplying a vector by a scalar (scaling) does what?",
+          "code": null,
+          "options": [
+            "Changes its direction only",
+            "Makes it longer or shorter without changing direction",
+            "Rotates it 90 degrees",
+            "Turns it into a single number"
+          ],
+          "answer": "Makes it longer or shorter without changing direction",
+          "explanation": "Scaling changes magnitude (length) but keeps the same direction.",
+          "concept_id": "vector-math"
+        },
+        {
+          "id": "python-games/03_Vectors/q07",
+          "type": "multiple_choice",
+          "category": "coding",
+          "question": "Using the rules from the lesson, what is the vector (2, 3) multiplied by the scalar 5?",
+          "code": null,
+          "options": [
+            "(7, 8)",
+            "(10, 15)",
+            "(2, 15)",
+            "(10, 3)"
+          ],
+          "answer": "(10, 15)",
+          "explanation": "Scaling multiplies each component by the scalar: 2*5 and 3*5.",
+          "concept_id": "vector-math"
+        },
+        {
+          "id": "python-games/03_Vectors/q08",
+          "type": "multiple_choice",
+          "category": "coding",
+          "question": "Which line correctly imports Pygame's built-in vector class?",
+          "code": null,
+          "options": [
+            "import Vector2",
+            "from pygame.math import Vector2",
+            "from math import Vector2",
+            "import pygame.Vector"
+          ],
+          "answer": "from pygame.math import Vector2",
+          "explanation": "Vector2 lives in pygame.math (you can also do from pygame import Vector2).",
+          "concept_id": "pygame-vector2"
+        },
+        {
+          "id": "python-games/03_Vectors/q09",
+          "type": "multiple_choice",
+          "category": "coding",
+          "question": "After this code runs, what is p1?",
+          "code": "p1 = Vector2(100, 100)\nmove = Vector2(10, 0)\np1 += move",
+          "options": [
+            "Vector2(100, 100)",
+            "Vector2(110, 100)",
+            "Vector2(100, 110)",
+            "Vector2(1000, 0)"
+          ],
+          "answer": "Vector2(110, 100)",
+          "explanation": "Adding move adds 10 to x and 0 to y.",
+          "concept_id": "pygame-vector2"
+        },
+        {
+          "id": "python-games/03_Vectors/q10",
+          "type": "multiple_choice",
+          "category": "game_dev",
+          "question": "To move a player by a movement vector, what do you do with that vector and the player's position vector?",
+          "code": null,
+          "options": [
+            "Multiply them",
+            "Add the movement vector to the position vector",
+            "Subtract the position from the movement",
+            "Rotate the position by the movement"
+          ],
+          "answer": "Add the movement vector to the position vector",
+          "explanation": "p1 += move moves the player by the movement vector.",
+          "concept_id": "vector-math"
+        },
+        {
+          "id": "python-games/03_Vectors/q11",
+          "type": "short_answer",
+          "category": "coding",
+          "question": "What is the difference between vector.rotate(45) and vector.rotate_ip(45)?",
+          "code": null,
+          "options": [],
+          "answer": "rotate(45) returns a new rotated vector; rotate_ip(45) rotates the vector in place, changing the original.",
+          "explanation": "The _ip suffix means 'in place'.",
+          "concept_id": "vector-rotation"
+        },
+        {
+          "id": "python-games/03_Vectors/q12",
+          "type": "multiple_choice",
+          "category": "theory",
+          "question": "In a Pygame vector method name, what does the _ip suffix stand for?",
+          "code": null,
+          "options": [
+            "Integer point",
+            "In place",
+            "Inverse position",
+            "Input"
+          ],
+          "answer": "In place",
+          "explanation": "_ip methods modify the existing vector instead of returning a new one.",
+          "concept_id": "vector-rotation"
+        },
+        {
+          "id": "python-games/03_Vectors/q13",
+          "type": "multiple_choice",
+          "category": "game_dev",
+          "question": "What is an easy way to make a vector that points 45 degrees and is 100 units long?",
+          "code": null,
+          "options": [
+            "Make a vector (100, 0) pointing right, then rotate it 45 degrees",
+            "Make a vector (45, 45)",
+            "Multiply (1, 1) by 45",
+            "Set magnitude to 45"
+          ],
+          "answer": "Make a vector (100, 0) pointing right, then rotate it 45 degrees",
+          "explanation": "Build the length pointing right, then rotate to the angle you want.",
+          "concept_id": "vector-rotation"
+        },
+        {
+          "id": "python-games/03_Vectors/q14",
+          "type": "short_answer",
+          "category": "game_dev",
+          "question": "When the direction of a vector is 90 degrees (straight up or down), what is its X component?",
+          "code": null,
+          "options": [],
+          "answer": "Zero (the whole magnitude is in the Y component).",
+          "explanation": "At 90 degrees the vector has no left-right part, so X is 0.",
+          "concept_id": "vector-basics"
+        }
+      ]
+    },
+    {
+      "id": "python-games/04_Sprites",
+      "name": "04_Sprites",
+      "module": "04_Sprites",
+      "path": "lessons/04_Sprites",
+      "order": 4,
+      "concepts": [
+        {
+          "id": "sprite-image-rect",
+          "name": "Sprites: image and rect",
+          "summary": "A sprite is a 2D image that represents a game object. In Pygame you make a sprite class by subclassing pygame.sprite.Sprite. Two attributes are special: image (what it looks like) and rect (a rectangle giving its position and size).",
+          "key_points": [
+            "A sprite is a 2D image that represents a game object",
+            "Your sprite class subclasses pygame.sprite.Sprite",
+            "The image attribute is the surface drawn on screen",
+            "The rect attribute holds the sprite's position and size"
+          ],
+          "example_code": "class Spaceship(pygame.sprite.Sprite):\n    def __init__(self, settings, position):\n        super().__init__()\n        self.image = self.original_image\n        self.rect = self.image.get_rect(center=position)"
+        },
+        {
+          "id": "sprite-groups",
+          "name": "Sprite Groups",
+          "summary": "A sprite Group is a collection of sprites you can update and draw all at once. You add sprites with group.add(sprite); then group.update() calls every sprite's update(), and group.draw(screen) draws them all.",
+          "key_points": [
+            "all_sprites = pygame.sprite.Group() creates a group",
+            "group.update() calls update() on every sprite in it",
+            "group.draw(screen) draws every sprite using its image and rect",
+            "With groups you don't write a separate draw() for each sprite in the main loop"
+          ],
+          "example_code": "self.all_sprites = pygame.sprite.Group()\n...\ndef update(self):\n    self.all_sprites.update()\ndef draw(self):\n    self.all_sprites.draw(self.screen)"
+        },
+        {
+          "id": "sprite-images-load",
+          "name": "Loading and Overriding Sprite Images",
+          "summary": "You can load an image file with pygame.image.load() to give a sprite a real picture instead of a drawn shape. By subclassing and overriding the method that creates the image, a new class reuses everything else but shows a different picture.",
+          "key_points": [
+            "pygame.image.load(path) loads an image file as a surface",
+            "Path(__file__).parent / 'images' finds the assets folder next to the file",
+            "Overriding create_spaceship_image() in a subclass swaps the picture",
+            "The subclass inherits all other behavior from the parent sprite class"
+          ],
+          "example_code": "class AlienSpaceship(Spaceship):\n    def create_spaceship_image(self):\n        return pygame.image.load(assets/'alien1.gif')"
+        },
+        {
+          "id": "sprite-kill",
+          "name": "Removing Sprites with kill()",
+          "summary": "kill() is a Sprite method that removes a sprite from every group it belongs to, so it stops being updated and drawn. It is used for things like projectiles that fly off the screen and should disappear.",
+          "key_points": [
+            "self.kill() removes a sprite from all its groups",
+            "A killed sprite is no longer updated or drawn",
+            "Useful for projectiles or objects that leave the screen"
+          ],
+          "example_code": "# In a Projectile sprite, when it leaves the screen:\nself.kill()  # remove from all groups"
+        }
+      ],
+      "question_count": 13,
+      "questions": [
+        {
+          "id": "python-games/04_Sprites/q01",
+          "type": "multiple_choice",
+          "category": "theory",
+          "question": "What is a sprite in Pygame?",
+          "code": null,
+          "options": [
+            "A sound effect",
+            "A 2D image that represents a game object",
+            "A type of loop",
+            "The game's score"
+          ],
+          "answer": "A 2D image that represents a game object",
+          "explanation": "Sprites are the images that move around the screen.",
+          "concept_id": "sprite-image-rect"
+        },
+        {
+          "id": "python-games/04_Sprites/q02",
+          "type": "multiple_choice",
+          "category": "game_dev",
+          "question": "What are the two special attributes a Pygame sprite uses?",
+          "code": null,
+          "options": [
+            "color and size",
+            "image and rect",
+            "x and y",
+            "name and id"
+          ],
+          "answer": "image and rect",
+          "explanation": "image is what the sprite looks like; rect holds its position and size.",
+          "concept_id": "sprite-image-rect"
+        },
+        {
+          "id": "python-games/04_Sprites/q03",
+          "type": "multiple_choice",
+          "category": "coding",
+          "question": "What class should your own sprite class inherit from?",
+          "code": null,
+          "options": [
+            "pygame.Surface",
+            "pygame.sprite.Sprite",
+            "pygame.sprite.Group",
+            "pygame.Rect"
+          ],
+          "answer": "pygame.sprite.Sprite",
+          "explanation": "Subclassing pygame.sprite.Sprite gives your class the image/rect/group behavior.",
+          "concept_id": "sprite-image-rect"
+        },
+        {
+          "id": "python-games/04_Sprites/q04",
+          "type": "short_answer",
+          "category": "game_dev",
+          "question": "What does a sprite's rect attribute represent?",
+          "code": null,
+          "options": [],
+          "answer": "The rectangle that defines the sprite's position and size.",
+          "explanation": "The rect is how Pygame knows where and how big the sprite is.",
+          "concept_id": "sprite-image-rect"
+        },
+        {
+          "id": "python-games/04_Sprites/q05",
+          "type": "multiple_choice",
+          "category": "coding",
+          "question": "Which line creates a rect centered on a given position?",
+          "code": null,
+          "options": [
+            "self.rect = pygame.Rect(position)",
+            "self.rect = self.image.get_rect(center=position)",
+            "self.rect = position",
+            "self.rect = self.image.center(position)"
+          ],
+          "answer": "self.rect = self.image.get_rect(center=position)",
+          "explanation": "get_rect(center=position) builds a rect placed at that center point.",
+          "concept_id": "sprite-image-rect"
+        },
+        {
+          "id": "python-games/04_Sprites/q06",
+          "type": "short_answer",
+          "category": "coding",
+          "question": "How do you create an empty sprite group in Pygame?",
+          "code": null,
+          "options": [],
+          "answer": "pygame.sprite.Group()",
+          "explanation": "A Group collects sprites so you can update and draw them together.",
+          "concept_id": "sprite-groups"
+        },
+        {
+          "id": "python-games/04_Sprites/q07",
+          "type": "multiple_choice",
+          "category": "game_dev",
+          "question": "When you call all_sprites.update(), what happens?",
+          "code": null,
+          "options": [
+            "The screen is cleared",
+            "The update() method of every sprite in the group is called",
+            "Only the first sprite updates",
+            "The game quits"
+          ],
+          "answer": "The update() method of every sprite in the group is called",
+          "explanation": "A group updates all of its sprites at once.",
+          "concept_id": "sprite-groups"
+        },
+        {
+          "id": "python-games/04_Sprites/q08",
+          "type": "multiple_choice",
+          "category": "game_dev",
+          "question": "In the sprite version of the game, why is there no separate draw() call for the spaceship and projectiles in the Game class?",
+          "code": null,
+          "options": [
+            "They are invisible",
+            "The sprite group's draw() draws all of them at once",
+            "Pygame never draws sprites",
+            "draw() is automatic on every Python object"
+          ],
+          "answer": "The sprite group's draw() draws all of them at once",
+          "explanation": "all_sprites.draw(screen) handles drawing every sprite in the group.",
+          "concept_id": "sprite-groups"
+        },
+        {
+          "id": "python-games/04_Sprites/q09",
+          "type": "short_answer",
+          "category": "coding",
+          "question": "Which Pygame function loads an image file to use as a sprite's picture?",
+          "code": null,
+          "options": [],
+          "answer": "pygame.image.load()",
+          "explanation": "It returns a surface you can store in the sprite's image attribute.",
+          "concept_id": "sprite-images-load"
+        },
+        {
+          "id": "python-games/04_Sprites/q10",
+          "type": "multiple_choice",
+          "category": "coding",
+          "question": "What does Path(__file__).parent / 'images' do?",
+          "code": null,
+          "options": [
+            "Deletes the images folder",
+            "Builds the path to the images folder next to the current file",
+            "Loads every image at once",
+            "Renames the file"
+          ],
+          "answer": "Builds the path to the images folder next to the current file",
+          "explanation": "It locates the assets folder in the same directory as the running file.",
+          "concept_id": "sprite-images-load"
+        },
+        {
+          "id": "python-games/04_Sprites/q11",
+          "type": "multiple_choice",
+          "category": "game_dev",
+          "question": "The AlienSpaceship subclass only overrides create_spaceship_image(). What is the result?",
+          "code": "class AlienSpaceship(Spaceship):\n    def create_spaceship_image(self):\n        return pygame.image.load(assets/'alien1.gif')",
+          "options": [
+            "It breaks the Spaceship class",
+            "It keeps all Spaceship behavior but shows the alien image instead of the triangle",
+            "It removes the rect attribute",
+            "It makes the ship stop moving"
+          ],
+          "answer": "It keeps all Spaceship behavior but shows the alien image instead of the triangle",
+          "explanation": "Overriding one method changes only the picture; everything else is inherited.",
+          "concept_id": "sprite-images-load"
+        },
+        {
+          "id": "python-games/04_Sprites/q12",
+          "type": "short_answer",
+          "category": "theory",
+          "question": "What does the sprite method kill() do?",
+          "code": null,
+          "options": [],
+          "answer": "It removes the sprite from all groups, so it is no longer updated or drawn.",
+          "explanation": "kill() takes the sprite out of every group it belongs to.",
+          "concept_id": "sprite-kill"
+        },
+        {
+          "id": "python-games/04_Sprites/q13",
+          "type": "multiple_choice",
+          "category": "game_dev",
+          "question": "When should you call kill() on a projectile sprite?",
+          "code": null,
+          "options": [
+            "At the start of the game",
+            "When it goes off the screen",
+            "Every single frame",
+            "When the player presses a key"
+          ],
+          "answer": "When it goes off the screen",
+          "explanation": "Projectiles that leave the screen should disappear instead of wrapping around.",
+          "concept_id": "sprite-kill"
+        }
+      ]
+    },
+    {
+      "id": "python-games/05_Collisions",
+      "name": "05_Collisions",
+      "module": "05_Collisions",
+      "path": "lessons/05_Collisions",
+      "order": 5,
+      "concepts": [
+        {
+          "id": "collision-types",
+          "name": "Types of Collision Detection",
+          "summary": "Collisions detect when game objects touch. The three kinds are bounding box (rectangles around objects), circle (overlapping circles), and pixel-perfect (checking individual pixels). Bounding box and circle are fast but less accurate; pixel-perfect is the most accurate but the slowest.",
+          "key_points": [
+            "Bounding box uses rectangles and is the simplest and most common",
+            "Circle collisions use overlapping circles",
+            "Pixel-perfect checks individual pixels \u2014 most accurate, slowest",
+            "A bounding box can report a collision before the visible images actually touch"
+          ],
+          "example_code": "# Three collision types: bounding box, circle, pixel perfect.\n# Bounding boxes are fast but can overlap before the images touch."
+        },
+        {
+          "id": "spritecollide",
+          "name": "Detecting Collisions with spritecollide",
+          "summary": "pygame.sprite.spritecollide() checks one sprite against a whole group of sprites and returns a list of the ones it is touching. If the list isn't empty, a collision happened, and you can react.",
+          "key_points": [
+            "spritecollide(player, obstacles, dokill=False) checks a sprite vs a group",
+            "It returns a list of the sprites that collided (empty if none)",
+            "An empty list is falsy, so 'if collider:' tests for a collision",
+            "The dokill argument controls whether collided sprites are auto-removed"
+          ],
+          "example_code": "collider = pygame.sprite.spritecollide(player, obstacles, dokill=False)\nif collider:\n    collider[0].explode()"
+        },
+        {
+          "id": "rect-edges-move",
+          "name": "Rect Edges and Moving Rects",
+          "summary": "A Rect has not just .x and .y but also .left, .right, .top, and .bottom for its edges, which you can read or write. You move a rect with .move (which returns a new rect) or .move_ip (which changes it in place).",
+          "key_points": [
+            "Rect edges: .left, .right, .top, .bottom (readable and writable)",
+            "screen.get_rect() gives the screen's rectangle for off-screen checks",
+            ".move(dx, dy) returns a NEW rect; you must assign the result",
+            ".move_ip(dx, dy) moves the rect in place (changes the original)"
+          ],
+          "example_code": "if player.rect.right < screen_rect.left:\n    player.rect.left = screen_rect.right\n\nplayer.rect.move_ip(1, 0)  # move in place"
+        }
+      ],
+      "question_count": 12,
+      "questions": [
+        {
+          "id": "python-games/05_Collisions/q01",
+          "type": "multiple_choice",
+          "category": "game_dev",
+          "question": "What are the three types of collision detection described in the lesson?",
+          "code": null,
+          "options": [
+            "Box, line, and dot",
+            "Bounding box, circle, and pixel perfect",
+            "Fast, medium, and slow",
+            "Player, enemy, and wall"
+          ],
+          "answer": "Bounding box, circle, and pixel perfect",
+          "explanation": "These are the three approaches the lesson lists.",
+          "concept_id": "collision-types"
+        },
+        {
+          "id": "python-games/05_Collisions/q02",
+          "type": "multiple_choice",
+          "category": "theory",
+          "question": "Which collision type is the most accurate but also the slowest?",
+          "code": null,
+          "options": [
+            "Bounding box",
+            "Circle",
+            "Pixel perfect",
+            "Edge collision"
+          ],
+          "answer": "Pixel perfect",
+          "explanation": "Pixel-perfect checks individual pixels, so it is precise but slow.",
+          "concept_id": "collision-types"
+        },
+        {
+          "id": "python-games/05_Collisions/q03",
+          "type": "multiple_choice",
+          "category": "theory",
+          "question": "Which collision type does the lesson call the simplest, so it teaches it first?",
+          "code": null,
+          "options": [
+            "Pixel perfect",
+            "Bounding box",
+            "Circle",
+            "Polygon"
+          ],
+          "answer": "Bounding box",
+          "explanation": "Bounding box collisions are fast and easy, so they are learned first.",
+          "concept_id": "collision-types"
+        },
+        {
+          "id": "python-games/05_Collisions/q04",
+          "type": "short_answer",
+          "category": "game_dev",
+          "question": "Why can a bounding box collision feel wrong to a player?",
+          "code": null,
+          "options": [],
+          "answer": "The rectangles can overlap (counting as a collision) even when the visible images aren't actually touching.",
+          "explanation": "Bounding boxes surround the image, so they can overlap before the art does.",
+          "concept_id": "collision-types"
+        },
+        {
+          "id": "python-games/05_Collisions/q05",
+          "type": "multiple_choice",
+          "category": "coding",
+          "question": "What does pygame.sprite.spritecollide(player, obstacles, dokill=False) return?",
+          "code": null,
+          "options": [
+            "True or False",
+            "A list of the sprites in the group that collided with the player",
+            "The number of obstacles total",
+            "The player's position"
+          ],
+          "answer": "A list of the sprites in the group that collided with the player",
+          "explanation": "An empty list means no collision; a non-empty list means a hit.",
+          "concept_id": "spritecollide"
+        },
+        {
+          "id": "python-games/05_Collisions/q06",
+          "type": "multiple_choice",
+          "category": "coding",
+          "question": "What does this code do when the player touches an obstacle?",
+          "code": "collider = pygame.sprite.spritecollide(player, obstacles, dokill=False)\nif collider:\n    collider[0].explode()",
+          "options": [
+            "Explodes every obstacle on screen",
+            "Explodes the first obstacle the player collided with",
+            "Ends the game immediately",
+            "Removes the player"
+          ],
+          "answer": "Explodes the first obstacle the player collided with",
+          "explanation": "collider[0] is the first sprite in the returned collision list.",
+          "concept_id": "spritecollide"
+        },
+        {
+          "id": "python-games/05_Collisions/q07",
+          "type": "multiple_choice",
+          "category": "coding",
+          "question": "Why does 'if collider:' work as a test for whether a collision happened?",
+          "code": null,
+          "options": [
+            "collider is always True",
+            "An empty list counts as False and a non-empty list counts as True",
+            "collider counts the frames",
+            "It checks the FPS"
+          ],
+          "answer": "An empty list counts as False and a non-empty list counts as True",
+          "explanation": "If any sprites collided, the list is non-empty and the if block runs.",
+          "concept_id": "spritecollide"
+        },
+        {
+          "id": "python-games/05_Collisions/q08",
+          "type": "short_answer",
+          "category": "game_dev",
+          "question": "What does the dokill argument to spritecollide control?",
+          "code": null,
+          "options": [],
+          "answer": "Whether the collided sprites are automatically removed from their groups.",
+          "explanation": "dokill=True kills the colliding sprites; dokill=False leaves them.",
+          "concept_id": "spritecollide"
+        },
+        {
+          "id": "python-games/05_Collisions/q09",
+          "type": "multiple_choice",
+          "category": "coding",
+          "question": "What is the difference between rect.move(1, 0) and rect.move_ip(1, 0)?",
+          "code": null,
+          "options": [
+            "No difference",
+            "move returns a new rect; move_ip changes the rect in place",
+            "move_ip is always slower",
+            "move deletes the rect"
+          ],
+          "answer": "move returns a new rect; move_ip changes the rect in place",
+          "explanation": "_ip means 'in place', so move_ip modifies the original rect.",
+          "concept_id": "rect-edges-move"
+        },
+        {
+          "id": "python-games/05_Collisions/q10",
+          "type": "short_answer",
+          "category": "coding",
+          "question": "Besides .x and .y, name two edge attributes a Rect has.",
+          "code": null,
+          "options": [],
+          "answer": "Any two of: .left, .right, .top, .bottom.",
+          "explanation": "These give the coordinates of the rectangle's edges and can be read or set.",
+          "concept_id": "rect-edges-move"
+        },
+        {
+          "id": "python-games/05_Collisions/q11",
+          "type": "short_answer",
+          "category": "coding",
+          "question": "How do you get a Rect representing the whole screen so you can check if a sprite went off it?",
+          "code": null,
+          "options": [],
+          "answer": "screen.get_rect()",
+          "explanation": "It returns the screen's rectangle, useful for comparing with sprite edges.",
+          "concept_id": "rect-edges-move"
+        },
+        {
+          "id": "python-games/05_Collisions/q12",
+          "type": "multiple_choice",
+          "category": "coding",
+          "question": "What does player.rect.move_ip(1, 0) do?",
+          "code": null,
+          "options": [
+            "Moves the rect 1 pixel to the right, changing it directly",
+            "Returns a new rect 1 pixel up",
+            "Deletes the player",
+            "Moves the rect 1 pixel down without changing it"
+          ],
+          "answer": "Moves the rect 1 pixel to the right, changing it directly",
+          "explanation": "move_ip changes the rect in place by the given x and y amounts.",
+          "concept_id": "rect-edges-move"
+        }
+      ]
+    },
+    {
+      "id": "python-games/06_Surfaces",
+      "name": "06_Surfaces",
+      "module": "06_Surfaces",
+      "path": "lessons/06_Surfaces",
+      "order": 6,
+      "concepts": [
+        {
+          "id": "surfaces-blit",
+          "name": "Surfaces and blit",
+          "summary": "A surface is anything you can draw on \u2014 like a blank sheet of paper. The screen, the background, and any loaded image are all surfaces. The key surface method is blit(), which copies one surface onto another.",
+          "key_points": [
+            "A surface is anything you can draw on; the screen is the special display surface",
+            "Images loaded with pygame.image.load() and rendered text are also surfaces",
+            "blit() copies one surface onto another at a position",
+            "All surfaces share methods because they are all the same Surface class (polymorphism)"
+          ],
+          "example_code": "image = pygame.Surface((screen.get_width(), screen.get_height()))\nimage.blit(bg_tile, (x, 0))  # copy bg_tile onto image at x"
+        },
+        {
+          "id": "tiling-scrolling",
+          "name": "Tiling and Scrolling Backgrounds",
+          "summary": "To fill a screen with a small background image, you tile it by blitting it repeatedly across the width using range(start, stop, step). To make a scrolling background, you draw it onto an image twice the screen width and move it left a pixel each frame, resetting when it scrolls off.",
+          "key_points": [
+            "Tile by blitting an image at each x with range(0, screen_width, tile_width)",
+            "range(start, stop, step) generates the x positions",
+            "Scrolling uses an image 2x the screen width with the background drawn twice",
+            "Move the scrolling image left each frame and reset it when it is off screen"
+          ],
+          "example_code": "for x in range(0, screen.get_width(), background_width):\n    image.blit(bg_tile, (x, 0))"
+        },
+        {
+          "id": "spritesheets",
+          "name": "Spritesheets",
+          "summary": "A spritesheet packs many small images into one big image so they are easy to manage. The SpriteSheet class loads the sheet and extracts a single sprite by index, or a strip of several. You tell it the cell size (like 16x16) when you create it.",
+          "key_points": [
+            "A spritesheet holds many sprites in one image to keep them organized",
+            "SpriteSheet(path, (16, 16)) sets the size of each cell",
+            "image_at(index) loads one sprite; load_strip(start, count) loads several",
+            "colorkey=-1 uses the top-left pixel's color as transparent"
+          ],
+          "example_code": "spritesheet = SpriteSheet(path, (16, 16))\nsprite = spritesheet.image_at(0)\nsprite_strip = spritesheet.load_strip(1, 3, colorkey=-1)"
+        },
+        {
+          "id": "animation-frames",
+          "name": "Frame-Based Animation",
+          "summary": "To animate a character you load a list of images (one per pose) and switch which one is shown every few frames. Counting frames and using the modulo operator (%) advances to the next image at a steady pace and loops back to the start.",
+          "key_points": [
+            "Load a list/strip of images, one per animation frame",
+            "frame_count % frames_per_image == 0 triggers a change every few frames",
+            "index = (index + 1) % len(sprites) loops through frames and wraps around",
+            "More frames per image means slower animation"
+          ],
+          "example_code": "frame_count += 1\nif frame_count % frames_per_image == 0:\n    frog_index = (frog_index + 1) % len(frog_sprites)\nscreen.blit(frog_sprites[frog_index], (100, 100))"
+        },
+        {
+          "id": "transforms",
+          "name": "Image Transforms",
+          "summary": "The pygame.transform module changes images: scale() resizes, rotate() spins by an angle, and flip() mirrors them. These let you do effects like rotating a moving ball or squashing a character when it lands.",
+          "key_points": [
+            "pygame.transform.scale(image, (w, h)) resizes an image",
+            "pygame.transform.rotate(image, angle) rotates by an angle",
+            "pygame.transform.flip mirrors an image horizontally or vertically",
+            "Transforms create effects like spinning or stretching sprites"
+          ],
+          "example_code": "image = pygame.transform.scale(image, (width, height))\nimage = pygame.transform.rotate(image, angle)"
+        }
+      ],
+      "question_count": 15,
+      "questions": [
+        {
+          "id": "python-games/06_Surfaces/q01",
+          "type": "multiple_choice",
+          "category": "theory",
+          "question": "According to the lesson, a surface is best compared to what?",
+          "code": null,
+          "options": [
+            "A blank piece of paper you can draw on",
+            "A keyboard",
+            "A sound file",
+            "A clock"
+          ],
+          "answer": "A blank piece of paper you can draw on",
+          "explanation": "A surface is anything you can draw on, including the screen and images.",
+          "concept_id": "surfaces-blit"
+        },
+        {
+          "id": "python-games/06_Surfaces/q02",
+          "type": "short_answer",
+          "category": "coding",
+          "question": "Which surface method copies one surface onto another?",
+          "code": null,
+          "options": [],
+          "answer": "blit()",
+          "explanation": "blit copies an image/surface onto another surface at a given position.",
+          "concept_id": "surfaces-blit"
+        },
+        {
+          "id": "python-games/06_Surfaces/q03",
+          "type": "multiple_choice",
+          "category": "game_dev",
+          "question": "Which of these are all surfaces?",
+          "code": null,
+          "options": [
+            "The FPS, the clock, and the score",
+            "The screen, the background, and loaded images",
+            "Keys, events, and rects",
+            "Vectors, scalars, and angles"
+          ],
+          "answer": "The screen, the background, and loaded images",
+          "explanation": "All of these are subclasses of pygame.Surface.",
+          "concept_id": "surfaces-blit"
+        },
+        {
+          "id": "python-games/06_Surfaces/q04",
+          "type": "multiple_choice",
+          "category": "theory",
+          "question": "Why do all surfaces share methods like blit() and fill()?",
+          "code": null,
+          "options": [
+            "They are all the same Surface class (polymorphism)",
+            "Because Pygame copies the methods each time",
+            "Because they all have the same size",
+            "It is a coincidence"
+          ],
+          "answer": "They are all the same Surface class (polymorphism)",
+          "explanation": "Being subclasses of one Surface class means they share its methods.",
+          "concept_id": "surfaces-blit"
+        },
+        {
+          "id": "python-games/06_Surfaces/q05",
+          "type": "multiple_choice",
+          "category": "coding",
+          "question": "What is range(0, screen.get_width(), background_width) used for when tiling a background?",
+          "code": "for x in range(0, screen.get_width(), background_width):\n    image.blit(bg_tile, (x, 0))",
+          "options": [
+            "To set the frame rate",
+            "To generate the x positions where each background tile is drawn",
+            "To rotate the background",
+            "To detect collisions"
+          ],
+          "answer": "To generate the x positions where each background tile is drawn",
+          "explanation": "range(start, stop, step) gives evenly spaced x-coordinates across the screen.",
+          "concept_id": "tiling-scrolling"
+        },
+        {
+          "id": "python-games/06_Surfaces/q06",
+          "type": "short_answer",
+          "category": "game_dev",
+          "question": "What is the main trick for making a side-scrolling background?",
+          "code": null,
+          "options": [],
+          "answer": "Make an image twice the screen width, blit the background onto it twice, move it left one pixel each frame, and reset it when it goes off screen.",
+          "explanation": "The doubled image lets the background scroll seamlessly and loop.",
+          "concept_id": "tiling-scrolling"
+        },
+        {
+          "id": "python-games/06_Surfaces/q07",
+          "type": "multiple_choice",
+          "category": "theory",
+          "question": "Why do games use a spritesheet?",
+          "code": null,
+          "options": [
+            "To make the game run slower",
+            "To pack many small images into one image so they are easier to manage",
+            "To store sound effects",
+            "To detect collisions"
+          ],
+          "answer": "To pack many small images into one image so they are easier to manage",
+          "explanation": "One sheet holds all the frames; code extracts each sprite by index.",
+          "concept_id": "spritesheets"
+        },
+        {
+          "id": "python-games/06_Surfaces/q08",
+          "type": "multiple_choice",
+          "category": "coding",
+          "question": "In SpriteSheet(path, (16, 16)), what does the (16, 16) mean?",
+          "code": null,
+          "options": [
+            "The position of the sheet on screen",
+            "The size of each sprite cell in the sheet",
+            "The number of sprites",
+            "The transparent color"
+          ],
+          "answer": "The size of each sprite cell in the sheet",
+          "explanation": "It tells the SpriteSheet how big each individual sprite is.",
+          "concept_id": "spritesheets"
+        },
+        {
+          "id": "python-games/06_Surfaces/q09",
+          "type": "short_answer",
+          "category": "coding",
+          "question": "Which SpriteSheet method loads a single sprite by its index number?",
+          "code": null,
+          "options": [],
+          "answer": "image_at(index)",
+          "explanation": "image_at returns one sprite; load_strip returns several in a row.",
+          "concept_id": "spritesheets"
+        },
+        {
+          "id": "python-games/06_Surfaces/q10",
+          "type": "multiple_choice",
+          "category": "coding",
+          "question": "What does (frog_index + 1) % len(frog_sprites) accomplish in animation code?",
+          "code": null,
+          "options": [
+            "It deletes a frame",
+            "It advances to the next frame and wraps back to 0 at the end",
+            "It doubles the frame rate",
+            "It picks a random frame"
+          ],
+          "answer": "It advances to the next frame and wraps back to 0 at the end",
+          "explanation": "The modulo keeps the index looping within the list of frames.",
+          "concept_id": "animation-frames"
+        },
+        {
+          "id": "python-games/06_Surfaces/q11",
+          "type": "multiple_choice",
+          "category": "game_dev",
+          "question": "What does frame_count % frames_per_image == 0 control in the animation loop?",
+          "code": null,
+          "options": [
+            "The size of the sprite",
+            "How often the animation switches to the next image",
+            "The color of the frog",
+            "When the game quits"
+          ],
+          "answer": "How often the animation switches to the next image",
+          "explanation": "It becomes true every few frames so the animation doesn't change too fast.",
+          "concept_id": "animation-frames"
+        },
+        {
+          "id": "python-games/06_Surfaces/q12",
+          "type": "short_answer",
+          "category": "game_dev",
+          "question": "To make an animation play more slowly, do you increase or decrease frames_per_image?",
+          "code": null,
+          "options": [],
+          "answer": "Increase it.",
+          "explanation": "More frames between image changes means the animation updates less often.",
+          "concept_id": "animation-frames"
+        },
+        {
+          "id": "python-games/06_Surfaces/q13",
+          "type": "multiple_choice",
+          "category": "coding",
+          "question": "Which pygame.transform function spins an image by an angle?",
+          "code": null,
+          "options": [
+            "scale",
+            "rotate",
+            "blit",
+            "fill"
+          ],
+          "answer": "rotate",
+          "explanation": "pygame.transform.rotate(image, angle) rotates the image.",
+          "concept_id": "transforms"
+        },
+        {
+          "id": "python-games/06_Surfaces/q14",
+          "type": "short_answer",
+          "category": "coding",
+          "question": "Which pygame.transform function would you use to make an image bigger or smaller?",
+          "code": null,
+          "options": [],
+          "answer": "pygame.transform.scale(image, (width, height))",
+          "explanation": "scale resizes an image to the given width and height.",
+          "concept_id": "transforms"
+        },
+        {
+          "id": "python-games/06_Surfaces/q15",
+          "type": "multiple_choice",
+          "category": "theory",
+          "question": "Which three transformations does the transform lesson highlight as the most important?",
+          "code": null,
+          "options": [
+            "Blit, fill, and flip",
+            "Scale, rotate, and flip",
+            "Move, copy, and delete",
+            "Load, save, and draw"
+          ],
+          "answer": "Scale, rotate, and flip",
+          "explanation": "The lesson lists scaling, rotating, and flipping as the key transforms.",
+          "concept_id": "transforms"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,291 @@
+{
+  "generated_by": "scripts/build_quizzes.py",
+  "quiz_format_version": 1,
+  "levels": [
+    {
+      "level": "python-apprentice",
+      "repo": "Python-Apprentice",
+      "bank_file": "python-apprentice.bank.json",
+      "lesson_count": 37,
+      "question_count": 460,
+      "lessons": [
+        {
+          "id": "python-apprentice/10_Welcome",
+          "name": "10_Welcome",
+          "module": "10_Turtles",
+          "question_count": 15
+        },
+        {
+          "id": "python-apprentice/20_Introducing_Tina",
+          "name": "20_Introducing_Tina",
+          "module": "10_Turtles",
+          "question_count": 17
+        },
+        {
+          "id": "python-apprentice/30_Turtle_Tricks",
+          "name": "30_Turtle_Tricks",
+          "module": "10_Turtles",
+          "question_count": 12
+        },
+        {
+          "id": "python-apprentice/40_Loops",
+          "name": "40_Loops",
+          "module": "10_Turtles",
+          "question_count": 14
+        },
+        {
+          "id": "python-apprentice/50_Variables_and_Functions",
+          "name": "50_Variables_and_Functions",
+          "module": "10_Turtles",
+          "question_count": 17
+        },
+        {
+          "id": "python-apprentice/60_More_Turtle_Programs",
+          "name": "60_More_Turtle_Programs",
+          "module": "10_Turtles",
+          "question_count": 17
+        },
+        {
+          "id": "python-apprentice/80_Introducing_Lists",
+          "name": "80_Introducing_Lists",
+          "module": "10_Turtles",
+          "question_count": 17
+        },
+        {
+          "id": "python-apprentice/10_Operators_and_Types",
+          "name": "10_Operators_and_Types",
+          "module": "20_Types_and_Logic",
+          "question_count": 16
+        },
+        {
+          "id": "python-apprentice/20_String_Operations",
+          "name": "20_String_Operations",
+          "module": "20_Types_and_Logic",
+          "question_count": 15
+        },
+        {
+          "id": "python-apprentice/30_Control_Flow",
+          "name": "30_Control_Flow",
+          "module": "20_Types_and_Logic",
+          "question_count": 14
+        },
+        {
+          "id": "python-apprentice/40_Working_With_Numbers",
+          "name": "40_Working_With_Numbers",
+          "module": "20_Types_and_Logic",
+          "question_count": 14
+        },
+        {
+          "id": "python-apprentice/50_My_Ages",
+          "name": "50_My_Ages",
+          "module": "20_Types_and_Logic",
+          "question_count": 10
+        },
+        {
+          "id": "python-apprentice/60_Simple_Adder",
+          "name": "60_Simple_Adder",
+          "module": "20_Types_and_Logic",
+          "question_count": 7
+        },
+        {
+          "id": "python-apprentice/70_Infuriating_Calculator",
+          "name": "70_Infuriating_Calculator",
+          "module": "20_Types_and_Logic",
+          "question_count": 8
+        },
+        {
+          "id": "python-apprentice/80_Code_Challenges",
+          "name": "80_Code_Challenges",
+          "module": "20_Types_and_Logic",
+          "question_count": 9
+        },
+        {
+          "id": "python-apprentice/10_Iteration",
+          "name": "10_Iteration",
+          "module": "30_Loops",
+          "question_count": 13
+        },
+        {
+          "id": "python-apprentice/20_Loops_with_Range",
+          "name": "20_Loops_with_Range",
+          "module": "30_Loops",
+          "question_count": 11
+        },
+        {
+          "id": "python-apprentice/30_Looping_Through_Lists",
+          "name": "30_Looping_Through_Lists",
+          "module": "30_Loops",
+          "question_count": 13
+        },
+        {
+          "id": "python-apprentice/40_Crazy_Tina",
+          "name": "40_Crazy_Tina",
+          "module": "30_Loops",
+          "question_count": 6
+        },
+        {
+          "id": "python-apprentice/50_Tuples",
+          "name": "50_Tuples",
+          "module": "30_Loops",
+          "question_count": 12
+        },
+        {
+          "id": "python-apprentice/60_Indexing_and_Slicing",
+          "name": "60_Indexing_and_Slicing",
+          "module": "30_Loops",
+          "question_count": 13
+        },
+        {
+          "id": "python-apprentice/70_List_Story",
+          "name": "70_List_Story",
+          "module": "30_Loops",
+          "question_count": 6
+        },
+        {
+          "id": "python-apprentice/80_Strings",
+          "name": "80_Strings",
+          "module": "30_Loops",
+          "question_count": 13
+        },
+        {
+          "id": "python-apprentice/90_Fizz_Buzz_Badgers",
+          "name": "90_Fizz_Buzz_Badgers",
+          "module": "30_Loops",
+          "question_count": 10
+        },
+        {
+          "id": "python-apprentice/100_For_Loop_Gauntlet",
+          "name": "100_For_Loop_Gauntlet",
+          "module": "30_Loops",
+          "question_count": 12
+        },
+        {
+          "id": "python-apprentice/110_FizzBuzz_Gui_Grid",
+          "name": "110_FizzBuzz_Gui_Grid",
+          "module": "30_Loops",
+          "question_count": 9
+        },
+        {
+          "id": "python-apprentice/120_More_Iterables",
+          "name": "120_More_Iterables",
+          "module": "30_Loops",
+          "question_count": 16
+        },
+        {
+          "id": "python-apprentice/130_Iterable_Turtle",
+          "name": "130_Iterable_Turtle",
+          "module": "30_Loops",
+          "question_count": 6
+        },
+        {
+          "id": "python-apprentice/140_More_Loops",
+          "name": "140_More_Loops",
+          "module": "30_Loops",
+          "question_count": 13
+        },
+        {
+          "id": "python-apprentice/150_Number_Guess",
+          "name": "150_Number_Guess",
+          "module": "30_Loops",
+          "question_count": 10
+        },
+        {
+          "id": "python-apprentice/160_Extras",
+          "name": "160_Extras",
+          "module": "30_Loops",
+          "question_count": 9
+        },
+        {
+          "id": "python-apprentice/10_Functions",
+          "name": "10_Functions",
+          "module": "40_Data_Structures_Func",
+          "question_count": 16
+        },
+        {
+          "id": "python-apprentice/20_Exceptions",
+          "name": "20_Exceptions",
+          "module": "40_Data_Structures_Func",
+          "question_count": 15
+        },
+        {
+          "id": "python-apprentice/30_Dicts_Sets",
+          "name": "30_Dicts_Sets",
+          "module": "40_Data_Structures_Func",
+          "question_count": 16
+        },
+        {
+          "id": "python-apprentice/40_Funny_Words_Db",
+          "name": "40_Funny_Words_Db",
+          "module": "40_Data_Structures_Func",
+          "question_count": 11
+        },
+        {
+          "id": "python-apprentice/50_Splat_Comprehension",
+          "name": "50_Splat_Comprehension",
+          "module": "40_Data_Structures_Func",
+          "question_count": 17
+        },
+        {
+          "id": "python-apprentice/60_Tic_Tac_Toe",
+          "name": "60_Tic_Tac_Toe",
+          "module": "40_Data_Structures_Func",
+          "question_count": 11
+        }
+      ]
+    },
+    {
+      "level": "python-games",
+      "repo": "Python-Games",
+      "bank_file": "python-games.bank.json",
+      "lesson_count": 6,
+      "question_count": 83,
+      "lessons": [
+        {
+          "id": "python-games/01_Physics_for_Games",
+          "name": "01_Physics_for_Games",
+          "module": "01_Physics_for_Games",
+          "question_count": 15
+        },
+        {
+          "id": "python-games/02_Classes_and_Objects",
+          "name": "02_Classes_and_Objects",
+          "module": "02_Classes_and_Objects",
+          "question_count": 14
+        },
+        {
+          "id": "python-games/03_Vectors",
+          "name": "03_Vectors",
+          "module": "03_Vectors",
+          "question_count": 14
+        },
+        {
+          "id": "python-games/04_Sprites",
+          "name": "04_Sprites",
+          "module": "04_Sprites",
+          "question_count": 13
+        },
+        {
+          "id": "python-games/05_Collisions",
+          "name": "05_Collisions",
+          "module": "05_Collisions",
+          "question_count": 12
+        },
+        {
+          "id": "python-games/06_Surfaces",
+          "name": "06_Surfaces",
+          "module": "06_Surfaces",
+          "question_count": 15
+        }
+      ]
+    }
+  ],
+  "placement_assessment": {
+    "file": "placement-assessment.json",
+    "question_count": 40
+  },
+  "totals": {
+    "levels": 2,
+    "lessons": 43,
+    "questions": 543
+  }
+}
