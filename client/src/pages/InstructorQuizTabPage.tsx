@@ -122,7 +122,7 @@ export function InstructorQuizTabPage() {
               {(levels ?? []).map((lvl) => (
                 <optgroup key={lvl.id} label={lvl.name}>
                   {lvl.lessons.map((l) => (
-                    <option key={l.id} value={l.id}>{l.module} · {l.name}</option>
+                    <option key={l.id} value={l.id}>{l.name}</option>
                   ))}
                 </optgroup>
               ))}

@@ -75,7 +75,7 @@
       "id": "placement/apprentice-1-turtles/q01",
       "band": "apprentice-1-turtles",
       "source_question_id": "python-apprentice/10_Welcome/q01",
-      "source_lesson": "python-apprentice/10_Welcome",
+      "source_lesson": "python-apprentice/10_Turtles",
       "type": "multiple_choice",
       "category": "theory",
       "question": "What does turtle programming let you do?",
@@ -92,116 +92,8 @@
     {
       "id": "placement/apprentice-1-turtles/q02",
       "band": "apprentice-1-turtles",
-      "source_question_id": "python-apprentice/20_Introducing_Tina/q01",
-      "source_lesson": "python-apprentice/20_Introducing_Tina",
-      "type": "multiple_choice",
-      "category": "coding",
-      "question": "Which line creates a turtle named tina?",
-      "code": null,
-      "options": [
-        "tina = turtle.Turtle()",
-        "tina = turtle.setup()",
-        "turtle.tina()",
-        "tina.create('turtle')"
-      ],
-      "answer": "tina = turtle.Turtle()",
-      "explanation": "tina = turtle.Turtle() creates a new turtle object named tina."
-    },
-    {
-      "id": "placement/apprentice-1-turtles/q03",
-      "band": "apprentice-1-turtles",
-      "source_question_id": "python-apprentice/30_Turtle_Tricks/q01",
-      "source_lesson": "python-apprentice/30_Turtle_Tricks",
-      "type": "multiple_choice",
-      "category": "coding",
-      "question": "Which two commands does the triangle exercise ask you to use to draw the sides?",
-      "code": null,
-      "options": [
-        "tina.forward() and tina.left()",
-        "tina.circle() and tina.goto()",
-        "tina.penup() and tina.pendown()",
-        "tina.begin_fill() and tina.end_fill()"
-      ],
-      "answer": "tina.forward() and tina.left()",
-      "explanation": "The 10_Turtle_Tricks exercise says to use tina.forward() and tina.left() to draw the three sides."
-    },
-    {
-      "id": "placement/apprentice-1-turtles/q04",
-      "band": "apprentice-1-turtles",
-      "source_question_id": "python-apprentice/40_Loops/q01",
-      "source_lesson": "python-apprentice/40_Loops",
-      "type": "multiple_choice",
-      "category": "coding",
-      "question": "How many times does the body of this loop run?",
-      "code": "for i in range(4):\n    print('Loop Iteration', i)",
-      "options": [
-        "4 times",
-        "3 times",
-        "5 times",
-        "1 time"
-      ],
-      "answer": "4 times",
-      "explanation": "range(4) generates 0, 1, 2, 3, so the loop body runs four times."
-    },
-    {
-      "id": "placement/apprentice-1-turtles/q05",
-      "band": "apprentice-1-turtles",
-      "source_question_id": "python-apprentice/50_Variables_and_Functions/q01",
-      "source_lesson": "python-apprentice/50_Variables_and_Functions",
-      "type": "multiple_choice",
-      "category": "theory",
-      "question": "Which description best fits a variable?",
-      "code": null,
-      "options": [
-        "A labeled box that stores information you can change",
-        "A command that turns the turtle",
-        "A note for humans that Python ignores",
-        "A shape with five sides"
-      ],
-      "answer": "A labeled box that stores information you can change",
-      "explanation": "The lesson describes a variable as a labeled box that stores information you can change anytime."
-    },
-    {
-      "id": "placement/apprentice-1-turtles/q06",
-      "band": "apprentice-1-turtles",
-      "source_question_id": "python-apprentice/60_More_Turtle_Programs/q01",
-      "source_lesson": "python-apprentice/60_More_Turtle_Programs",
-      "type": "multiple_choice",
-      "category": "theory",
-      "question": "What image format must you use for a custom turtle shape?",
-      "code": null,
-      "options": [
-        "GIF",
-        "PNG",
-        "JPEG",
-        "BMP"
-      ],
-      "answer": "GIF",
-      "explanation": "The lesson states the image used as a turtle shape must be a GIF."
-    },
-    {
-      "id": "placement/apprentice-1-turtles/q07",
-      "band": "apprentice-1-turtles",
-      "source_question_id": "python-apprentice/80_Introducing_Lists/q01",
-      "source_lesson": "python-apprentice/80_Introducing_Lists",
-      "type": "multiple_choice",
-      "category": "theory",
-      "question": "What is a list in Python?",
-      "code": null,
-      "options": [
-        "A built-in data structure that stores an ordered collection of items",
-        "A way to draw shapes with the turtle",
-        "A single number value",
-        "A function that prints text"
-      ],
-      "answer": "A built-in data structure that stores an ordered collection of items",
-      "explanation": "A list stores an ordered collection of items."
-    },
-    {
-      "id": "placement/apprentice-1-turtles/q08",
-      "band": "apprentice-1-turtles",
       "source_question_id": "python-apprentice/10_Welcome/q02",
-      "source_lesson": "python-apprentice/10_Welcome",
+      "source_lesson": "python-apprentice/10_Turtles",
       "type": "multiple_choice",
       "category": "theory",
       "question": "Where does the turtle module come from?",
@@ -216,10 +108,118 @@
       "explanation": "The lesson explains the turtle module is a pre-installed Python tool you use to control the turtle."
     },
     {
+      "id": "placement/apprentice-1-turtles/q03",
+      "band": "apprentice-1-turtles",
+      "source_question_id": "python-apprentice/10_Welcome/q03",
+      "source_lesson": "python-apprentice/10_Turtles",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "Which file extension belongs to a notebook file?",
+      "code": null,
+      "options": [
+        ".ipynb",
+        ".py",
+        ".txt",
+        ".html"
+      ],
+      "answer": ".ipynb",
+      "explanation": "Notebook files end with .ipynb and let you read text and run code in the same document."
+    },
+    {
+      "id": "placement/apprentice-1-turtles/q04",
+      "band": "apprentice-1-turtles",
+      "source_question_id": "python-apprentice/10_Welcome/q04",
+      "source_lesson": "python-apprentice/10_Turtles",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "Which file extension belongs to a standalone Python program?",
+      "code": null,
+      "options": [
+        ".py",
+        ".ipynb",
+        ".doc",
+        ".run"
+      ],
+      "answer": ".py",
+      "explanation": "Python files end with .py and you can run them by clicking the play button."
+    },
+    {
+      "id": "placement/apprentice-1-turtles/q05",
+      "band": "apprentice-1-turtles",
+      "source_question_id": "python-apprentice/10_Welcome/q05",
+      "source_lesson": "python-apprentice/10_Turtles",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "What is a code cell in a notebook?",
+      "code": null,
+      "options": [
+        "A box where you can write and run code",
+        "A note for humans that the computer ignores",
+        "The icon that opens the virtual screen",
+        "A type of variable that stores numbers"
+      ],
+      "answer": "A box where you can write and run code",
+      "explanation": "A code cell is simply a box in a notebook where you write code and run it."
+    },
+    {
+      "id": "placement/apprentice-1-turtles/q06",
+      "band": "apprentice-1-turtles",
+      "source_question_id": "python-apprentice/10_Welcome/q06",
+      "source_lesson": "python-apprentice/10_Turtles",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "Besides clicking the play button, which keyboard shortcut runs a code cell?",
+      "code": null,
+      "options": [
+        "Shift + Enter",
+        "Ctrl + C",
+        "Alt + Tab",
+        "Esc + Delete"
+      ],
+      "answer": "Shift + Enter",
+      "explanation": "You can run a cell by clicking the play button or by pressing Shift + Enter."
+    },
+    {
+      "id": "placement/apprentice-1-turtles/q07",
+      "band": "apprentice-1-turtles",
+      "source_question_id": "python-apprentice/10_Welcome/q08",
+      "source_lesson": "python-apprentice/10_Turtles",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "In the assignment, how do you change what gets printed so it shows your name instead of 'Hello World!'?",
+      "code": null,
+      "options": [
+        "Change the text inside the quotation marks",
+        "Rename the file to your name",
+        "Delete the print command",
+        "Pick a different Python interpreter"
+      ],
+      "answer": "Change the text inside the quotation marks",
+      "explanation": "The string inside the quotes is the text printed, so editing it changes the output."
+    },
+    {
+      "id": "placement/apprentice-1-turtles/q08",
+      "band": "apprentice-1-turtles",
+      "source_question_id": "python-apprentice/10_Welcome/q09",
+      "source_lesson": "python-apprentice/10_Turtles",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "Why might nothing visible happen the first time you press the play button?",
+      "code": null,
+      "options": [
+        "You still need to pick which Python interpreter to use",
+        "The turtle ran out of ink",
+        "Notebooks cannot run code",
+        "The computer needs to restart"
+      ],
+      "answer": "You still need to pick which Python interpreter to use",
+      "explanation": "Until you choose an interpreter, the code cannot run, so you see no result."
+    },
+    {
       "id": "placement/apprentice-2-types/q01",
       "band": "apprentice-2-types",
       "source_question_id": "python-apprentice/10_Operators_and_Types/q01",
-      "source_lesson": "python-apprentice/10_Operators_and_Types",
+      "source_lesson": "python-apprentice/20_Types_and_Logic",
       "type": "multiple_choice",
       "category": "coding",
       "question": "What does this print?",
@@ -236,134 +236,134 @@
     {
       "id": "placement/apprentice-2-types/q02",
       "band": "apprentice-2-types",
-      "source_question_id": "python-apprentice/20_String_Operations/q01",
-      "source_lesson": "python-apprentice/20_String_Operations",
+      "source_question_id": "python-apprentice/10_Operators_and_Types/q02",
+      "source_lesson": "python-apprentice/20_Types_and_Logic",
       "type": "multiple_choice",
       "category": "coding",
-      "question": "What does print(text[0:6]) display?",
-      "code": "text = \"Python Programming\"\nprint(text[0:6])",
+      "question": "What does this print?",
+      "code": "x = 10\ny = 20\nprint(x + y)",
       "options": [
-        "\"Python \"",
-        "\"Python\"",
-        "\"Pytho\"",
-        "\"ython\""
+        "1020",
+        "30",
+        "\"1020\"",
+        "TypeError"
       ],
-      "answer": "\"Python\"",
-      "explanation": "The slice [0:6] takes characters at indices 0 through 5, which spell \"Python\"."
+      "answer": "30",
+      "explanation": "Both values are integers, so + does arithmetic addition."
     },
     {
       "id": "placement/apprentice-2-types/q03",
       "band": "apprentice-2-types",
-      "source_question_id": "python-apprentice/30_Control_Flow/q01",
-      "source_lesson": "python-apprentice/30_Control_Flow",
+      "source_question_id": "python-apprentice/10_Operators_and_Types/q03",
+      "source_lesson": "python-apprentice/20_Types_and_Logic",
       "type": "multiple_choice",
       "category": "coding",
-      "question": "What does this print?",
-      "code": "a = 10\nif a == 11:\n    print(\"a is 11\")\nif a == 10:\n    print(\"a is 10\")\nif a < 20:\n    print(\"a is less than 20\")",
+      "question": "What happens when you run this code?",
+      "code": "x = 10\ny = \"20\"\nprint(x + y)",
       "options": [
-        "a is 11",
-        "a is 10",
-        "a is 10\\na is less than 20",
-        "a is 11\\na is 10\\na is less than 20"
+        "Prints 30",
+        "Prints 1020",
+        "Raises a TypeError",
+        "Prints \"1020\""
       ],
-      "answer": "a is 10\\na is less than 20",
-      "explanation": "a == 11 is False, but a == 10 and a < 20 are both True, so two lines print."
+      "answer": "Raises a TypeError",
+      "explanation": "You can't add an integer to a string directly, so Python raises a TypeError."
     },
     {
       "id": "placement/apprentice-2-types/q04",
       "band": "apprentice-2-types",
-      "source_question_id": "python-apprentice/40_Working_With_Numbers/q01",
-      "source_lesson": "python-apprentice/40_Working_With_Numbers",
+      "source_question_id": "python-apprentice/10_Operators_and_Types/q04",
+      "source_lesson": "python-apprentice/20_Types_and_Logic",
       "type": "multiple_choice",
-      "category": "theory",
-      "question": "Which prefix marks a hexadecimal number in Python?",
+      "category": "coding",
+      "question": "What is the value of 11 // 4?",
       "code": null,
       "options": [
-        "0b",
-        "0o",
-        "0x",
-        "0h"
+        "2.75",
+        "2",
+        "3",
+        "2.0"
       ],
-      "answer": "0x",
-      "explanation": "0x is the prefix for hexadecimal; 0b is binary and 0o is octal."
+      "answer": "2",
+      "explanation": "Floor division of two integers drops the decimal and returns an integer, 2."
     },
     {
       "id": "placement/apprentice-2-types/q05",
       "band": "apprentice-2-types",
-      "source_question_id": "python-apprentice/50_My_Ages/q01",
-      "source_lesson": "python-apprentice/50_My_Ages",
+      "source_question_id": "python-apprentice/10_Operators_and_Types/q05",
+      "source_lesson": "python-apprentice/20_Types_and_Logic",
       "type": "multiple_choice",
       "category": "coding",
-      "question": "Which call asks the user for their age as a whole number?",
+      "question": "What is the value of 11 % 4?",
       "code": null,
       "options": [
-        "simpledialog.askinteger(\"Your Age\", \"How old are you?\")",
-        "simpledialog.askfloat(\"Your Age\", \"How old are you?\")",
-        "messagebox.showinfo(\"Your Age\", \"How old are you?\")",
-        "simpledialog.askstring(\"Your Age\", \"How old are you?\")"
+        "2",
+        "3",
+        "1",
+        "0"
       ],
-      "answer": "simpledialog.askinteger(\"Your Age\", \"How old are you?\")",
-      "explanation": "askinteger() returns the user's answer as an integer."
+      "answer": "3",
+      "explanation": "4 goes into 11 twice with 3 left over, so the remainder is 3."
     },
     {
       "id": "placement/apprentice-2-types/q06",
       "band": "apprentice-2-types",
-      "source_question_id": "python-apprentice/60_Simple_Adder/q01",
-      "source_lesson": "python-apprentice/60_Simple_Adder",
+      "source_question_id": "python-apprentice/10_Operators_and_Types/q06",
+      "source_lesson": "python-apprentice/20_Types_and_Logic",
       "type": "multiple_choice",
       "category": "coding",
-      "question": "What is the overall goal of this program?",
+      "question": "What does print(22 / 7) display?",
       "code": null,
       "options": [
-        "Ask for one number and double it",
-        "Ask for two numbers and display their sum",
-        "Ask the user's age",
-        "Convert a number to binary"
+        "3",
+        "3.0",
+        "3.142857142857143",
+        "3.14"
       ],
-      "answer": "Ask for two numbers and display their sum",
-      "explanation": "The opening docstring says to ask for two numbers and display the sum."
+      "answer": "3.142857142857143",
+      "explanation": "Regular division with / always produces a float, even with integers."
     },
     {
       "id": "placement/apprentice-2-types/q07",
       "band": "apprentice-2-types",
-      "source_question_id": "python-apprentice/70_Infuriating_Calculator/q01",
-      "source_lesson": "python-apprentice/70_Infuriating_Calculator",
+      "source_question_id": "python-apprentice/10_Operators_and_Types/q07",
+      "source_lesson": "python-apprentice/20_Types_and_Logic",
       "type": "multiple_choice",
       "category": "coding",
-      "question": "How many things does the program ask the user for?",
+      "question": "What does print(22.0 // 7.0) display?",
       "code": null,
       "options": [
-        "One number",
-        "Two numbers only",
-        "Two numbers and a math operation",
-        "Two numbers and two operations"
+        "3",
+        "3.0",
+        "3.14",
+        "3.142857"
       ],
-      "answer": "Two numbers and a math operation",
-      "explanation": "The docstring lists a number, a second number, and a math operation."
+      "answer": "3.0",
+      "explanation": "Floor division with floats keeps the float type, giving 3.0."
     },
     {
       "id": "placement/apprentice-2-types/q08",
       "band": "apprentice-2-types",
-      "source_question_id": "python-apprentice/80_Code_Challenges/q01",
-      "source_lesson": "python-apprentice/80_Code_Challenges",
+      "source_question_id": "python-apprentice/10_Operators_and_Types/q08",
+      "source_lesson": "python-apprentice/20_Types_and_Logic",
       "type": "multiple_choice",
-      "category": "theory",
-      "question": "How is Code Wars described compared to HackerRank?",
+      "category": "coding",
+      "question": "Which expression converts the string \"20\" so it can be added to the integer 10 to get 30?",
       "code": null,
       "options": [
-        "More professional and structured",
-        "More competitive and gamified, like a game for coding",
-        "Only for advanced programmers",
-        "A place to host websites"
+        "10 + int(\"20\")",
+        "10 + str(\"20\")",
+        "str(10) + \"20\"",
+        "10 + \"20\""
       ],
-      "answer": "More competitive and gamified, like a game for coding",
-      "explanation": "The lesson describes Code Wars as more gamified, with ranks and badges."
+      "answer": "10 + int(\"20\")",
+      "explanation": "int(\"20\") turns the string into the integer 20, so the result is 30."
     },
     {
       "id": "placement/apprentice-3-loops/q01",
       "band": "apprentice-3-loops",
       "source_question_id": "python-apprentice/10_Iteration/q01",
-      "source_lesson": "python-apprentice/10_Iteration",
+      "source_lesson": "python-apprentice/30_Loops",
       "type": "multiple_choice",
       "category": "theory",
       "question": "What is an iterable?",
@@ -380,134 +380,134 @@
     {
       "id": "placement/apprentice-3-loops/q02",
       "band": "apprentice-3-loops",
-      "source_question_id": "python-apprentice/20_Loops_with_Range/q01",
-      "source_lesson": "python-apprentice/20_Loops_with_Range",
+      "source_question_id": "python-apprentice/10_Iteration/q02",
+      "source_lesson": "python-apprentice/30_Loops",
       "type": "multiple_choice",
-      "category": "coding",
-      "question": "What does this code print?",
-      "code": "a = range(10)\nprint(type(a))",
+      "category": "theory",
+      "question": "Which of these is NOT given as an example of an iterable in this lesson?",
+      "code": null,
       "options": [
-        "<class 'range'>",
-        "<class 'list'>",
-        "range(0, 10)",
-        "<class 'int'>"
+        "An integer like 42",
+        "A list like ['apple', 'banana']",
+        "A string like \"Hello World\"",
+        "A range like range(10)"
       ],
-      "answer": "<class 'range'>",
-      "explanation": "range() returns a range object, so its type is range."
+      "answer": "An integer like 42",
+      "explanation": "Lists, tuples, strings, and ranges are iterables; a plain integer is not."
     },
     {
       "id": "placement/apprentice-3-loops/q03",
       "band": "apprentice-3-loops",
-      "source_question_id": "python-apprentice/30_Looping_Through_Lists/q01",
-      "source_lesson": "python-apprentice/30_Looping_Through_Lists",
+      "source_question_id": "python-apprentice/10_Iteration/q03",
+      "source_lesson": "python-apprentice/30_Loops",
       "type": "multiple_choice",
       "category": "coding",
-      "question": "What does this print?",
-      "code": "backpack = ['map', 'flashlight', 'water bottle', 'snack']\nitem = backpack[0]\nprint(item)",
+      "question": "What does this code print?",
+      "code": "print(list(range(10)))",
       "options": [
-        "map",
-        "flashlight",
-        "1",
-        "['map']"
+        "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]",
+        "[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]",
+        "range(0, 10)",
+        "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]"
       ],
-      "answer": "map",
-      "explanation": "Indexes start at 0, so backpack[0] is the first item, 'map'."
+      "answer": "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]",
+      "explanation": "range(10) produces 0 through 9, and list() collects them."
     },
     {
       "id": "placement/apprentice-3-loops/q04",
       "band": "apprentice-3-loops",
-      "source_question_id": "python-apprentice/40_Crazy_Tina/q01",
-      "source_lesson": "python-apprentice/40_Crazy_Tina",
+      "source_question_id": "python-apprentice/10_Iteration/q04",
+      "source_lesson": "python-apprentice/30_Loops",
       "type": "multiple_choice",
-      "category": "theory",
-      "question": "According to the hint, what must be true about the forwards, lefts, and colors lists?",
-      "code": null,
+      "category": "coding",
+      "question": "What is the result of list(\"abc\")?",
+      "code": "print(list(\"abc\"))",
       "options": [
-        "They should all have the same number of elements",
-        "They must all be empty",
-        "They must each have exactly three elements",
-        "They must be sorted alphabetically"
+        "['a', 'b', 'c']",
+        "\"abc\"",
+        "['abc']",
+        "[a, b, c]"
       ],
-      "answer": "They should all have the same number of elements",
-      "explanation": "Parallel lists read by a shared index must line up, so they need matching lengths."
+      "answer": "['a', 'b', 'c']",
+      "explanation": "Strings are iterable, so list() splits the string into individual characters."
     },
     {
       "id": "placement/apprentice-3-loops/q05",
       "band": "apprentice-3-loops",
-      "source_question_id": "python-apprentice/50_Tuples/q01",
-      "source_lesson": "python-apprentice/50_Tuples",
+      "source_question_id": "python-apprentice/10_Iteration/q05",
+      "source_lesson": "python-apprentice/30_Loops",
       "type": "multiple_choice",
       "category": "theory",
-      "question": "What is the main difference between a tuple and a list?",
+      "question": "What is the correct general structure of a for loop?",
       "code": null,
       "options": [
-        "A tuple cannot be changed after it is created; a list can",
-        "A tuple can only hold numbers",
-        "A list uses parentheses and a tuple uses brackets",
-        "A tuple is always longer than a list"
+        "for <variable> in <iterable>:",
+        "for <iterable> in <variable>:",
+        "for <variable> = <iterable>:",
+        "loop <variable> in <iterable>:"
       ],
-      "answer": "A tuple cannot be changed after it is created; a list can",
-      "explanation": "Tuples are immutable, while lists are mutable."
+      "answer": "for <variable> in <iterable>:",
+      "explanation": "A for loop is the for keyword, a variable, in, an iterable, then a colon."
     },
     {
       "id": "placement/apprentice-3-loops/q06",
       "band": "apprentice-3-loops",
-      "source_question_id": "python-apprentice/60_Indexing_and_Slicing/q01",
-      "source_lesson": "python-apprentice/60_Indexing_and_Slicing",
+      "source_question_id": "python-apprentice/10_Iteration/q07",
+      "source_lesson": "python-apprentice/30_Loops",
       "type": "multiple_choice",
       "category": "coding",
-      "question": "What does this print?",
-      "code": "colors = ['red', 'blue', 'black', 'orange']\nprint(colors[-1])",
+      "question": "How many lines does this loop print?",
+      "code": "for i in ['a','b','c','d']:\n    print(i)",
       "options": [
-        "orange",
-        "red",
-        "black",
-        "blue"
+        "4",
+        "3",
+        "1",
+        "0"
       ],
-      "answer": "orange",
-      "explanation": "Index -1 counts from the end, so it is the last item, 'orange'."
+      "answer": "4",
+      "explanation": "The list has four items, so the loop runs four times, printing four lines."
     },
     {
       "id": "placement/apprentice-3-loops/q07",
       "band": "apprentice-3-loops",
-      "source_question_id": "python-apprentice/70_List_Story/q01",
-      "source_lesson": "python-apprentice/70_List_Story",
+      "source_question_id": "python-apprentice/10_Iteration/q08",
+      "source_lesson": "python-apprentice/30_Loops",
       "type": "multiple_choice",
       "category": "coding",
-      "question": "What is the value of words[0] in this exercise?",
-      "code": "words = ['Once', '\ud83d\udc66', 'upon', '\ud83d\udc15', 'park', 'met', 'with', 'a', 'the',\n    'time', 'to', 'who', '\ud83d\udc08', '\ud83d\udc67', 'and', 'went', 'had', 'play', '\u26bd.', 'they']",
+      "question": "What does this loop print first?",
+      "code": "for char in \"Hello World!\":\n    print(char)",
       "options": [
-        "'Once'",
-        "'\ud83d\udc66'",
-        "'upon'",
-        "'the'"
+        "H",
+        "Hello",
+        "Hello World!",
+        "h"
       ],
-      "answer": "'Once'",
-      "explanation": "Index 0 is the first item in the list, 'Once'."
+      "answer": "H",
+      "explanation": "Looping over a string yields one character at a time, starting with the first, H."
     },
     {
       "id": "placement/apprentice-3-loops/q08",
       "band": "apprentice-3-loops",
-      "source_question_id": "python-apprentice/80_Strings/q01",
-      "source_lesson": "python-apprentice/80_Strings",
+      "source_question_id": "python-apprentice/10_Iteration/q09",
+      "source_lesson": "python-apprentice/30_Loops",
       "type": "multiple_choice",
       "category": "theory",
-      "question": "What are triple quotes (\"\"\") specifically used for?",
+      "question": "What is an infinite loop?",
       "code": null,
       "options": [
-        "Strings that span multiple lines",
-        "Strings that contain only numbers",
-        "Making a string uppercase",
-        "Strings that cannot be changed"
+        "A loop that runs forever because it has no termination condition",
+        "A loop that runs exactly 100 times",
+        "A loop that prints infinity",
+        "A loop with more than one variable"
       ],
-      "answer": "Strings that span multiple lines",
-      "explanation": "Triple quotes let a string run across several lines."
+      "answer": "A loop that runs forever because it has no termination condition",
+      "explanation": "Without a way to stop, or with an endless iterable, the loop never ends."
     },
     {
       "id": "placement/apprentice-4-data-func/q01",
       "band": "apprentice-4-data-func",
       "source_question_id": "python-apprentice/10_Functions/q01",
-      "source_lesson": "python-apprentice/10_Functions",
+      "source_lesson": "python-apprentice/40_Data_Structures_Func",
       "type": "multiple_choice",
       "category": "theory",
       "question": "In a function definition, where does the function's name appear?",
@@ -524,98 +524,8 @@
     {
       "id": "placement/apprentice-4-data-func/q02",
       "band": "apprentice-4-data-func",
-      "source_question_id": "python-apprentice/20_Exceptions/q02",
-      "source_lesson": "python-apprentice/20_Exceptions",
-      "type": "multiple_choice",
-      "category": "coding",
-      "question": "What exception does this line raise?",
-      "code": "int(\"This is not an integer\")",
-      "options": [
-        "ValueError",
-        "TypeError",
-        "IndexError",
-        "ZeroDivisionError"
-      ],
-      "answer": "ValueError",
-      "explanation": "The string is the right type but cannot be converted, so it raises a ValueError."
-    },
-    {
-      "id": "placement/apprentice-4-data-func/q03",
-      "band": "apprentice-4-data-func",
-      "source_question_id": "python-apprentice/30_Dicts_Sets/q01",
-      "source_lesson": "python-apprentice/30_Dicts_Sets",
-      "type": "multiple_choice",
-      "category": "coding",
-      "question": "What does this code print for the set?",
-      "code": "my_set = { 'a','a','b','b','c','c'}\nprint(\"Set:  \", my_set)",
-      "options": [
-        "A set containing only 'a', 'b', and 'c'",
-        "['a', 'a', 'b', 'b', 'c', 'c']",
-        "A set with all six items",
-        "An empty set"
-      ],
-      "answer": "A set containing only 'a', 'b', and 'c'",
-      "explanation": "A set removes duplicates, so only the unique values remain."
-    },
-    {
-      "id": "placement/apprentice-4-data-func/q04",
-      "band": "apprentice-4-data-func",
-      "source_question_id": "python-apprentice/40_Funny_Words_Db/q01",
-      "source_lesson": "python-apprentice/40_Funny_Words_Db",
-      "type": "multiple_choice",
-      "category": "theory",
-      "question": "What data structure does this program use to store words and their definitions?",
-      "code": null,
-      "options": [
-        "A dictionary",
-        "A list",
-        "A set",
-        "A tuple"
-      ],
-      "answer": "A dictionary",
-      "explanation": "The definitions are stored in a global dictionary called db."
-    },
-    {
-      "id": "placement/apprentice-4-data-func/q05",
-      "band": "apprentice-4-data-func",
-      "source_question_id": "python-apprentice/50_Splat_Comprehension/q01",
-      "source_lesson": "python-apprentice/50_Splat_Comprehension",
-      "type": "multiple_choice",
-      "category": "coding",
-      "question": "Given the array below, what does two_dimensional_array[1][2] return?",
-      "code": "two_dimensional_array = [\n        [1, 2, 3],\n        [4, 5, 6],\n        [7, 8, 9]\n    ]\nprint(two_dimensional_array[1][2])",
-      "options": [
-        "6",
-        "4",
-        "8",
-        "2"
-      ],
-      "answer": "6",
-      "explanation": "Index [1] is the second row [4,5,6], and [2] picks the third element, 6."
-    },
-    {
-      "id": "placement/apprentice-4-data-func/q06",
-      "band": "apprentice-4-data-func",
-      "source_question_id": "python-apprentice/60_Tic_Tac_Toe/q01",
-      "source_lesson": "python-apprentice/60_Tic_Tac_Toe",
-      "type": "multiple_choice",
-      "category": "theory",
-      "question": "How is the Tic Tac Toe board stored?",
-      "code": null,
-      "options": [
-        "As a 3x3 2D array (a list of lists)",
-        "As a single flat list of 9 items",
-        "As a dictionary of coordinates",
-        "As a set of marks"
-      ],
-      "answer": "As a 3x3 2D array (a list of lists)",
-      "explanation": "The board is built as a 3x3 grid where each cell starts as None."
-    },
-    {
-      "id": "placement/apprentice-4-data-func/q07",
-      "band": "apprentice-4-data-func",
       "source_question_id": "python-apprentice/10_Functions/q02",
-      "source_lesson": "python-apprentice/10_Functions",
+      "source_lesson": "python-apprentice/40_Data_Structures_Func",
       "type": "multiple_choice",
       "category": "coding",
       "question": "What does this code print?",
@@ -630,22 +540,112 @@
       "explanation": "add_ten(5) returns 5 + 10, which is 15."
     },
     {
-      "id": "placement/apprentice-4-data-func/q08",
+      "id": "placement/apprentice-4-data-func/q03",
       "band": "apprentice-4-data-func",
-      "source_question_id": "python-apprentice/20_Exceptions/q03",
-      "source_lesson": "python-apprentice/20_Exceptions",
+      "source_question_id": "python-apprentice/10_Functions/q03",
+      "source_lesson": "python-apprentice/40_Data_Structures_Func",
       "type": "multiple_choice",
       "category": "coding",
-      "question": "What happens when this loop reaches the value 'Bob'?",
-      "code": "for e in [0, 1, 65, 'Bob', 23, 'larry']:\n    i = int(e)\n    print(f\"Converting {e} to an integer: {i}\")",
+      "question": "What does this code print?",
+      "code": "def do_nothing():\n    pass\n\nresult = do_nothing()\nprint(\"Return value:\", result)",
       "options": [
-        "It crashes with a ValueError before finishing the loop",
-        "It prints Converting Bob to an integer: 0",
-        "It skips 'Bob' and continues",
+        "Return value: None",
+        "Return value: ",
+        "Return value: pass",
+        "Return value: 0"
+      ],
+      "answer": "Return value: None",
+      "explanation": "do_nothing has no return statement, so it returns None."
+    },
+    {
+      "id": "placement/apprentice-4-data-func/q04",
+      "band": "apprentice-4-data-func",
+      "source_question_id": "python-apprentice/10_Functions/q06",
+      "source_lesson": "python-apprentice/40_Data_Structures_Func",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "Given def greet_user(name, greeting), what does greet_user(greeting=\"Hello\", name=\"Alice\") print?",
+      "code": "def greet_user(name, greeting):\n    print(f\"{greeting}, {name}!\")\n\ngreet_user(greeting=\"Hello\", name=\"Alice\")",
+      "options": [
+        "Hello, Alice!",
+        "Alice, Hello!",
+        "Hello, greeting!",
+        "An error, because the order is wrong"
+      ],
+      "answer": "Hello, Alice!",
+      "explanation": "Keyword arguments are matched by name, so order does not matter."
+    },
+    {
+      "id": "placement/apprentice-4-data-func/q05",
+      "band": "apprentice-4-data-func",
+      "source_question_id": "python-apprentice/10_Functions/q07",
+      "source_lesson": "python-apprentice/40_Data_Structures_Func",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "When mixing positional and keyword arguments in a function call, which rule must you follow?",
+      "code": null,
+      "options": [
+        "Positional arguments must come before keyword arguments",
+        "Keyword arguments must come first",
+        "You can never mix them",
+        "They must be in alphabetical order"
+      ],
+      "answer": "Positional arguments must come before keyword arguments",
+      "explanation": "You cannot place a positional argument after a keyword argument."
+    },
+    {
+      "id": "placement/apprentice-4-data-func/q06",
+      "band": "apprentice-4-data-func",
+      "source_question_id": "python-apprentice/10_Functions/q08",
+      "source_lesson": "python-apprentice/40_Data_Structures_Func",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "Given def greet_user(name, greeting), what happens when you run greet_user(name=\"Bob\", greeting)?",
+      "code": "greet_user(name=\"Bob\", greeting)",
+      "options": [
+        "A SyntaxError, because a positional argument follows a keyword argument",
+        "It prints greeting, Bob!",
+        "It prints Bob, greeting!",
         "It returns None"
       ],
-      "answer": "It crashes with a ValueError before finishing the loop",
-      "explanation": "int('Bob') raises an uncaught ValueError, ending the program."
+      "answer": "A SyntaxError, because a positional argument follows a keyword argument",
+      "explanation": "You cannot put a positional argument after a keyword argument."
+    },
+    {
+      "id": "placement/apprentice-4-data-func/q07",
+      "band": "apprentice-4-data-func",
+      "source_question_id": "python-apprentice/10_Functions/q09",
+      "source_lesson": "python-apprentice/40_Data_Structures_Func",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "What does greet_user(\"Alice\") print with this definition?",
+      "code": "def greet_user(name, greeting='Hello', punct=\"!\"):\n    print(f\"{greeting}, {name}{punct}\")\n\ngreet_user(\"Alice\")",
+      "options": [
+        "Hello, Alice!",
+        "Alice, Hello!",
+        "Hello, Alice",
+        ", Alice!"
+      ],
+      "answer": "Hello, Alice!",
+      "explanation": "greeting and punct use their defaults 'Hello' and '!'."
+    },
+    {
+      "id": "placement/apprentice-4-data-func/q08",
+      "band": "apprentice-4-data-func",
+      "source_question_id": "python-apprentice/10_Functions/q10",
+      "source_lesson": "python-apprentice/40_Data_Structures_Func",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "Which statement about default parameter values is true?",
+      "code": null,
+      "options": [
+        "Parameters with defaults must come after parameters without defaults",
+        "Parameters with defaults must come first",
+        "Every parameter must have a default",
+        "Defaults can only be numbers"
+      ],
+      "answer": "Parameters with defaults must come after parameters without defaults",
+      "explanation": "Required parameters come before optional ones with defaults."
     },
     {
       "id": "placement/games/q01",

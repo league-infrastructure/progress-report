@@ -11,7 +11,15 @@
 import path from 'path';
 import fs from 'fs';
 import { db } from './index';
-import { quizLevels, quizLessons, quizQuestions } from './schema';
+import {
+  quizLevels,
+  quizLessons,
+  quizQuestions,
+  quizzes,
+  quizAttempts,
+  quizSeenQuestions,
+  quizAssignmentTokens,
+} from './schema';
 import { eq, count } from 'drizzle-orm';
 
 // ---------------------------------------------------------------------------
@@ -93,17 +101,30 @@ function resolveQuizzesDir(): string {
 // Main seeder
 // ---------------------------------------------------------------------------
 
-export async function seedQuiz(): Promise<void> {
-  // --- Guard: skip if questions are already seeded ---
-  const [{ value: existingCount }] = await db
-    .select({ value: count() })
-    .from(quizQuestions);
+export async function seedQuiz(opts: { reset?: boolean } = {}): Promise<void> {
+  if (opts.reset) {
+    // Clear quiz curriculum + dependent quiz data so the banks can be re-seeded
+    // (e.g. after the section grouping changed). FK-safe order: children first.
+    await db.delete(quizSeenQuestions);
+    await db.delete(quizAttempts);
+    await db.delete(quizAssignmentTokens);
+    await db.delete(quizzes);
+    await db.delete(quizQuestions);
+    await db.delete(quizLessons);
+    await db.delete(quizLevels);
+    console.log('[seed-quiz] Reset: cleared existing quiz curriculum + data.');
+  } else {
+    // --- Guard: skip if questions are already seeded ---
+    const [{ value: existingCount }] = await db
+      .select({ value: count() })
+      .from(quizQuestions);
 
-  if (existingCount > 0) {
-    console.log(
-      `[seed-quiz] Already seeded (${existingCount} questions present). Skipping.`,
-    );
-    return;
+    if (existingCount > 0) {
+      console.log(
+        `[seed-quiz] Already seeded (${existingCount} questions present). Skipping.`,
+      );
+      return;
+    }
   }
 
   const quizzesDir = resolveQuizzesDir();
@@ -233,7 +254,7 @@ export async function seedQuiz(): Promise<void> {
 // ---------------------------------------------------------------------------
 
 if (require.main === module) {
-  seedQuiz()
+  seedQuiz({ reset: process.argv.includes('--reset') })
     .then(() => process.exit(0))
     .catch((err: unknown) => {
       console.error('[seed-quiz] Fatal error:', err);

@@ -74,27 +74,49 @@ def normalize_question(level: str, lesson_name: str, idx: int, q: dict) -> dict:
 
 
 def build_bank(src_file: str, level: str, repo: str) -> dict:
+    """Build one quiz per SECTION (top-level lesson directory, e.g. ``10_Turtles``).
+
+    The concept files list one entry per exercise/sub-lesson; we group those by
+    their section (``module``) so each section is a single quiz. Question ids stay
+    stable (``level/sub-lesson/qNN``) and unique within the section.
+    """
     raw = json.loads((QUIZ_APP / src_file).read_text())
+
+    # Preserve first-seen order of sections.
+    groups: "dict[str, dict]" = {}
+    for lesson in raw.get("lessons", []):
+        name = lesson.get("name", "")
+        path = lesson.get("path", "")
+        module = module_of(level, path, name)
+        g = groups.setdefault(module, {"concepts": [], "questions": []})
+        for i, q in enumerate(lesson.get("questions", []), start=1):
+            g["questions"].append(normalize_question(level, name, i, q))
+        g["concepts"].extend(lesson.get("concepts", []))
+
     lessons_out = []
     total_q = 0
-    for order, lesson in enumerate(raw.get("lessons", []), start=1):
-        name = lesson.get("name", f"lesson_{order}")
-        path = lesson.get("path", "")
-        questions = [
-            normalize_question(level, name, i, q)
-            for i, q in enumerate(lesson.get("questions", []), start=1)
-        ]
-        total_q += len(questions)
+    for order, (module, g) in enumerate(groups.items(), start=1):
+        # De-duplicate concepts by id across the section's sub-lessons.
+        seen_concepts = set()
+        concepts = []
+        for c in g["concepts"]:
+            cid = c.get("id")
+            if cid and cid in seen_concepts:
+                continue
+            if cid:
+                seen_concepts.add(cid)
+            concepts.append(c)
+        total_q += len(g["questions"])
         lessons_out.append(
             {
-                "id": f"{level}/{name}",
-                "name": name,
-                "module": module_of(level, path, name),
-                "path": path,
+                "id": f"{level}/{module}",
+                "name": module,
+                "module": module,
+                "path": f"lessons/{module}",
                 "order": order,
-                "concepts": lesson.get("concepts", []),
-                "question_count": len(questions),
-                "questions": questions,
+                "concepts": concepts,
+                "question_count": len(g["questions"]),
+                "questions": g["questions"],
             }
         )
     return {
