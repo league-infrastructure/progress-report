@@ -20,6 +20,8 @@ import { NotFoundPage } from './pages/NotFoundPage'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { AdminLayout } from './components/AdminLayout'
 import { InstructorLayout } from './components/InstructorLayout'
+import { InstructorQuizTabPage } from './pages/InstructorQuizTabPage'
+import { AdminPastQuizzesPage } from './pages/AdminPastQuizzesPage'
 
 function App() {
   return (
@@ -64,6 +66,11 @@ function App() {
           <InstructorLayout><CheckinPage /></InstructorLayout>
         </ProtectedRoute>
       </Route>
+      <Route path="/quizzes">
+        <ProtectedRoute role="instructor">
+          <InstructorLayout><InstructorQuizTabPage /></InstructorLayout>
+        </ProtectedRoute>
+      </Route>
       <Route path="/admin/instructors">
         <ProtectedRoute role="admin">
           <AdminLayout>
@@ -89,6 +96,13 @@ function App() {
         <ProtectedRoute role="admin">
           <AdminLayout>
             <AdminFeedbackPage />
+          </AdminLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/past-quizzes">
+        <ProtectedRoute role="admin">
+          <AdminLayout>
+            <AdminPastQuizzesPage />
           </AdminLayout>
         </ProtectedRoute>
       </Route>

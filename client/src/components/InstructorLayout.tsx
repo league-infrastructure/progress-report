@@ -2,13 +2,14 @@ import { useState } from 'react'
 import { Link, useLocation } from 'wouter'
 import { useAuth } from '../hooks/useAuth'
 import { useQueryClient } from '@tanstack/react-query'
-import { Home, FileText, LayoutTemplate, ClipboardCheck, RefreshCw, Bell, BarChart, LogOut, HelpCircle } from 'lucide-react'
+import { Home, FileText, LayoutTemplate, ClipboardCheck, RefreshCw, Bell, BarChart, LogOut, HelpCircle, GraduationCap } from 'lucide-react'
 
 const INSTRUCTOR_LINKS = [
   { href: '/dashboard', label: 'Dashboard', Icon: Home },
   { href: '/reviews',   label: 'Reviews',   Icon: FileText },
   { href: '/templates', label: 'Templates', Icon: LayoutTemplate },
   { href: '/checkin',   label: 'Check-in',  Icon: ClipboardCheck },
+  { href: '/quizzes',   label: 'Quizzes',   Icon: GraduationCap },
 ]
 
 function getInitials(name: string): string {

@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'wouter'
 import { useAuth } from '../hooks/useAuth'
-import { BarChart, Users, Shield, MessageSquare, Heart, Bell, Home, LogOut, HelpCircle, FileText } from 'lucide-react'
+import { BarChart, Users, Shield, MessageSquare, Heart, Bell, Home, LogOut, HelpCircle, FileText, GraduationCap } from 'lucide-react'
 
 const ADMIN_LINKS = [
   { href: '/admin',                  label: 'Overview',   Icon: BarChart },
@@ -9,6 +9,7 @@ const ADMIN_LINKS = [
   { href: '/admin/compliance',       label: 'Compliance', Icon: Shield },
   { href: '/admin/volunteer-hours',  label: 'Volunteers', Icon: Heart },
   { href: '/admin/feedback',         label: 'Feedback',   Icon: MessageSquare },
+  { href: '/admin/past-quizzes',     label: 'Past Quizzes', Icon: GraduationCap },
 ]
 
 const HELP_LINKS = [
