@@ -208,6 +208,101 @@ export const pike13AdminToken = sqliteTable('pike13_admin_token', {
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
+// ---------- Quiz tables ----------
+
+export const quizLevels = sqliteTable('quiz_levels', {
+  id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
+  slug: text('slug').notNull().unique(),
+  name: text('name').notNull(),
+  order: integer('order').notNull(),
+});
+
+export const quizLessons = sqliteTable(
+  'quiz_lessons',
+  {
+    id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
+    levelId: integer('level_id')
+      .notNull()
+      .references(() => quizLevels.id),
+    name: text('name').notNull(),
+    module: text('module').notNull(),
+    path: text('path').notNull(),
+    order: integer('order').notNull(),
+  },
+  (t) => [unique().on(t.levelId, t.name)],
+);
+
+export const quizQuestions = sqliteTable('quiz_questions', {
+  id: text('id').primaryKey(), // stable bank id e.g. 'python-apprentice/10_Welcome/q01'
+  lessonId: integer('lesson_id')
+    .notNull()
+    .references(() => quizLessons.id),
+  conceptId: text('concept_id'),
+  type: text('type').notNull(), // 'multiple_choice' | 'short_answer'
+  category: text('category').notNull(),
+  question: text('question').notNull(),
+  code: text('code'),
+  options: text('options', { mode: 'json' }).$type<string[]>(),
+  answer: text('answer').notNull(),
+  explanation: text('explanation').notNull(),
+});
+
+export const quizzes = sqliteTable('quizzes', {
+  id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
+  studentId: integer('student_id')
+    .notNull()
+    .references(() => students.id),
+  instructorId: integer('instructor_id')
+    .references(() => instructors.id),
+  lessonId: integer('lesson_id')
+    .notNull()
+    .references(() => quizLessons.id),
+  status: text('status').notNull().default('assigned'), // 'assigned' | 'completed'
+  bypassReason: text('bypass_reason'),
+  questionIds: text('question_ids', { mode: 'json' }).notNull().$type<string[]>(),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
+export const quizAttempts = sqliteTable('quiz_attempts', {
+  id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
+  quizId: integer('quiz_id')
+    .notNull()
+    .references(() => quizzes.id),
+  studentId: integer('student_id')
+    .notNull()
+    .references(() => students.id),
+  answers: text('answers', { mode: 'json' }).notNull().$type<Record<string, string>>(),
+  score: integer('score').notNull(),
+  passed: integer('passed', { mode: 'boolean' }).notNull(),
+  submittedAt: integer('submitted_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
+export const quizSeenQuestions = sqliteTable(
+  'quiz_seen_questions',
+  {
+    id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
+    studentId: integer('student_id')
+      .notNull()
+      .references(() => students.id),
+    questionId: text('question_id')
+      .notNull()
+      .references(() => quizQuestions.id),
+    lastSeenAt: integer('last_seen_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [unique().on(t.studentId, t.questionId)],
+);
+
+export const quizAssignmentTokens = sqliteTable('quiz_assignment_tokens', {
+  id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
+  quizId: integer('quiz_id')
+    .notNull()
+    .references(() => quizzes.id),
+  token: text('token').notNull().unique(),
+  expiresAt: integer('expires_at', { mode: 'timestamp' }).notNull(),
+  consumedAt: integer('consumed_at', { mode: 'timestamp' }),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
 // ---------- Exported types ----------
 
 export type User = typeof users.$inferSelect;
@@ -236,3 +331,22 @@ export type VolunteerSchedule = typeof volunteerSchedule.$inferSelect;
 export type VolunteerEventSchedule = typeof volunteerEventSchedule.$inferSelect;
 export type Pike13AdminToken = typeof pike13AdminToken.$inferSelect;
 export type NewPike13AdminToken = typeof pike13AdminToken.$inferInsert;
+
+// Quiz types
+export type QuizRole = 'student' | 'instructor' | 'admin';
+export type QuizStatus = 'assigned' | 'completed';
+export type QuizQuestionType = 'multiple_choice' | 'short_answer';
+export type QuizLevel = typeof quizLevels.$inferSelect;
+export type NewQuizLevel = typeof quizLevels.$inferInsert;
+export type QuizLesson = typeof quizLessons.$inferSelect;
+export type NewQuizLesson = typeof quizLessons.$inferInsert;
+export type QuizQuestion = typeof quizQuestions.$inferSelect;
+export type NewQuizQuestion = typeof quizQuestions.$inferInsert;
+export type Quiz = typeof quizzes.$inferSelect;
+export type NewQuiz = typeof quizzes.$inferInsert;
+export type QuizAttempt = typeof quizAttempts.$inferSelect;
+export type NewQuizAttempt = typeof quizAttempts.$inferInsert;
+export type QuizSeenQuestion = typeof quizSeenQuestions.$inferSelect;
+export type NewQuizSeenQuestion = typeof quizSeenQuestions.$inferInsert;
+export type QuizAssignmentToken = typeof quizAssignmentTokens.$inferSelect;
+export type NewQuizAssignmentToken = typeof quizAssignmentTokens.$inferInsert;

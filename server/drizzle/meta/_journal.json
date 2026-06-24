@@ -8,6 +8,13 @@
       "when": 1777778762113,
       "tag": "0000_lethal_wong",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1782288819574,
+      "tag": "0001_bumpy_purple_man",
+      "breakpoints": true
     }
   ]
 }
