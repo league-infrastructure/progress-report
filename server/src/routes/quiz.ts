@@ -358,6 +358,42 @@ quizRouter.get('/instructor/my-students', requireQuizRole('instructor', 'admin')
   }
 });
 
+// Preview a freshly-sampled quiz for a lesson WITH answers — lets an instructor
+// view what a quiz looks like without assigning it or logging in as a student.
+quizRouter.get('/instructor/preview', requireQuizRole('instructor', 'admin'), (req, res, next) => {
+  try {
+    const lessonId = Number(req.query.lessonId);
+    if (!lessonId) {
+      res.status(400).json({ error: 'lessonId required' });
+      return;
+    }
+    const lesson = db.select().from(quizLessons).where(eq(quizLessons.id, lessonId)).get();
+    if (!lesson) {
+      res.status(404).json({ error: 'Lesson not found' });
+      return;
+    }
+    const ids = sampleQuestions(lessonId, 0); // studentId 0 -> no seen history
+    const rows = db.select().from(quizQuestions).where(inArray(quizQuestions.id, ids)).all();
+    const byId = new Map(rows.map((q) => [q.id, q]));
+    const questions = ids
+      .map((id) => byId.get(id))
+      .filter((q): q is QuizQuestion => Boolean(q))
+      .map((q) => ({
+        id: q.id,
+        type: q.type,
+        category: q.category,
+        question: q.question,
+        code: q.code,
+        options: q.options ?? [],
+        answer: q.answer,
+        explanation: q.explanation,
+      }));
+    res.json({ lessonName: lesson.name, questions });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ============================================================
 // Admin routes — past-quizzes detail
 // ============================================================

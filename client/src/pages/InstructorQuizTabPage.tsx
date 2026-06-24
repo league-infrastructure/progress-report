@@ -17,6 +17,17 @@ interface MyStudentRow {
   submittedAt: string | null
 }
 
+interface PreviewQ {
+  id: string
+  type: string
+  category: string
+  question: string
+  code: string | null
+  options: string[]
+  answer: string
+  explanation: string
+}
+
 async function getJSON<T>(url: string): Promise<T> {
   const res = await fetch(url)
   if (!res.ok) throw new Error(`Request failed: ${url}`)
@@ -36,6 +47,8 @@ export function InstructorQuizTabPage() {
   const [addName, setAddName] = useState('')
   const [adding, setAdding] = useState(false)
   const [addErr, setAddErr] = useState<string | null>(null)
+  const [preview, setPreview] = useState<{ lessonName: string; questions: PreviewQ[] } | null>(null)
+  const [previewBusy, setPreviewBusy] = useState(false)
 
   const { data: roster, error: rosterError, refetch: refetchRoster } = useQuery<Student[]>({
     queryKey: ['quiz', 'instructor', 'roster'],
@@ -104,6 +117,21 @@ export function InstructorQuizTabPage() {
       setAddErr(e instanceof Error ? e.message : 'Could not add student')
     } finally {
       setAdding(false)
+    }
+  }
+
+  async function handlePreview() {
+    if (!lessonId) return
+    setPreviewBusy(true); setPreview(null); setErr(null)
+    try {
+      const data = await getJSON<{ lessonName: string; questions: PreviewQ[] }>(
+        `/api/quiz/instructor/preview?lessonId=${lessonId}`,
+      )
+      setPreview(data)
+    } catch {
+      setErr('Could not load preview')
+    } finally {
+      setPreviewBusy(false)
     }
   }
 
@@ -182,6 +210,10 @@ export function InstructorQuizTabPage() {
             className="rounded bg-green-600 px-3 py-1.5 text-sm text-white hover:bg-green-700 disabled:opacity-50">
             {busy ? 'Assigning…' : 'Assign quiz'}
           </button>
+          <button type="button" onClick={handlePreview} disabled={!lessonId || previewBusy}
+            className="rounded border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50">
+            {previewBusy ? 'Loading…' : 'Preview quiz'}
+          </button>
         </div>
 
         {err && <p className="mt-2 text-sm text-red-600">{err}</p>}
@@ -192,6 +224,37 @@ export function InstructorQuizTabPage() {
           </div>
         )}
       </div>
+
+      {/* Quiz preview (instructor view — answers shown) */}
+      {preview && (
+        <div className="mb-8 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="mb-1 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-800">Preview · {preview.lessonName}</h2>
+            <button onClick={() => setPreview(null)} className="text-sm text-slate-500 hover:underline">Close</button>
+          </div>
+          <p className="mb-3 text-xs text-slate-400">A fresh 10-question sample. Correct answers are highlighted (instructor view only).</p>
+          <ol className="space-y-4">
+            {preview.questions.map((q, i) => (
+              <li key={q.id} className="rounded border border-slate-200 p-3">
+                <p className="font-medium text-slate-800">{i + 1}. {q.question}</p>
+                {q.code && <pre className="my-2 overflow-x-auto rounded bg-slate-900 p-2 text-xs text-slate-100">{q.code}</pre>}
+                {q.options.length > 0 ? (
+                  <ul className="mt-1 space-y-0.5 text-sm">
+                    {q.options.map((opt) => (
+                      <li key={opt} className={opt === q.answer ? 'font-semibold text-green-700' : 'text-slate-600'}>
+                        {opt === q.answer ? '✓ ' : '• '}{opt}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-1 text-sm text-green-700">Answer: {q.answer}</p>
+                )}
+                <p className="mt-1 text-xs text-slate-500">{q.explanation}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
 
       {/* Results */}
       <h2 className="mb-3 text-lg font-semibold text-slate-800">My students’ quizzes</h2>

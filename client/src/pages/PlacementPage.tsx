@@ -46,6 +46,7 @@ export function PlacementPage() {
   const [result, setResult] = useState<PlacementResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [language, setLanguage] = useState<'python' | 'java'>('python')
 
   const wrap = 'mx-auto max-w-2xl px-4 py-10'
 
@@ -90,28 +91,47 @@ export function PlacementPage() {
   if (phase === 'intro') {
     return (
       <div className={wrap}>
-        <h1 className="text-2xl font-bold text-slate-800">Python Placement Test</h1>
+        <h1 className="text-2xl font-bold text-slate-800">Placement Test</h1>
         <p className="mt-2 text-slate-600">
-          Not sure where you’d start? This free 40-question test places you into the right League
-          Python course and lesson. Enter your details to begin.
+          Find out where you’d start. Choose a language, enter your details, and take a short test.
         </p>
-        <form className="mt-6 space-y-4" onSubmit={startTest}>
-          <label className="block text-sm text-slate-700">
-            Name
-            <input value={name} onChange={(e) => setName(e.target.value)} required
-              className="mt-1 w-full rounded border border-slate-300 px-3 py-2" placeholder="Your name" />
-          </label>
-          <label className="block text-sm text-slate-700">
-            Email
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
-              className="mt-1 w-full rounded border border-slate-300 px-3 py-2" placeholder="you@example.com" />
-          </label>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <button type="submit" disabled={busy}
-            className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50">
-            {busy ? 'Loading…' : 'Begin placement test'}
-          </button>
-        </form>
+
+        <div className="mt-4">
+          <span className="text-sm text-slate-600">Language</span>
+          <div className="mt-1 inline-flex overflow-hidden rounded border border-slate-300">
+            {(['python', 'java'] as const).map((lang) => (
+              <button key={lang} type="button" onClick={() => setLanguage(lang)}
+                className={`px-4 py-1.5 text-sm capitalize ${language === lang ? 'bg-blue-600 text-white' : 'bg-white text-slate-700'}`}>
+                {lang}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {language === 'java' ? (
+          <div className="mt-6 rounded bg-amber-50 p-4 text-sm text-amber-800">
+            The <strong>Java</strong> placement test is coming soon — Java content will be added later.
+            For now, choose <strong>Python</strong>.
+          </div>
+        ) : (
+          <form className="mt-6 space-y-4" onSubmit={startTest}>
+            <label className="block text-sm text-slate-700">
+              Name
+              <input value={name} onChange={(e) => setName(e.target.value)} required
+                className="mt-1 w-full rounded border border-slate-300 px-3 py-2" placeholder="Your name" />
+            </label>
+            <label className="block text-sm text-slate-700">
+              Email
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
+                className="mt-1 w-full rounded border border-slate-300 px-3 py-2" placeholder="you@example.com" />
+            </label>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            <button type="submit" disabled={busy}
+              className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50">
+              {busy ? 'Loading…' : 'Begin placement test'}
+            </button>
+          </form>
+        )}
         <p className="mt-6 text-xs text-slate-400">40 multiple-choice questions · auto-graded · ~20 minutes.</p>
       </div>
     )
