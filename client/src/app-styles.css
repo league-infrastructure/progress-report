@@ -387,10 +387,10 @@ body {
 }
 .login-logo {
   display: block;
-  margin: 0 auto 14px;
-  height: 56px;
+  margin: 0 auto 16px;
+  height: 76px;
   width: auto;
-  max-width: 220px;
+  max-width: 280px;
   object-fit: contain;
 }
 @media (max-width: 760px) {

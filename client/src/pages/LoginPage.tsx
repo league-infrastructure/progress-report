@@ -6,7 +6,6 @@ export function LoginPage() {
     <div className="login-screen">
       <div className="login-card">
         <img src="/league_logo.png" className="login-logo" alt="The LEAGUE of Amazing Programmers" />
-        <h1>The LEAGUE of Amazing Programmers</h1>
         <p style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: 12.5, fontWeight: 600, color: 'var(--color-muted)' }}>
           Classroom Management Platform
         </p>
