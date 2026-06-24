@@ -14,8 +14,30 @@ import { requireQuizRole, assertOwnQuiz, QuizAccessError } from '../middleware/q
 import { sampleQuestions, markSeen } from '../services/quiz/sampler';
 import { gradeAttempt } from '../services/quiz/grader';
 import { mintToken, resolveToken, consumeToken, TokenError } from '../services/quiz/tokenizer';
+import { getPlacement, gradePlacement } from '../services/quiz/placement';
 
 export const quizRouter = Router();
+
+// ============================================================
+// Placement assessment (public, no authentication)
+// ============================================================
+
+quizRouter.get('/placement', (_req, res, next) => {
+  try {
+    res.json(getPlacement());
+  } catch (err) {
+    next(err);
+  }
+});
+
+quizRouter.post('/placement/submit', (req, res, next) => {
+  try {
+    const { answers } = req.body as { name?: string; email?: string; answers?: Record<string, string> };
+    res.json(gradePlacement(answers ?? {}));
+  } catch (err) {
+    next(err);
+  }
+});
 
 // ---------- helpers ----------
 
