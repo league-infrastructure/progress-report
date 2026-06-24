@@ -8,6 +8,7 @@ import {
   quizLessons,
   quizLevels,
   students,
+  instructorStudents,
   type QuizQuestion,
 } from '../db/schema';
 import { requireQuizRole, assertOwnQuiz, QuizAccessError } from '../middleware/quizAuth';
@@ -220,6 +221,22 @@ quizRouter.get('/instructor/students', requireQuizRole('instructor', 'admin'), (
       .select({ id: students.id, name: students.name, githubUsername: students.githubUsername })
       .from(students)
       .where(eq(students.githubUsername, github))
+      .all();
+    res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+quizRouter.get('/instructor/roster', requireQuizRole('instructor', 'admin'), (req, res, next) => {
+  try {
+    const instructorId = req.session.quizUser!.instructorId ?? -1;
+    const rows = db
+      .select({ id: students.id, name: students.name, githubUsername: students.githubUsername })
+      .from(instructorStudents)
+      .innerJoin(students, eq(instructorStudents.studentId, students.id))
+      .where(eq(instructorStudents.instructorId, instructorId))
+      .orderBy(students.name)
       .all();
     res.json(rows);
   } catch (err) {
