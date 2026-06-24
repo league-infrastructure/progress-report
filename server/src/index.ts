@@ -28,6 +28,7 @@ import { feedbackRouter } from './routes/feedback';
 import { errorHandler } from './middleware/errorHandler';
 import { startScheduler } from './services/scheduler';
 import { slackRouter } from './routes/slack';
+import { quizRouter } from './routes/quiz';
 import { seedQuiz } from './db/seed-quiz';
 import type { SessionUser } from './types/session';
 
@@ -125,6 +126,7 @@ app.use('/api', checkinsRouter);
 app.use('/api', adminRouter);
 app.use('/api', volunteerHoursRouter);
 app.use('/api', feedbackRouter);
+app.use('/api/quiz', quizRouter);
 
 app.use(errorHandler);
 
