@@ -376,4 +376,57 @@ describe('Python/Java class filter', () => {
       .where(eq(schema.students.pike13SyncId, '53'));
     expect(remaining[0].studentId).toBe(javaStudent.id);
   });
+
+  it('prunes attendance rows recorded for non-Python/Java classes', async () => {
+    // Seed a stale attendance row for a non-Python/Java occurrence, as if it
+    // had been recorded before Python/Java scoping existed.
+    const [staleStudent] = await db
+      .insert(schema.students)
+      .values({ name: 'Stale Art Student', pike13SyncId: '60' })
+      .returning({ id: schema.students.id });
+    await db.insert(schema.studentAttendance).values({
+      studentId: staleStudent.id,
+      instructorId: testInstructorId,
+      attendedAt: new Date('2026-03-01T10:00:00Z'),
+      eventOccurrenceId: '400',
+    });
+
+    // A sync run that returns that same occurrence as a non-Python/Java class
+    // (plus a Python class so the run is non-empty).
+    const fetchFn = buildFetch({
+      staff_members: [{ id: 999, name: 'Test Instructor', email: INSTRUCTOR_EMAIL }],
+      people: [{ id: 61, name: 'Python Student' }],
+      event_occurrences: [
+        {
+          id: 400,
+          name: 'Art Studio',
+          start_at: '2026-03-01T10:00:00Z',
+          end_at: '2026-03-01T11:00:00Z',
+          staff_members: [{ id: 999, name: 'Test Instructor' }],
+          people: [{ id: 60, name: 'Stale Art Student', visit_state: 'completed' }],
+        },
+        {
+          id: 401,
+          name: 'Python 4',
+          start_at: '2026-03-02T10:00:00Z',
+          end_at: '2026-03-02T11:00:00Z',
+          staff_members: [{ id: 999, name: 'Test Instructor' }],
+          people: [{ id: 61, name: 'Python Student', visit_state: 'completed' }],
+        },
+      ],
+    });
+    await runSync(db, 'tok', fetchFn);
+
+    // The non-Python/Java attendance is gone; the Python attendance remains.
+    const occ400 = await db
+      .select()
+      .from(schema.studentAttendance)
+      .where(eq(schema.studentAttendance.eventOccurrenceId, '400'));
+    expect(occ400).toHaveLength(0);
+    const occ401 = await db
+      .select()
+      .from(schema.studentAttendance)
+      .where(eq(schema.studentAttendance.eventOccurrenceId, '401'));
+    expect(occ401).toHaveLength(1);
+  });
 });

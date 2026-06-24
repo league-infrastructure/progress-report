@@ -458,6 +458,9 @@ export async function runSync(
   //     even if the same student-instructor pair appears across multiple event chunks.
   let assignmentsCreated = 0;
   const seenAssignmentPairs = new Set<string>();
+  // Event occurrences that are NOT Python/Java classes, so any attendance rows
+  // recorded for them (e.g. before Python/Java scoping existed) can be pruned.
+  const nonReviewedOccurrenceIds = new Set<string>();
 
   for (const occ of eventOccurrences) {
     // Skip make-up classes entirely — students attend under their regular instructor,
@@ -466,7 +469,10 @@ export async function runSync(
 
     // Only Python and Java classes require monthly reviews. Skip every other
     // class so its students are never assigned to an instructor for review.
-    if (!isPythonOrJavaClass(occ.name)) continue;
+    if (!isPythonOrJavaClass(occ.name)) {
+      nonReviewedOccurrenceIds.add(String(occ.id));
+      continue;
+    }
 
     // Identify instructors on this event via pike13StaffId
     const instructorIds: number[] = [];
@@ -564,6 +570,22 @@ export async function runSync(
             ),
           );
       }
+    }
+  }
+
+  // Prune attendance recorded for non-Python/Java classes. The per-month review
+  // list is built from student_attendance, so stale rows (created before
+  // Python/Java scoping existed) would otherwise keep non-reviewed students on
+  // instructors' lists. Deleting only by the specific non-Python/Java occurrence
+  // IDs seen this run makes this safe — no other attendance is touched. Chunked
+  // to stay within SQLite's bound-parameter limit.
+  if (nonReviewedOccurrenceIds.size > 0) {
+    const ids = [...nonReviewedOccurrenceIds];
+    const CHUNK = 500;
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      await db
+        .delete(schema.studentAttendance)
+        .where(inArray(schema.studentAttendance.eventOccurrenceId, ids.slice(i, i + CHUNK)));
     }
   }
 
