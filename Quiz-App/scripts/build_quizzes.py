@@ -137,43 +137,39 @@ def build_bank(src_file: str, level: str, repo: str) -> dict:
 # band they have NOT mastered (>= MASTERY_PCT correct). Bands are ordered from
 # absolute beginner to most advanced across the combined curriculum.
 MASTERY_PCT = 70
-PLACEMENT_PER_BAND = 8  # 5 bands * 8 = 40 questions
 
+# Bands are pure-Python concept tiers in increasing difficulty. Questions are
+# drawn only from sections that teach the Python LANGUAGE (not turtle/pygame
+# libraries or notebook/editor mechanics). A student is placed at the start of
+# the first tier they have not mastered.
 BANDS = [
     {
-        "id": "apprentice-1-turtles",
-        "label": "Python Apprentice — Turtles & basics",
-        "level": "python-apprentice",
-        "modules": ["10_Turtles"],
-        "place_at": {"level": "python-apprentice", "lesson": "lessons/10_Turtles/10_Welcome"},
-    },
-    {
-        "id": "apprentice-2-types",
-        "label": "Python Apprentice — Types & logic",
+        "id": "basics",
+        "label": "Python basics — types, operators & logic",
         "level": "python-apprentice",
         "modules": ["20_Types_and_Logic"],
-        "place_at": {"level": "python-apprentice", "lesson": "lessons/20_Types_and_Logic/10_Operators_and_Types.ipynb"},
+        "place_at": {"level": "python-apprentice", "lesson": "lessons/10_Turtles"},
     },
     {
-        "id": "apprentice-3-loops",
-        "label": "Python Apprentice — Loops",
+        "id": "loops",
+        "label": "Loops & iteration",
         "level": "python-apprentice",
         "modules": ["30_Loops"],
-        "place_at": {"level": "python-apprentice", "lesson": "lessons/30_Loops/10_Iteration.ipynb"},
+        "place_at": {"level": "python-apprentice", "lesson": "lessons/30_Loops"},
     },
     {
-        "id": "apprentice-4-data-func",
-        "label": "Python Apprentice — Data structures & functions",
+        "id": "data-functions",
+        "label": "Data structures & functions",
         "level": "python-apprentice",
         "modules": ["40_Data_Structures_Func"],
-        "place_at": {"level": "python-apprentice", "lesson": "lessons/40_Data_Structures_Func/10_Functions.ipynb"},
+        "place_at": {"level": "python-apprentice", "lesson": "lessons/40_Data_Structures_Func"},
     },
     {
-        "id": "games",
-        "label": "Python Games — OOP, vectors, sprites",
+        "id": "oop",
+        "label": "Classes & objects (OOP)",
         "level": "python-games",
-        "modules": None,  # any games lesson
-        "place_at": {"level": "python-games", "lesson": "lessons/01_Physics_for_Games"},
+        "modules": ["02_Classes_and_Objects"],
+        "place_at": {"level": "python-games", "lesson": "lessons/02_Classes_and_Objects"},
     },
 ]
 
@@ -185,44 +181,100 @@ PLACED_BEYOND = {
 }
 
 
-def pick_placement_questions(banks: dict[str, dict]) -> list[dict]:
-    """Select 40 auto-gradable (multiple_choice) questions stratified by band.
+PLACEMENT_TOTAL = 40
 
-    Within each band we round-robin across that band's lessons to maximize
-    concept coverage, deterministically (curriculum order, no randomness).
-    """
-    selected: list[dict] = []
+# The placement test must measure PURE Python knowledge — not library APIs
+# (turtle, pygame), notebook/ipynb mechanics, or editor/keyboard/environment
+# trivia. Questions mentioning any of these terms (or tagged game_dev) are excluded.
+EXCLUDE_TERMS = [
+    # turtle graphics
+    "turtle", "tina", "pencolor", "pendown", "penup", ".forward(", ".left(",
+    ".right(", ".backward(", "exitonclick", "exit on click", "setup(",
+    # pygame / game dev
+    "pygame", "sprite", "blit", "surface", "rect", "screen", "vector",
+    "velocity", "collision", "collide", "pixel",
+    # notebook / editor / environment / keyboard
+    "notebook", "jupyter", "ipynb", "kernel", "vscode", "visual studio",
+    "codespace", "keyboard", "shortcut", "ctrl", "cmd+", "green button",
+    "play button", "run button", "click run", "press run", "league code server",
+    "run the program", "run programs", "run the cell", "run cell",
+]
+
+
+def is_pure_python(q: dict) -> bool:
+    """True if the question tests core Python and not a library/editor/notebook."""
+    if q.get("category") == "game_dev":
+        return False
+    blob = " ".join(
+        [
+            q.get("question", "") or "",
+            q.get("code") or "",
+            " ".join(q.get("options") or []),
+            q.get("answer", "") or "",
+        ]
+    ).lower()
+    return not any(term in blob for term in EXCLUDE_TERMS)
+
+
+def pick_placement_questions(banks: dict[str, dict]) -> list[dict]:
+    """Select PLACEMENT_TOTAL pure-Python multiple-choice questions, balanced
+    across the bands. Within a band we round-robin across lessons for concept
+    spread; across bands we round-robin to keep representation even and fill to
+    the target. Deterministic (curriculum order, no randomness)."""
+    # Pure-Python MC candidates per band, grouped by concept for spread.
+    candidates: dict[str, list] = {}
     for band in BANDS:
         bank = banks[band["level"]]
-        # lessons belonging to this band, in curriculum order
         band_lessons = [
             L for L in bank["lessons"]
             if band["modules"] is None or L["module"] in band["modules"]
         ]
-        # multiple-choice questions per lesson (placement is auto-graded)
-        per_lesson = [
-            [q for q in L["questions"] if q["type"] == "multiple_choice"]
-            for L in band_lessons
-        ]
-        chosen: list[dict] = []
-        cursor = [0] * len(per_lesson)
-        # round-robin one question per lesson until the band quota is filled
-        while len(chosen) < PLACEMENT_PER_BAND and any(
-            cursor[i] < len(per_lesson[i]) for i in range(len(per_lesson))
-        ):
-            for i, qs in enumerate(per_lesson):
-                if len(chosen) >= PLACEMENT_PER_BAND:
-                    break
-                if cursor[i] < len(qs):
-                    chosen.append((band_lessons[i], qs[cursor[i]]))
-                    cursor[i] += 1
-        for pos, (lesson, q) in enumerate(chosen, start=1):
+        lesson_by_qid = {q["id"]: L["id"] for L in band_lessons for q in L["questions"]}
+        by_concept: dict[str, list] = {}
+        for L in band_lessons:
+            for q in L["questions"]:
+                if q["type"] == "multiple_choice" and is_pure_python(q):
+                    by_concept.setdefault(q.get("concept_id") or "_", []).append(q)
+        concept_keys = sorted(by_concept.keys())
+        ordered: list = []
+        ccur = {k: 0 for k in concept_keys}
+        progressed = True
+        while progressed:
+            progressed = False
+            for k in concept_keys:
+                if ccur[k] < len(by_concept[k]):
+                    q = by_concept[k][ccur[k]]
+                    ordered.append((lesson_by_qid[q["id"]], q))
+                    ccur[k] += 1
+                    progressed = True
+        candidates[band["id"]] = ordered
+
+    # Round-robin across bands to fill up to PLACEMENT_TOTAL.
+    picked: dict[str, list] = {b["id"]: [] for b in BANDS}
+    band_cursor = {b["id"]: 0 for b in BANDS}
+    total = 0
+    progressed = True
+    while total < PLACEMENT_TOTAL and progressed:
+        progressed = False
+        for band in BANDS:
+            if total >= PLACEMENT_TOTAL:
+                break
+            bid = band["id"]
+            if band_cursor[bid] < len(candidates[bid]):
+                picked[bid].append(candidates[bid][band_cursor[bid]])
+                band_cursor[bid] += 1
+                total += 1
+                progressed = True
+
+    selected: list[dict] = []
+    for band in BANDS:
+        for pos, (lesson, q) in enumerate(picked[band["id"]], start=1):
             selected.append(
                 {
                     "id": f"placement/{band['id']}/q{pos:02d}",
                     "band": band["id"],
                     "source_question_id": q["id"],
-                    "source_lesson": lesson["id"],
+                    "source_lesson": lesson,
                     "type": "multiple_choice",
                     "category": q["category"],
                     "question": q["question"],

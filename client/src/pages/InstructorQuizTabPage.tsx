@@ -32,8 +32,12 @@ export function InstructorQuizTabPage() {
   const [assignLink, setAssignLink] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const [addGithub, setAddGithub] = useState('')
+  const [addName, setAddName] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [addErr, setAddErr] = useState<string | null>(null)
 
-  const { data: roster, error: rosterError } = useQuery<Student[]>({
+  const { data: roster, error: rosterError, refetch: refetchRoster } = useQuery<Student[]>({
     queryKey: ['quiz', 'instructor', 'roster'],
     queryFn: () => getJSON<Student[]>('/api/quiz/instructor/roster'),
   })
@@ -78,6 +82,31 @@ export function InstructorQuizTabPage() {
     }
   }
 
+  async function handleAddStudent() {
+    const gh = addGithub.trim()
+    if (!gh) return
+    setAdding(true); setAddErr(null)
+    try {
+      const res = await fetch('/api/quiz/instructor/students', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ githubUsername: gh, name: addName.trim() || undefined }),
+      })
+      if (!res.ok) {
+        const e = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(e.error ?? 'Could not add student')
+      }
+      const created = (await res.json()) as Student
+      await refetchRoster()
+      setStudentId(created.id)
+      setAddGithub(''); setAddName('')
+    } catch (e) {
+      setAddErr(e instanceof Error ? e.message : 'Could not add student')
+    } finally {
+      setAdding(false)
+    }
+  }
+
   return (
     <div>
       <div className="mb-6">
@@ -97,6 +126,19 @@ export function InstructorQuizTabPage() {
             No students in your roster yet. Students sync from Pike13 when you log in — try the “Sync Pike13” button, then refresh.
           </p>
         )}
+
+        <div className="mb-3 flex flex-wrap items-end gap-2 rounded bg-slate-50 p-2">
+          <span className="text-sm text-slate-600">Add a student by GitHub username:</span>
+          <input value={addGithub} onChange={(e) => setAddGithub(e.target.value)} placeholder="github-username"
+            className="rounded border border-slate-300 px-2 py-1 text-sm" />
+          <input value={addName} onChange={(e) => setAddName(e.target.value)} placeholder="name (optional)"
+            className="rounded border border-slate-300 px-2 py-1 text-sm" />
+          <button type="button" onClick={handleAddStudent} disabled={!addGithub.trim() || adding}
+            className="rounded bg-slate-700 px-3 py-1.5 text-sm text-white hover:bg-slate-800 disabled:opacity-50">
+            {adding ? 'Adding…' : 'Add'}
+          </button>
+          {addErr && <span className="text-sm text-red-600">{addErr}</span>}
+        </div>
 
         <div className="flex flex-wrap items-end gap-3">
           <label className="text-sm text-slate-600">

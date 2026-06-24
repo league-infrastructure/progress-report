@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { eq, and, inArray, desc, gte, lte, type SQL } from 'drizzle-orm';
+import { eq, and, inArray, desc, gte, lte, sql, type SQL } from 'drizzle-orm';
 import { db } from '../db';
 import {
   quizzes,
@@ -239,6 +239,40 @@ quizRouter.get('/instructor/roster', requireQuizRole('instructor', 'admin'), (re
       .orderBy(students.name)
       .all();
     res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Add (or find) a student by GitHub username and link them to this instructor's
+// roster — lets an instructor assign a quiz to any student by their GitHub name.
+quizRouter.post('/instructor/students', requireQuizRole('instructor', 'admin'), (req, res, next) => {
+  try {
+    const { githubUsername, name } = req.body as { githubUsername?: string; name?: string };
+    const gh = (githubUsername ?? '').trim();
+    if (!gh) {
+      res.status(400).json({ error: 'githubUsername required' });
+      return;
+    }
+    const instructorId = req.session.quizUser!.instructorId ?? -1;
+    let student = db
+      .select()
+      .from(students)
+      .where(sql`lower(${students.githubUsername}) = lower(${gh})`)
+      .get();
+    if (!student) {
+      const [created] = db
+        .insert(students)
+        .values({ name: name?.trim() || gh, githubUsername: gh })
+        .returning()
+        .all();
+      student = created;
+    }
+    db.insert(instructorStudents)
+      .values({ instructorId, studentId: student.id })
+      .onConflictDoNothing()
+      .run();
+    res.status(201).json({ id: student.id, name: student.name, githubUsername: student.githubUsername });
   } catch (err) {
     next(err);
   }
