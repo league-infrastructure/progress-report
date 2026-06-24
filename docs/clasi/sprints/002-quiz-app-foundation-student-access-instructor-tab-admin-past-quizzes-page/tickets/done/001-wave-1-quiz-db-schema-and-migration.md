@@ -1,16 +1,11 @@
 ---
-id: "001"
-title: "Wave 1 — Quiz DB schema and migration"
-status: todo
+id: '001'
+title: "Wave 1 \u2014 Quiz DB schema and migration"
+status: done
 use-cases: []
 depends-on: []
-github-issue: ""
-todo: ""
-# completes_todo: Controls whether linked TODOs are archived when this ticket
-# is moved to done. Default: true (archive when all referencing tickets are done).
-# Set to false (scalar) to suppress archival for ALL linked TODOs on this ticket.
-# Set to a mapping {filename.md: false} to suppress archival per TODO filename.
-# Use false for tickets that partially address a multi-sprint umbrella TODO.
+github-issue: ''
+todo: ''
 completes_todo: true
 ---
 <!-- CLASI: Before changing code or making plans, review the SE process in CLAUDE.md -->
