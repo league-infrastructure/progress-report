@@ -5,9 +5,11 @@ export function LoginPage() {
   return (
     <div className="login-screen">
       <div className="login-card">
-        <div className="brand-mark" style={{ margin: '0 auto 14px' }}>L</div>
-        <h1>The LEAGUE's Progress Report &amp; Quiz Tool</h1>
-        <p>Monthly student reviews, TA check-ins, guardian feedback, and student quizzes — all in one place.</p>
+        <div className="brand-mark" style={{ margin: '0 auto 12px' }}>L</div>
+        <h1>The LEAGUE of Amazing Programmers</h1>
+        <p style={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: 12.5, fontWeight: 600, color: 'var(--color-muted)' }}>
+          Class Management Platform
+        </p>
 
         {denied && (
           <p style={{
