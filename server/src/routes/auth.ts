@@ -1,11 +1,68 @@
 import { Router } from 'express';
 import { eq, asc, sql } from 'drizzle-orm';
 import { db } from '../db';
-import { users, instructors, adminSettings, pike13Tokens, pike13AdminToken, students } from '../db/schema';
+import { users, instructors, adminSettings, pike13Tokens, pike13AdminToken, students, instructorStudents } from '../db/schema';
 import type { SessionUser, QuizSessionUser } from '../types/session';
 import { runSync } from '../services/pike13Sync';
 
 export const authRouter = Router();
+
+// DEV-ONLY login: seeds a test instructor + students and a staff quiz session so
+// the quiz features can be exercised locally WITHOUT the Pike13 production OAuth
+// round-trip. Never registered when NODE_ENV=production.
+if (process.env.NODE_ENV !== 'production') {
+  authRouter.post('/dev-login', async (req, res, next) => {
+    try {
+      const role: 'admin' | 'instructor' =
+        (req.body?.role as string) === 'admin' ? 'admin' : 'instructor';
+      const devEmail = 'dev-instructor@jointheleague.org';
+
+      let userRow = (await db.select().from(users).where(eq(users.email, devEmail)))[0];
+      if (!userRow) {
+        userRow = (await db.insert(users).values({ email: devEmail, name: 'Dev Instructor' }).returning())[0];
+      }
+
+      let instructorRow = (await db.select().from(instructors).where(eq(instructors.userId, userRow.id)))[0];
+      if (!instructorRow) {
+        instructorRow = (await db.insert(instructors).values({ userId: userRow.id, isActive: true }).returning())[0];
+      } else if (!instructorRow.isActive) {
+        await db.update(instructors).set({ isActive: true }).where(eq(instructors.id, instructorRow.id));
+      }
+
+      const devStudents = [
+        { name: 'Ada Lovelace', githubUsername: 'ada-lovelace', pike13SyncId: 'dev-student-ada' },
+        { name: 'Alan Turing', githubUsername: 'alan-turing', pike13SyncId: 'dev-student-alan' },
+      ];
+      for (const s of devStudents) {
+        let stu = (await db.select().from(students).where(eq(students.pike13SyncId, s.pike13SyncId)))[0];
+        if (!stu) {
+          stu = (await db.insert(students).values(s).returning())[0];
+        }
+        await db
+          .insert(instructorStudents)
+          .values({ instructorId: instructorRow.id, studentId: stu.id })
+          .onConflictDoNothing();
+      }
+
+      const isAdmin = role === 'admin';
+      const sessionUser: SessionUser = {
+        id: userRow.id,
+        name: isAdmin ? 'Dev Admin' : 'Dev Instructor',
+        email: devEmail,
+        isAdmin,
+        isActiveInstructor: true,
+        instructorId: instructorRow.id,
+      };
+      req.session.user = sessionUser;
+      const quizUser: QuizSessionUser = { role, instructorId: instructorRow.id };
+      req.session.quizUser = quizUser;
+
+      res.json({ ok: true, role });
+    } catch (err) {
+      next(err);
+    }
+  });
+}
 
 function resolveAppUrl() {
   const appDomain = process.env.APP_DOMAIN?.trim();

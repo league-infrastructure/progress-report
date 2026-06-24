@@ -2,6 +2,15 @@ export function LoginPage() {
   const params = new URLSearchParams(window.location.search)
   const denied = params.get('error') === 'denied'
 
+  async function devLogin(role: 'instructor' | 'admin') {
+    await fetch('/api/auth/dev-login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role }),
+    })
+    window.location.href = role === 'admin' ? '/admin/past-quizzes' : '/quizzes'
+  }
+
   return (
     <div className="login-screen">
       <div className="login-card">
@@ -66,6 +75,24 @@ export function LoginPage() {
             Take the Python placement test
           </a>
         </div>
+
+        {import.meta.env.DEV && (
+          <div style={{ marginTop: 18, padding: '10px 12px', border: '1px dashed #cbd5e1', borderRadius: 8 }}>
+            <div style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+              Dev only · local testing (no Pike13)
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="button" onClick={() => devLogin('instructor')}
+                style={{ flex: 1, padding: '6px 10px', fontSize: 13, border: '1px solid #cbd5e1', borderRadius: 6, background: '#fff', cursor: 'pointer' }}>
+                Log in as Instructor
+              </button>
+              <button type="button" onClick={() => devLogin('admin')}
+                style={{ flex: 1, padding: '6px 10px', fontSize: 13, border: '1px solid #cbd5e1', borderRadius: 6, background: '#fff', cursor: 'pointer' }}>
+                Log in as Admin
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
