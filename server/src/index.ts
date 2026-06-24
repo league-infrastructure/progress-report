@@ -119,6 +119,11 @@ if (process.env.NODE_ENV === 'test') {
 app.use('/api', healthRouter);
 app.use('/api', counterRouter);
 app.use('/api/auth', authRouter);
+// Mount quiz routes BEFORE the routers that apply router-level guards
+// (checkinsRouter -> isActiveInstructor, adminRouter -> isAdmin). Those run for
+// any /api/* request that passes through them, so mounting quiz later would
+// 403 every non-admin quiz request before it reaches its own role guards.
+app.use('/api/quiz', quizRouter);
 app.use('/api', instructorRouter);
 app.use('/api', reviewsRouter);
 app.use('/api', templatesRouter);
@@ -126,7 +131,6 @@ app.use('/api', checkinsRouter);
 app.use('/api', adminRouter);
 app.use('/api', volunteerHoursRouter);
 app.use('/api', feedbackRouter);
-app.use('/api/quiz', quizRouter);
 
 app.use(errorHandler);
 
