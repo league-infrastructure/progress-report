@@ -77,21 +77,29 @@ interface IndexFile {
 // ---------------------------------------------------------------------------
 
 /**
- * Resolve the Quiz-App/quizzes directory relative to this file's location.
- * When compiled to dist/, __dirname is server/dist/db, so we walk up 3 levels
- * to reach the repo root; when running via ts-node from server/src/db, we walk
- * up 3 levels to reach the repo root as well.
+ * Resolve the Quiz-App/quizzes directory.
  *
- *   server/src/db/seed-quiz.ts  → ../../.. → repo root
- *   server/dist/db/seed-quiz.js → ../../.. → repo root
+ * In production the source tree is flattened into the image (dist lives at
+ * /app/dist, with no `server/` parent), so the relative walk-up that works in
+ * dev no longer points at the data. The Docker image therefore sets
+ * QUIZ_DATA_DIR to the absolute location of the copied quizzes directory and
+ * both this seeder and the placement loader honour it.
+ *
+ *   dev (ts-node):  server/src/db/seed-quiz.ts  → ../../.. → repo root
+ *   dev (compiled): server/dist/db/seed-quiz.js → ../../.. → repo root
+ *   prod:           QUIZ_DATA_DIR=/app/Quiz-App/quizzes
  */
 function resolveQuizzesDir(): string {
-  const repoRoot = path.resolve(__dirname, '../../..');
-  const candidate = path.join(repoRoot, 'Quiz-App', 'quizzes');
+  const override = process.env.QUIZ_DATA_DIR;
+  const candidate = override
+    ? path.resolve(override)
+    : path.join(path.resolve(__dirname, '../../..'), 'Quiz-App', 'quizzes');
   if (!fs.existsSync(candidate)) {
     throw new Error(
       `Quiz bank directory not found at expected path: ${candidate}\n` +
-        'Ensure the Quiz-App/ directory is present at the repository root.',
+        (override
+          ? 'QUIZ_DATA_DIR is set but does not exist in the image.'
+          : 'Ensure the Quiz-App/ directory is present at the repository root.'),
     );
   }
   return candidate;

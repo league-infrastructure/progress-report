@@ -33,6 +33,11 @@ COPY --from=server /src/server/package.json    ./package.json
 # Client static assets — server reads from ./public in production
 COPY --from=client-build /src/client/dist      ./public
 
+# Quiz banks + placement assessment — read at runtime by the seeder and the
+# placement loader. QUIZ_DATA_DIR points both of them at this absolute path.
+COPY Quiz-App/quizzes                          ./Quiz-App/quizzes
+ENV QUIZ_DATA_DIR=/app/Quiz-App/quizzes
+
 # SQLite data dir (mount a volume here in compose for persistence)
 RUN mkdir -p /app/data
 

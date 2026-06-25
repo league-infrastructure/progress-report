@@ -40,9 +40,14 @@ interface PlacementFile {
 
 function load(): PlacementFile {
   // Re-read each call so regenerated banks are served without a server restart.
-  // server/src/services/quiz -> ../../../.. = repo root (same when compiled to dist/)
-  const repoRoot = path.resolve(__dirname, '../../../..');
-  const file = path.join(repoRoot, 'Quiz-App', 'quizzes', 'placement-assessment.json');
+  // In production QUIZ_DATA_DIR points at the copied quizzes directory; in dev
+  // it is unset and we resolve relative to this file (repo root).
+  //   server/src/services/quiz -> ../../../.. = repo root (same when compiled)
+  const override = process.env.QUIZ_DATA_DIR;
+  const quizzesDir = override
+    ? path.resolve(override)
+    : path.join(path.resolve(__dirname, '../../../..'), 'Quiz-App', 'quizzes');
+  const file = path.join(quizzesDir, 'placement-assessment.json');
   if (!fs.existsSync(file)) {
     throw new Error(`Placement assessment not found at ${file}`);
   }
