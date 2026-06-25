@@ -33,7 +33,7 @@ quizRouter.get('/placement', (_req, res, next) => {
   }
 });
 
-quizRouter.post('/placement/submit', (req, res, next) => {
+quizRouter.post('/placement/submit', async (req, res, next) => {
   try {
     const { name, email, answers } = req.body as {
       name?: string;
@@ -42,16 +42,18 @@ quizRouter.post('/placement/submit', (req, res, next) => {
     };
     const result = gradePlacement(answers ?? {});
 
-    // Email the result to the taker + all admins (best-effort; never blocks the
-    // response or fails the request if SendGrid is unconfigured or errors).
+    // Email the result to the taker + all admins. Awaited so we can tell the
+    // page whether it actually went out, but sendPlacementResultEmail never
+    // throws and returns false when SendGrid is unconfigured (e.g. local dev).
     const takerEmail = (email ?? '').trim();
+    let emailed = false;
     if (takerEmail) {
       const adminEmails = db
         .select({ email: adminSettings.email })
         .from(adminSettings)
         .all()
         .map((r) => r.email);
-      void sendPlacementResultEmail({
+      emailed = await sendPlacementResultEmail({
         takerName: (name ?? '').trim(),
         takerEmail,
         adminEmails,
@@ -59,7 +61,7 @@ quizRouter.post('/placement/submit', (req, res, next) => {
       });
     }
 
-    res.json(result);
+    res.json({ ...result, emailed, emailTo: emailed ? takerEmail : null });
   } catch (err) {
     next(err);
   }

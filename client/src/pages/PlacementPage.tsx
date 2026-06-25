@@ -25,6 +25,8 @@ interface PlacementResult {
   masteryPct: number
   bandScores: BandScore[]
   recommended: { level: string; lesson: string; label: string; note?: string }
+  emailed?: boolean
+  emailTo?: string | null
 }
 
 const LEVEL_NAMES: Record<string, string> = {
@@ -145,6 +147,11 @@ export function PlacementPage() {
     return (
       <div className={wrap}>
         <h1 className="text-2xl font-bold text-slate-800">Your placement, {name || 'there'}</h1>
+        {result.emailed && (
+          <div className="mt-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+            ✓ We’ve emailed a copy of your result to <strong>{result.emailTo}</strong>.
+          </div>
+        )}
         <div className="my-4 rounded-lg bg-blue-50 p-4">
           <p className="text-sm text-slate-500">Recommended starting point</p>
           <p className="text-xl font-bold text-blue-800">
