@@ -9,6 +9,7 @@ import {
   quizLevels,
   students,
   instructorStudents,
+  adminSettings,
   type QuizQuestion,
 } from '../db/schema';
 import { requireQuizRole, assertOwnQuiz, QuizAccessError } from '../middleware/quizAuth';
@@ -16,6 +17,7 @@ import { sampleQuestions, markSeen } from '../services/quiz/sampler';
 import { gradeAttempt } from '../services/quiz/grader';
 import { mintToken, resolveToken, consumeToken, TokenError } from '../services/quiz/tokenizer';
 import { getPlacement, gradePlacement } from '../services/quiz/placement';
+import { sendPlacementResultEmail } from '../services/email';
 
 export const quizRouter = Router();
 
@@ -33,8 +35,31 @@ quizRouter.get('/placement', (_req, res, next) => {
 
 quizRouter.post('/placement/submit', (req, res, next) => {
   try {
-    const { answers } = req.body as { name?: string; email?: string; answers?: Record<string, string> };
-    res.json(gradePlacement(answers ?? {}));
+    const { name, email, answers } = req.body as {
+      name?: string;
+      email?: string;
+      answers?: Record<string, string>;
+    };
+    const result = gradePlacement(answers ?? {});
+
+    // Email the result to the taker + all admins (best-effort; never blocks the
+    // response or fails the request if SendGrid is unconfigured or errors).
+    const takerEmail = (email ?? '').trim();
+    if (takerEmail) {
+      const adminEmails = db
+        .select({ email: adminSettings.email })
+        .from(adminSettings)
+        .all()
+        .map((r) => r.email);
+      void sendPlacementResultEmail({
+        takerName: (name ?? '').trim(),
+        takerEmail,
+        adminEmails,
+        result,
+      });
+    }
+
+    res.json(result);
   } catch (err) {
     next(err);
   }
