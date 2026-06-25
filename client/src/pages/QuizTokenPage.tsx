@@ -19,8 +19,8 @@ interface QuestionResult {
   questionId: string
   correct: boolean
   studentAnswer: string
-  correctAnswer: string
-  explanation: string
+  correctAnswer?: string
+  explanation?: string
 }
 interface GradeResult {
   score: number
@@ -97,12 +97,8 @@ export function QuizTokenPage() {
         <ol className="space-y-3">
           {result.results.map((r, i) => (
             <li key={r.questionId} className="rounded border border-slate-200 p-3 text-sm">
-              <p className="font-medium text-slate-700">
-                {i + 1}. {r.correct ? <span className="text-green-600">✓ correct</span> : <span className="text-red-600">✗ incorrect</span>}
-              </p>
-              <p className="text-slate-600">Your answer: {r.studentAnswer || <em className="text-slate-400">blank</em>}</p>
-              {!r.correct && <p className="text-slate-600">Correct answer: {r.correctAnswer}</p>}
-              <p className="mt-1 text-slate-500">{r.explanation}</p>
+              <p className="text-slate-600">Question {i + 1} — your answer: {r.studentAnswer || <em className="text-slate-400">blank</em>}</p>
+              <p className={r.correct ? 'font-medium text-green-700' : 'font-medium text-red-700'}>{r.correct ? 'Correct' : 'Incorrect'}</p>
             </li>
           ))}
         </ol>

@@ -96,16 +96,17 @@ export function PlacementPage() {
           Find out where you’d start. Choose a language, enter your details, and take a short test.
         </p>
 
-        <div className="mt-4">
-          <span className="text-sm text-slate-600">Language</span>
-          <div className="mt-1 inline-flex overflow-hidden rounded border border-slate-300">
-            {(['python', 'java'] as const).map((lang) => (
-              <button key={lang} type="button" onClick={() => setLanguage(lang)}
-                className={`px-4 py-1.5 text-sm capitalize ${language === lang ? 'bg-blue-600 text-white' : 'bg-white text-slate-700'}`}>
-                {lang}
-              </button>
-            ))}
-          </div>
+        <div className="mt-6">
+          <label htmlFor="placement-language" className="block text-sm font-medium text-slate-600">Language</label>
+          <select
+            id="placement-language"
+            value={language}
+            onChange={(e) => setLanguage(e.target.value as 'python' | 'java')}
+            className="mt-3 block w-56 rounded border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="python">Python</option>
+            <option value="java">Java</option>
+          </select>
         </div>
 
         {language === 'java' ? (

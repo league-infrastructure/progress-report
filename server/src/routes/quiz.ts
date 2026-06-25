@@ -84,6 +84,22 @@ function gradeAndRecord(
   return result;
 }
 
+/** Student-facing result: score + per-question correct/incorrect only — never
+ * the correct answer or explanation (students must not see the answer key). */
+function studentResult(r: ReturnType<typeof gradeAndRecord>) {
+  return {
+    score: r.score,
+    passed: r.passed,
+    correctCount: r.correctCount,
+    total: r.total,
+    results: r.results.map((x) => ({
+      questionId: x.questionId,
+      correct: x.correct,
+      studentAnswer: x.studentAnswer,
+    })),
+  };
+}
+
 function handleKnownError(err: unknown, res: import('express').Response, next: import('express').NextFunction) {
   if (err instanceof TokenError || err instanceof QuizAccessError) {
     res.status(err.status).json({ error: err.message });
@@ -145,7 +161,7 @@ quizRouter.post('/student/quizzes/:id/submit', requireQuizRole('student'), (req,
     }
     const answers = (req.body?.answers ?? {}) as Record<string, string>;
     const result = gradeAndRecord(quiz, studentId, answers);
-    res.json(result);
+    res.json(studentResult(result));
   } catch (err) {
     handleKnownError(err, res, next);
   }
@@ -200,7 +216,7 @@ quizRouter.post('/token/:token/submit', (req, res, next) => {
     const answers = (req.body?.answers ?? {}) as Record<string, string>;
     const result = gradeAndRecord(quiz, quiz.studentId, answers);
     consumeToken(token);
-    res.json(result);
+    res.json(studentResult(result));
   } catch (err) {
     handleKnownError(err, res, next);
   }

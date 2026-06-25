@@ -269,12 +269,9 @@ export function InstructorQuizTabPage() {
               <ol className="space-y-3">
                 {previewResult.results.map(({ q, given, correct }, i) => (
                   <li key={q.id} className="rounded border border-slate-200 p-3 text-sm">
-                    <p className="font-medium text-slate-700">
-                      {i + 1}. {correct ? <span className="text-green-600">✓</span> : <span className="text-red-600">✗</span>} {q.question}
-                    </p>
+                    <p className="font-medium text-slate-700">{i + 1}. {q.question}</p>
                     <p className="text-slate-600">Your answer: {given || <em className="text-slate-400">blank</em>}</p>
-                    {!correct && <p className="text-slate-600">Correct: {q.answer}</p>}
-                    <p className="mt-1 text-xs text-slate-500">{q.explanation}</p>
+                    <p className={correct ? 'font-medium text-green-700' : 'font-medium text-red-700'}>{correct ? 'Correct' : 'Incorrect'}</p>
                   </li>
                 ))}
               </ol>
