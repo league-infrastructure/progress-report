@@ -2,7 +2,7 @@
 id: 009
 title: "Wave 9 \u2014 Instructor review & parent-note send for completed assigned\
   \ quizzes"
-status: in-progress
+status: done
 use-cases: []
 depends-on:
 - '004'
