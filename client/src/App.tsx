@@ -23,6 +23,7 @@ import { InstructorLayout } from './components/InstructorLayout'
 import { InstructorQuizTabPage } from './pages/InstructorQuizTabPage'
 import { AdminPastQuizzesPage } from './pages/AdminPastQuizzesPage'
 import { QuizTokenPage } from './pages/QuizTokenPage'
+import { StudentDashboardPage } from './pages/StudentDashboardPage'
 import { PlacementPage } from './pages/PlacementPage'
 
 function App() {
@@ -141,6 +142,7 @@ function App() {
       </Route>
       <Route path="/feedback/:token" component={FeedbackPage} />
       <Route path="/quiz/t/:token" component={QuizTokenPage} />
+      <Route path="/quiz/dashboard" component={StudentDashboardPage} />
       <Route path="/placement" component={PlacementPage} />
       <Route component={NotFoundPage} />
     </Switch>

@@ -1,17 +1,19 @@
 ---
-id: "005"
-title: "Wave 5 — Student GitHub login and dashboard (frontend)"
-status: todo
+id: '005'
+title: "Wave 5 \u2014 Student GitHub login and dashboard (frontend)"
+status: in-progress
 use-cases: []
 depends-on: []
-github-issue: ""
-todo: ""
-# completes_todo: Controls whether linked TODOs are archived when this ticket
-# is moved to done. Default: true (archive when all referencing tickets are done).
-# Set to false (scalar) to suppress archival for ALL linked TODOs on this ticket.
-# Set to a mapping {filename.md: false} to suppress archival per TODO filename.
-# Use false for tickets that partially address a multi-sprint umbrella TODO.
+github-issue: ''
+todo: ''
 completes_todo: true
+summary: 'Student dashboard at /quiz/dashboard (the GitHub-OAuth callback redirect
+  target). Lists the logged-in student''s assigned quizzes via GET /api/quiz/student/quizzes,
+  lets them take an assigned quiz (questions + submit) and shows completed ones with
+  a badge. Self-guards on API 401 by redirecting to /api/auth/github. New: client/src/pages/StudentDashboardPage.tsx,
+  route in client/src/App.tsx, tests/client/StudentDashboardPage.test.tsx (4 tests,
+  passing). Note: 20 pre-existing failures in other client suites belong to in-progress
+  tickets 006/008, not this ticket.'
 ---
 <!-- CLASI: Before changing code or making plans, review the SE process in CLAUDE.md -->
 
