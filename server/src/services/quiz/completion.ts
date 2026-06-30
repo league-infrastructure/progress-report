@@ -15,7 +15,7 @@
  * decide how to handle "couldn't verify" without crashing.
  */
 
-import { ghHeaders, discoverLeagueRepos, GitHubUserNotFoundError } from '../github';
+import { ghHeaders, findStudentLeagueRepos, GitHubUserNotFoundError } from '../github';
 
 const GITHUB_API = 'https://api.github.com';
 
@@ -77,35 +77,48 @@ async function listRecipeFiles(
  */
 async function findStudentLessonFiles(
   githubUsername: string,
+  levelRepo: string,
   lessonPath: string,
 ): Promise<
   | { ok: true; files: GitHubContentEntry[]; repo: string }
   | { ok: false; reason: string }
 > {
+  const dirCandidates = [lessonPath, lessonPath.replace(/^lessons\//, '')];
+
+  // Primary: the student's fork of the canonical course repo, same path.
+  // Per the chosen model we gate against the canonical repo layout, so the
+  // student's <username>/<levelRepo> fork is the authoritative place to look.
+  const fork = `${githubUsername}/${levelRepo}`;
+  for (const dir of dirCandidates) {
+    const listed = await listRecipeFiles(fork, dir);
+    if (listed.ok && listed.files.length > 0) {
+      return { ok: true, files: listed.files, repo: fork };
+    }
+  }
+
+  // Fallback: locate any of the student's LEAGUE repos that contains the lesson
+  // directory (handles forks under a different name).
   let repos: string[];
   try {
-    repos = await discoverLeagueRepos(githubUsername);
+    repos = await findStudentLeagueRepos(githubUsername);
   } catch (err) {
     if (err instanceof GitHubUserNotFoundError) {
-      return { ok: false, reason: `GitHub user @${githubUsername} not found.` };
+      return { ok: false, reason: `GitHub user @${githubUsername} not found — check the student's GitHub username.` };
     }
-    return { ok: false, reason: `Couldn't read GitHub activity for @${githubUsername}.` };
+    return { ok: false, reason: `Couldn't read GitHub for @${githubUsername}.` };
   }
-  if (repos.length === 0) {
-    return { ok: false, reason: `No LEAGUE repos found for @${githubUsername}.` };
-  }
-  // The lesson directory may sit at the lesson's path, or one segment up
-  // (some student module repos hold the lesson dir at the repo root).
-  const candidates = [lessonPath, lessonPath.replace(/^lessons\//, '')];
   for (const repo of repos) {
-    for (const dir of candidates) {
+    for (const dir of dirCandidates) {
       const listed = await listRecipeFiles(repo, dir);
       if (listed.ok && listed.files.length > 0) {
         return { ok: true, files: listed.files, repo };
       }
     }
   }
-  return { ok: false, reason: `No LEAGUE repo of @${githubUsername} contains ${lessonPath}.` };
+  return {
+    ok: false,
+    reason: `Found @${githubUsername}'s LEAGUE repos, but none contain the ${lessonPath} directory yet.`,
+  };
 }
 
 /**
@@ -146,8 +159,8 @@ export async function checkRecipeCompletion(params: {
   }
   const starterSha = new Map(canonical.files.map((f) => [f.name, f.sha]));
 
-  // 2. Discover the student's copy of that lesson (same process as the report).
-  const student = await findStudentLessonFiles(githubUsername, lessonPath);
+  // 2. Discover the student's copy of that lesson.
+  const student = await findStudentLessonFiles(githubUsername, levelRepo, lessonPath);
   if (!student.ok) {
     return {
       complete: false,

@@ -14,10 +14,6 @@ function dir(files: Array<[string, string]>): Entry[] {
   return files.map(([name, sha]) => ({ name, path: name, type: 'file', sha }));
 }
 
-function pushEvents(repos: string[]) {
-  return repos.map((name) => ({ type: 'PushEvent', created_at: new Date().toISOString(), repo: { name } }));
-}
-
 interface Route { status: number; body?: unknown }
 
 function mockGitHub(routes: Record<string, Route>) {
@@ -38,17 +34,19 @@ afterEach(() => {
 });
 
 const CANON = `${CANONICAL_ORG}/Python-Apprentice/contents/lessons/30_Loops`;
+const REPOS = `/users/alice/repos`;
 const EVENTS = `/users/alice/events`;
-// The student's discovered repo holds the lesson dir.
+// Primary path the gate tries: the student's fork <user>/<levelRepo>, same path.
+const FORK_DIR = `alice/Python-Apprentice/contents/lessons/30_Loops`;
+// A discovered fallback repo under a different name.
 const STUDENT_REPO = 'league-python-student/level0-module3-alice';
 const STUDENT_DIR = `${STUDENT_REPO}/contents/lessons/30_Loops`;
 
 describe('checkRecipeCompletion', () => {
-  it('complete when every required file exists in the discovered repo and differs from starter', async () => {
+  it('complete when every required file exists in the student fork and differs from starter', async () => {
     mockGitHub({
       [CANON]: { status: 200, body: dir([['a.py', 'starterA'], ['b.py', 'starterB']]) },
-      [EVENTS]: { status: 200, body: pushEvents([STUDENT_REPO]) },
-      [STUDENT_DIR]: { status: 200, body: dir([['a.py', 'editedA'], ['b.py', 'editedB']]) },
+      [FORK_DIR]: { status: 200, body: dir([['a.py', 'editedA'], ['b.py', 'editedB']]) },
     });
     const res = await checkRecipeCompletion({ githubUsername: 'alice', levelRepo: 'Python-Apprentice', lessonPath: 'lessons/30_Loops' });
     expect(res).toEqual({ complete: true, incomplete: [], checked: true });
@@ -57,9 +55,8 @@ describe('checkRecipeCompletion', () => {
   it('reports a missing file and an unchanged (identical-to-starter) file as incomplete', async () => {
     mockGitHub({
       [CANON]: { status: 200, body: dir([['a.py', 'starterA'], ['b.py', 'starterB'], ['c.py', 'starterC']]) },
-      [EVENTS]: { status: 200, body: pushEvents([STUDENT_REPO]) },
       // a.py edited; b.py identical to starter; c.py missing
-      [STUDENT_DIR]: { status: 200, body: dir([['a.py', 'editedA'], ['b.py', 'starterB']]) },
+      [FORK_DIR]: { status: 200, body: dir([['a.py', 'editedA'], ['b.py', 'starterB']]) },
     });
     const res = await checkRecipeCompletion({ githubUsername: 'alice', levelRepo: 'Python-Apprentice', lessonPath: 'lessons/30_Loops' });
     expect(res.complete).toBe(false);
@@ -67,24 +64,27 @@ describe('checkRecipeCompletion', () => {
     expect(res.incomplete.sort()).toEqual(['b.py', 'c.py']);
   });
 
-  it('checked:false when the student has no LEAGUE repos containing the lesson', async () => {
+  it('falls back to a discovered repo when the same-name fork is absent', async () => {
     mockGitHub({
       [CANON]: { status: 200, body: dir([['a.py', 'starterA']]) },
-      [EVENTS]: { status: 200, body: pushEvents([]) }, // no repos discovered
+      // fork path 404s, but /users/alice/repos surfaces a differently-named repo
+      [REPOS]: { status: 200, body: [{ full_name: STUDENT_REPO, fork: true, owner: { login: 'league-python-student' } }] },
+      [STUDENT_DIR]: { status: 200, body: dir([['a.py', 'editedA']]) },
+    });
+    const res = await checkRecipeCompletion({ githubUsername: 'alice', levelRepo: 'Python-Apprentice', lessonPath: 'lessons/30_Loops' });
+    expect(res).toEqual({ complete: true, incomplete: [], checked: true });
+  });
+
+  it('checked:false when no repo (fork or discovered) contains the lesson', async () => {
+    mockGitHub({
+      [CANON]: { status: 200, body: dir([['a.py', 'starterA']]) },
+      [REPOS]: { status: 200, body: [] }, // no repos at all
+      [EVENTS]: { status: 200, body: [] }, // events fallback also empty
     });
     const res = await checkRecipeCompletion({ githubUsername: 'alice', levelRepo: 'Python-Apprentice', lessonPath: 'lessons/30_Loops' });
     expect(res.checked).toBe(false);
     expect(res.complete).toBe(false);
     expect(res.incomplete).toContain('a.py');
-  });
-
-  it('checked:false when the GitHub user does not exist (events 404)', async () => {
-    mockGitHub({
-      [CANON]: { status: 200, body: dir([['a.py', 'starterA']]) },
-      [EVENTS]: { status: 404, body: { message: 'Not Found' } },
-    });
-    const res = await checkRecipeCompletion({ githubUsername: 'alice', levelRepo: 'Python-Apprentice', lessonPath: 'lessons/30_Loops' });
-    expect(res.checked).toBe(false);
   });
 
   it('does not block when the canonical directory has no recipe files', async () => {
@@ -102,12 +102,11 @@ describe('checkRecipeCompletion', () => {
     expect(b.checked).toBe(false);
   });
 
-  it('finds the lesson dir at the short path (lessons/ stripped) in a module repo', async () => {
+  it('finds the lesson dir at the short path (lessons/ stripped) in the fork', async () => {
     mockGitHub({
       [CANON]: { status: 200, body: dir([['a.py', 'starterA']]) },
-      [EVENTS]: { status: 200, body: pushEvents([STUDENT_REPO]) },
-      // student repo holds the dir at "30_Loops" (no lessons/ prefix)
-      [`${STUDENT_REPO}/contents/30_Loops`]: { status: 200, body: dir([['a.py', 'editedA']]) },
+      // fork holds the dir at "30_Loops" (no lessons/ prefix)
+      [`alice/Python-Apprentice/contents/30_Loops`]: { status: 200, body: dir([['a.py', 'editedA']]) },
     });
     const res = await checkRecipeCompletion({ githubUsername: 'alice', levelRepo: 'Python-Apprentice', lessonPath: 'lessons/30_Loops' });
     expect(res).toEqual({ complete: true, incomplete: [], checked: true });

@@ -97,6 +97,64 @@ export async function discoverLeagueRepos(githubUsername: string): Promise<strin
   return result;
 }
 
+interface GithubRepo {
+  full_name: string;
+  fork: boolean;
+  owner: { login: string };
+}
+
+/**
+ * List the LEAGUE curriculum repos a student OWNS (or that show up under their
+ * account), via /users/<user>/repos. Unlike the events feed this reaches repos
+ * regardless of recent push activity — so a student who finished a lesson
+ * months ago is still found. Filtered by the same LEAGUE name/org rules.
+ *
+ * Throws GitHubUserNotFoundError if the user doesn't exist. Returns [] if they
+ * have no matching repos.
+ */
+export async function listUserLeagueRepos(githubUsername: string): Promise<string[]> {
+  const headers = ghHeaders();
+  const prefix = leagueOrgPrefix();
+  const result = new Set<string>();
+
+  for (let page = 1; page <= 5; page++) {
+    const res = await fetch(
+      `${GITHUB_API}/users/${encodeURIComponent(githubUsername)}/repos?per_page=100&type=all&sort=updated&page=${page}`,
+      { headers },
+    );
+    if (page === 1 && res.status === 404) throw new GitHubUserNotFoundError(githubUsername);
+    if (!res.ok) break;
+    const repos = (await res.json()) as GithubRepo[];
+    if (repos.length === 0) break;
+    for (const r of repos) {
+      const shortName = r.full_name.split('/').pop() ?? r.full_name;
+      const ownerOrg = r.owner.login.toLowerCase();
+      if (isLeagueRepoName(shortName) || ownerOrg.startsWith(prefix)) {
+        result.add(r.full_name);
+      }
+    }
+    if (repos.length < 100) break;
+  }
+  return [...result];
+}
+
+/**
+ * Find a student's LEAGUE repos, preferring a direct repo listing (reaches old
+ * work) and falling back to the activity feed only if the listing yields
+ * nothing. This is the robust locator used by the quiz completion gate.
+ */
+export async function findStudentLeagueRepos(githubUsername: string): Promise<string[]> {
+  const owned = await listUserLeagueRepos(githubUsername);
+  if (owned.length > 0) return owned;
+  // Fall back to recent activity (catches repos under orgs the user pushed to
+  // but doesn't "own" in their /repos listing).
+  try {
+    return await discoverLeagueRepos(githubUsername);
+  } catch {
+    return [];
+  }
+}
+
 export class GitHubUserNotFoundError extends Error {
   constructor(username: string) {
     super(`GitHub user "${username}" not found`);
