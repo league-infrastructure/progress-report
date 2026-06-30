@@ -28,6 +28,16 @@ export default defineConfig({
     globals: true,
     setupFiles: [path.resolve(clientRoot, 'src/test-setup.ts')],
     include: ['tests/client/**/*.test.{ts,tsx}'],
+    // Reset mocks and global stubs between tests so suites can't pollute each
+    // other (e.g. a stubbed fetch/URL/window.location leaking across files).
+    restoreMocks: true,
+    unstubGlobals: true,
+    // Run test files in a single fork. These suites stub global fetch and other
+    // browser globals; running files in parallel workers makes timing-sensitive
+    // assertions flaky. Sequential execution is deterministic here.
+    pool: 'forks',
+    poolOptions: { forks: { singleFork: true } },
+    fileParallelism: false,
     deps: {
       moduleDirectories: ['node_modules', path.resolve(clientRoot, 'node_modules')],
     },

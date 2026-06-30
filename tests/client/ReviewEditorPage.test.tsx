@@ -147,7 +147,7 @@ describe('ReviewEditorPage', () => {
 
     // Action buttons should not be present
     expect(screen.queryByRole('button', { name: /Save Draft/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Mark as Sent/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Send to guardian/i })).not.toBeInTheDocument()
   })
 
   it('clicking Mark as Sent fires send endpoint', async () => {
@@ -155,7 +155,7 @@ describe('ReviewEditorPage', () => {
     renderEditor('/reviews/42')
 
     await screen.findByDisplayValue('February Review')
-    await userEvent.click(screen.getByRole('button', { name: /Mark as Sent/i }))
+    await userEvent.click(screen.getByRole('button', { name: /Send to guardian/i }))
 
     await waitFor(() => {
       const calls = (fetch as ReturnType<typeof vi.fn>).mock.calls
@@ -167,18 +167,16 @@ describe('ReviewEditorPage', () => {
     })
   })
 
-  it('Apply Template modal lists templates and substitutes placeholders', async () => {
+  it('Apply Template select substitutes placeholders into subject and body', async () => {
     setupFetch(DRAFT_REVIEW, TEMPLATES)
     renderEditor('/reviews/42')
 
     await screen.findByDisplayValue('February Review')
-    await userEvent.click(screen.getByRole('button', { name: /Apply Template/i }))
 
-    // Modal shows template
-    expect(await screen.findByText('Monthly Update')).toBeInTheDocument()
-
-    // Clicking template applies placeholder substitution
-    await userEvent.click(screen.getByText('Monthly Update'))
+    // The template control is an "Apply template…" <select>; picking a template
+    // substitutes {{studentName}}/{{month}} into the subject and body fields.
+    const templateSelect = screen.getByRole('combobox')
+    await userEvent.selectOptions(templateSelect, 'Monthly Update')
 
     expect(screen.getByDisplayValue('Review for Alice Smith - 2026-02')).toBeInTheDocument()
     expect(

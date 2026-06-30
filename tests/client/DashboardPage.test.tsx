@@ -92,7 +92,7 @@ describe('DashboardPage', () => {
     renderDashboard()
 
     expect(await screen.findByText(/Submit now/i)).toBeInTheDocument()
-    expect(screen.getByText(/Weekly TA check-in not yet submitted/i)).toBeInTheDocument()
+    expect(screen.getByText(/TA check-in is due this week/i)).toBeInTheDocument()
   })
 
   it('hides check-in banner when alreadySubmitted is true', async () => {

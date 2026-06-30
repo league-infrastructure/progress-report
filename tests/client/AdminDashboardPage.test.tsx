@@ -86,7 +86,7 @@ describe('AdminDashboardPage', () => {
     )
 
     renderPage()
-    const btn = await screen.findByRole('button', { name: /Mark as Read/i })
+    const btn = await screen.findByRole('button', { name: /Mark read/i })
     await userEvent.click(btn)
 
     await waitFor(() => {
@@ -100,6 +100,6 @@ describe('AdminDashboardPage', () => {
     mockFetch([])
     renderPage()
 
-    expect(await screen.findByText(/No notifications/i)).toBeInTheDocument()
+    expect(await screen.findByText(/No unread notifications/i)).toBeInTheDocument()
   })
 })

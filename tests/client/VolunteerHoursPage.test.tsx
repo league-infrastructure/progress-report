@@ -25,6 +25,12 @@ function renderPage() {
   return result
 }
 
+/** The page defaults to the Summary view; the entry list, per-row Delete,
+ *  and Export CSV live in the Detail view. Switch to it before asserting. */
+async function showDetailView() {
+  await userEvent.click(screen.getByRole('button', { name: /^Detail$/i }))
+}
+
 const ENTRIES: VolunteerHourDto[] = [
   { id: 1, volunteerName: 'Alice', category: 'Teaching', hours: 2.5, description: 'Tutoring session', recordedAt: '2026-03-01T00:00:00Z', source: 'manual' },
   { id: 2, volunteerName: 'Bob', category: 'Events', hours: 1, description: null, recordedAt: '2026-03-05T00:00:00Z', source: 'pike13' },
@@ -59,6 +65,7 @@ describe('VolunteerHoursPage', () => {
   it('renders list of entries from mocked GET /api/admin/volunteer-hours', async () => {
     mockFetch(ENTRIES)
     renderPage()
+    await showDetailView()
 
     expect(await screen.findByText('Alice')).toBeInTheDocument()
     // 'Teaching' appears in both filter select options and entry badge — use getAllBy
@@ -80,6 +87,7 @@ describe('VolunteerHoursPage', () => {
     )
 
     const { container } = renderPage()
+    await showDetailView()
     await screen.findByText('Alice')
 
     await userEvent.click(screen.getByRole('button', { name: /Add Entry/i }))
@@ -123,6 +131,7 @@ describe('VolunteerHoursPage', () => {
     )
 
     renderPage()
+    await showDetailView()
     await screen.findByText('Alice')
 
     // First Delete button belongs to Alice (id=1, source=manual)
@@ -141,6 +150,7 @@ describe('VolunteerHoursPage', () => {
   it('pike13 row has Delete button disabled', async () => {
     mockFetch(ENTRIES)
     renderPage()
+    await showDetailView()
 
     await screen.findByText('Bob')
 
@@ -165,6 +175,7 @@ describe('VolunteerHoursPage', () => {
     })
 
     renderPage()
+    await showDetailView()
     await screen.findByText('Alice')
 
     await userEvent.click(screen.getByRole('button', { name: /Export CSV/i }))

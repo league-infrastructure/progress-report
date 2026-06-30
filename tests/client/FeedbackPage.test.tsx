@@ -47,7 +47,7 @@ describe('FeedbackPage', () => {
   it('shows "Feedback already submitted" when alreadySubmitted is true', async () => {
     mockGet(200, { studentName: 'Alice', month: '2026-04', alreadySubmitted: true })
     renderPage()
-    expect(await screen.findByText('Feedback already submitted.')).toBeInTheDocument()
+    expect(await screen.findByText('Already submitted')).toBeInTheDocument()
   })
 
   it('renders star buttons and Submit when alreadySubmitted is false', async () => {
@@ -81,7 +81,7 @@ describe('FeedbackPage', () => {
     await userEvent.click(screen.getByLabelText('4 star'))
     await userEvent.click(screen.getByRole('button', { name: /Submit/i }))
 
-    expect(await screen.findByText('Thank you for your feedback!')).toBeInTheDocument()
+    expect(await screen.findByText('Thank you!')).toBeInTheDocument()
 
     const [[, calledOpts]] = postMock.mock.calls as [[string, RequestInit]]
     const body = JSON.parse(calledOpts.body as string)
@@ -109,7 +109,7 @@ describe('FeedbackPage', () => {
     await userEvent.click(screen.getByRole('button', { name: /Submit/i }))
 
     await waitFor(() => {
-      expect(screen.getByText('Feedback already submitted.')).toBeInTheDocument()
+      expect(screen.getByText('Already submitted')).toBeInTheDocument()
     })
   })
 })

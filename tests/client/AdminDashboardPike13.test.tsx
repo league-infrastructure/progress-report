@@ -66,16 +66,15 @@ describe('AdminDashboardPage — Pike13 section', () => {
     mockFetch({ connected: false })
     renderPage()
 
-    expect(await screen.findByText(/Pike13: Not Connected/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Connect Pike13/i })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /Connect Pike13/i })).toBeInTheDocument()
   })
 
   it('shows "Connected" and Sync button when status is true', async () => {
     mockFetch({ connected: true })
     renderPage()
 
-    expect(await screen.findByText(/Pike13: Connected/i)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Sync Pike13/i })).toBeInTheDocument()
+    expect(await screen.findByText(/Pike13 connected/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Sync now/i })).toBeInTheDocument()
   })
 
   it('clicking Sync fires POST /api/admin/sync/pike13', async () => {
@@ -103,7 +102,7 @@ describe('AdminDashboardPage — Pike13 section', () => {
     )
 
     renderPage()
-    const btn = await screen.findByRole('button', { name: /Sync Pike13/i })
+    const btn = await screen.findByRole('button', { name: /Sync now/i })
     await userEvent.click(btn)
 
     await waitFor(() => {
@@ -118,7 +117,7 @@ describe('AdminDashboardPage — Pike13 section', () => {
     })
 
     renderPage()
-    const btn = await screen.findByRole('button', { name: /Sync Pike13/i })
+    const btn = await screen.findByRole('button', { name: /Sync now/i })
     await userEvent.click(btn)
 
     await screen.findByText(/12 students/i)

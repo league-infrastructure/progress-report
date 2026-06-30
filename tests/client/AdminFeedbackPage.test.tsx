@@ -67,7 +67,8 @@ describe('AdminFeedbackPage', () => {
 
     expect(screen.getByText('Bob')).toBeInTheDocument()
     expect(screen.getByText('John Smith')).toBeInTheDocument()
-    expect(screen.getByText('—')).toBeInTheDocument()
+    // Bob's null comment renders as an em-dash placeholder (one of possibly several).
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
   })
 
   it('shows "No feedback yet." when array is empty', async () => {

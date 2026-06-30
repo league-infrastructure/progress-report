@@ -40,7 +40,7 @@ describe('Routing', () => {
 
   it('unauthenticated /dashboard renders login page', () => {
     renderAt('/dashboard', null)
-    expect(screen.getByText('Sign In')).toBeInTheDocument()
+    expect(screen.getAllByText(/Sign in with/i).length).toBeGreaterThan(0)
   })
 
   it('authenticated instructor /dashboard renders dashboard page', () => {
@@ -53,7 +53,7 @@ describe('Routing', () => {
   it('authenticated admin /admin renders admin dashboard', () => {
     vi.stubGlobal('fetch', vi.fn(() => Promise.resolve({ ok: false, json: () => Promise.resolve([]) })))
     renderAt('/admin', ADMIN)
-    expect(screen.getByRole('heading', { name: 'Admin Dashboard' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Program overview' })).toBeInTheDocument()
     vi.restoreAllMocks()
   })
 

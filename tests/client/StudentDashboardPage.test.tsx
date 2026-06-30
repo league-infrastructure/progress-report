@@ -56,21 +56,27 @@ describe('StudentDashboardPage', () => {
 
   it('redirects to GitHub login on a 401', async () => {
     const assignHref = vi.fn()
-    // jsdom: replace window.location with a writable href setter
+    // jsdom: replace window.location with a writable href setter, then restore it
+    // afterwards so the override doesn't leak into other suites.
+    const originalLocation = Object.getOwnPropertyDescriptor(window, 'location')
     Object.defineProperty(window, 'location', {
       configurable: true,
       value: { set href(v: string) { assignHref(v) }, get href() { return '' } },
     })
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(() => Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({ error: 'Unauthenticated' }) })),
-    )
-    renderDashboard()
+    try {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(() => Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({ error: 'Unauthenticated' }) })),
+      )
+      renderDashboard()
 
-    // give the effect a tick to run
-    await screen.findByText(/Loading your quizzes/i).catch(() => null)
-    await new Promise((r) => setTimeout(r, 0))
-    expect(assignHref).toHaveBeenCalledWith('/api/auth/github')
+      // give the effect a tick to run
+      await screen.findByText(/Loading your quizzes/i).catch(() => null)
+      await new Promise((r) => setTimeout(r, 0))
+      expect(assignHref).toHaveBeenCalledWith('/api/auth/github')
+    } finally {
+      if (originalLocation) Object.defineProperty(window, 'location', originalLocation)
+    }
   })
 
   it('opens a quiz to take when Start quiz is clicked', async () => {
