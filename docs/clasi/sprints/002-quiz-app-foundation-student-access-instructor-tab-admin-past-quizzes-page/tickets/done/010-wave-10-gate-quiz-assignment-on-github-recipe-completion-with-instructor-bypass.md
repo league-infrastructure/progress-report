@@ -2,7 +2,7 @@
 id: '010'
 title: "Wave 10 \u2014 Gate quiz assignment on GitHub recipe completion (with instructor\
   \ bypass)"
-status: in-progress
+status: done
 use-cases: []
 depends-on:
 - '004'
