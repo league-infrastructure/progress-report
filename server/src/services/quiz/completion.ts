@@ -15,6 +15,8 @@
  * decide how to handle "couldn't verify" without crashing.
  */
 
+import { ghHeaders, discoverLeagueRepos, GitHubUserNotFoundError } from '../github';
+
 const GITHUB_API = 'https://api.github.com';
 
 // The org that holds the canonical course repos (source of truth for the
@@ -43,45 +45,18 @@ interface GitHubContentEntry {
   sha: string;
 }
 
-function authHeaders(): Record<string, string> {
-  const token = process.env.GITHUB_TOKEN;
-  return {
-    Accept: 'application/vnd.github+json',
-    'X-GitHub-Api-Version': '2022-11-28',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-}
-
-/**
- * Resolve the STUDENT's repo (owner + repo name) that holds their copy of a
- * level's lessons.
- *
- * !!! REPO MAPPING — confirm the exact convention before relying on the gate !!!
- * Per the stakeholder, each student has a fork of the org course repo under
- * their own GitHub account, named the same as the canonical repo. If the real
- * convention differs (e.g. league-python-student/level<N>-module<M>-<username>),
- * change ONLY this function — everything else is mapping-agnostic.
- */
-export function resolveStudentRepo(
-  githubUsername: string,
-  levelRepo: string,
-): { owner: string; repo: string } {
-  return { owner: githubUsername, repo: levelRepo };
-}
-
 async function ghJson<T>(url: string): Promise<{ ok: true; data: T } | { ok: false; status: number }> {
-  const res = await fetch(url, { headers: authHeaders() });
+  const res = await fetch(url, { headers: ghHeaders() });
   if (!res.ok) return { ok: false, status: res.status };
   return { ok: true, data: (await res.json()) as T };
 }
 
 /** List the recipe files in a directory of a repo (canonical or student). */
 async function listRecipeFiles(
-  owner: string,
-  repo: string,
+  fullRepo: string,
   dirPath: string,
 ): Promise<{ ok: true; files: GitHubContentEntry[] } | { ok: false; status: number }> {
-  const url = `${GITHUB_API}/repos/${owner}/${repo}/contents/${encodeURI(dirPath)}`;
+  const url = `${GITHUB_API}/repos/${fullRepo}/contents/${encodeURI(dirPath)}`;
   const res = await ghJson<GitHubContentEntry[] | GitHubContentEntry>(url);
   if (!res.ok) return res;
   const entries = Array.isArray(res.data) ? res.data : [res.data];
@@ -91,12 +66,46 @@ async function listRecipeFiles(
   return { ok: true, files };
 }
 
-/** Fetch a file's git blob SHA (cheap identity check); null if absent. */
-async function fileSha(owner: string, repo: string, filePath: string): Promise<string | null> {
-  const url = `${GITHUB_API}/repos/${owner}/${repo}/contents/${encodeURI(filePath)}`;
-  const res = await ghJson<GitHubContentEntry>(url);
-  if (!res.ok) return null;
-  return res.data.sha ?? null;
+/**
+ * Find the student's repo that holds their copy of `lessonPath`. Mirrors the
+ * progress-report process: discover the student's LEAGUE repos from their
+ * GitHub activity (not a hardcoded name), then pick whichever one actually
+ * contains the lesson directory.
+ *
+ * Returns the matching repo's recipe files, or a status describing why none
+ * matched (so the caller can report "couldn't verify" vs "no work yet").
+ */
+async function findStudentLessonFiles(
+  githubUsername: string,
+  lessonPath: string,
+): Promise<
+  | { ok: true; files: GitHubContentEntry[]; repo: string }
+  | { ok: false; reason: string }
+> {
+  let repos: string[];
+  try {
+    repos = await discoverLeagueRepos(githubUsername);
+  } catch (err) {
+    if (err instanceof GitHubUserNotFoundError) {
+      return { ok: false, reason: `GitHub user @${githubUsername} not found.` };
+    }
+    return { ok: false, reason: `Couldn't read GitHub activity for @${githubUsername}.` };
+  }
+  if (repos.length === 0) {
+    return { ok: false, reason: `No LEAGUE repos found for @${githubUsername}.` };
+  }
+  // The lesson directory may sit at the lesson's path, or one segment up
+  // (some student module repos hold the lesson dir at the repo root).
+  const candidates = [lessonPath, lessonPath.replace(/^lessons\//, '')];
+  for (const repo of repos) {
+    for (const dir of candidates) {
+      const listed = await listRecipeFiles(repo, dir);
+      if (listed.ok && listed.files.length > 0) {
+        return { ok: true, files: listed.files, repo };
+      }
+    }
+  }
+  return { ok: false, reason: `No LEAGUE repo of @${githubUsername} contains ${lessonPath}.` };
 }
 
 /**
@@ -122,7 +131,7 @@ export async function checkRecipeCompletion(params: {
   }
 
   // 1. Required files = recipes in the canonical lesson directory.
-  const canonical = await listRecipeFiles(CANONICAL_ORG, levelRepo, lessonPath);
+  const canonical = await listRecipeFiles(`${CANONICAL_ORG}/${levelRepo}`, lessonPath);
   if (!canonical.ok) {
     return {
       complete: false,
@@ -137,18 +146,14 @@ export async function checkRecipeCompletion(params: {
   }
   const starterSha = new Map(canonical.files.map((f) => [f.name, f.sha]));
 
-  // 2. The student's copy of that directory.
-  const { owner, repo } = resolveStudentRepo(githubUsername, levelRepo);
-  const student = await listRecipeFiles(owner, repo, lessonPath);
+  // 2. Discover the student's copy of that lesson (same process as the report).
+  const student = await findStudentLessonFiles(githubUsername, lessonPath);
   if (!student.ok) {
     return {
       complete: false,
       incomplete: canonical.files.map((f) => f.name),
       checked: false,
-      reason:
-        student.status === 404
-          ? `No ${repo} repo found for ${owner} (or the ${lessonPath} directory is missing).`
-          : `Couldn't read ${owner}/${repo} (HTTP ${student.status}).`,
+      reason: student.reason,
     };
   }
   const studentSha = new Map(student.files.map((f) => [f.name, f.sha]));

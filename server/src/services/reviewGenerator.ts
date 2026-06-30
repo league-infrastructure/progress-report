@@ -4,6 +4,7 @@ import { db } from '../db';
 import { monthlyReviews, students, instructors, users, studentAttendance, pike13Tokens, reviewTemplates } from '../db/schema';
 import { sendPike13Note, buildPike13NoteText } from './pike13Notes';
 import { sendReviewEmail } from './email';
+import { isLeagueRepoName, leagueOrgPrefix } from './github';
 
 export interface GeneratedDraft {
   body: string;
@@ -253,10 +254,8 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
   //   2. The repo owner org starts with "league"
   //   3. The repo is a fork whose parent org starts with "league"
   // Fail-open: if the GitHub API check itself errors, keep the repo.
-  const leagueOrgPrefix = (process.env.LEAGUE_GITHUB_ORG_PREFIX ?? 'league').toLowerCase();
-  const LEAGUE_REPO_PATTERN = /^(level\d+[-_]module\d+|.*apprentice.*|.*league.*|.*curriculum.*)/i;
-
-  const isLeagueRepoName = (shortName: string) => LEAGUE_REPO_PATTERN.test(shortName);
+  // Shared LEAGUE-repo discovery logic (also used by the quiz completion gate).
+  const orgPrefix = leagueOrgPrefix();
 
   for (const [fullRepo, { shortName }] of [...repoData.entries()]) {
     if (isLeagueRepoName(shortName)) continue; // Name match — keep without API call
@@ -270,7 +269,7 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
       };
       const ownerOrg = info.owner.login.toLowerCase();
       const parentOrg = info.parent?.owner.login.toLowerCase() ?? '';
-      const isLeague = ownerOrg.startsWith(leagueOrgPrefix) || parentOrg.startsWith(leagueOrgPrefix);
+      const isLeague = ownerOrg.startsWith(orgPrefix) || parentOrg.startsWith(orgPrefix);
       if (!isLeague) repoData.delete(fullRepo);
     } catch { /* Can't verify — leave it in */ }
   }

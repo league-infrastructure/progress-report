@@ -2,7 +2,7 @@
 id: '010'
 title: "Wave 10 \u2014 Gate quiz assignment on GitHub recipe completion (with instructor\
   \ bypass)"
-status: done
+status: in-progress
 use-cases: []
 depends-on:
 - '004'
@@ -30,11 +30,18 @@ still needs to finish. The instructor may use the existing **bypass** option to
 assign anyway.
 
 **Source of truth & mapping:**
-- Level → org repo name (e.g. `python-apprentice` → `jointheleague/Python-Apprentice`).
+- Canonical course repo = `league-curriculum/<repo>` (level's `repo`, e.g.
+  `Python-Apprentice`). Required file set = the listing of `<canonical>/<lessonPath>`.
 - Lesson directory = the lesson's `path` (e.g. `lessons/30_Loops`).
-- Student fork = `https://github.com/<student.githubUsername>/<repo>`.
-- Required file set = the directory listing of `<orgRepo>/<lessonPath>` (canonical).
+- Student repo is **discovered the same way as the progress report** — from the
+  student's GitHub events feed filtered to LEAGUE repos (shared helper
+  `services/github.ts`), NOT a hardcoded `<username>/<repo>` name. The gate then
+  picks whichever discovered repo contains the lesson directory (trying both
+  `<lessonPath>` and the `lessons/`-stripped short path for module repos).
 - GitHub reads use the existing `GITHUB_TOKEN`.
+- Caveat (inherited from the report's model): discovery relies on recent public
+  push activity; a student with no recent/public LEAGUE pushes yields
+  `checked:false` → blocked, and the instructor uses bypass.
 
 Parent/guardian email is sourced from Pike13 (`students.guardianEmail`), not
 entered manually (related cleanup also in this change).
