@@ -1,7 +1,7 @@
 ---
 id: '005'
 title: "Wave 5 \u2014 Student GitHub login and dashboard (frontend)"
-status: in-progress
+status: done
 use-cases: []
 depends-on: []
 github-issue: ''

@@ -1,16 +1,11 @@
 ---
-id: "003"
-title: "Wave 3 — Core services: role guards, token links, sampler, grader"
-status: todo
+id: '003'
+title: "Wave 3 \u2014 Core services: role guards, token links, sampler, grader"
+status: in-progress
 use-cases: []
 depends-on: []
-github-issue: ""
-todo: ""
-# completes_todo: Controls whether linked TODOs are archived when this ticket
-# is moved to done. Default: true (archive when all referencing tickets are done).
-# Set to false (scalar) to suppress archival for ALL linked TODOs on this ticket.
-# Set to a mapping {filename.md: false} to suppress archival per TODO filename.
-# Use false for tickets that partially address a multi-sprint umbrella TODO.
+github-issue: ''
+todo: ''
 completes_todo: true
 ---
 <!-- CLASI: Before changing code or making plans, review the SE process in CLAUDE.md -->
