@@ -260,6 +260,10 @@ export const quizzes = sqliteTable('quizzes', {
   status: text('status').notNull().default('assigned'), // 'assigned' | 'completed'
   bypassReason: text('bypass_reason'),
   questionIds: text('question_ids', { mode: 'json' }).notNull().$type<string[]>(),
+  // Instructor's review note for the parent/guardian, and when it was last sent.
+  // A completed quiz with a null parentNoteSentAt is "awaiting review".
+  parentNote: text('parent_note'),
+  parentNoteSentAt: integer('parent_note_sent_at', { mode: 'timestamp' }),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 

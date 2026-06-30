@@ -15,6 +15,13 @@
       "when": 1782288819574,
       "tag": "0001_bumpy_purple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1782787289960,
+      "tag": "0002_rare_meltdown",
+      "breakpoints": true
     }
   ]
 }

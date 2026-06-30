@@ -15,6 +15,20 @@ interface MyStudentRow {
   score: number | null
   passed: boolean | null
   submittedAt: string | null
+  parentNoteSentAt: string | null
+}
+
+interface ReviewData {
+  quizId: number
+  status: string
+  studentName: string | null
+  parentEmail: string | null
+  lessonName: string | null
+  score: number
+  passed: boolean
+  results: { questionId: string; correct: boolean; studentAnswer: string; correctAnswer: string; explanation: string }[]
+  parentNote: string | null
+  parentNoteSentAt: string | null
 }
 
 interface PreviewQ {
@@ -50,8 +64,15 @@ export function InstructorQuizTabPage() {
   const [err, setErr] = useState<string | null>(null)
   const [addGithub, setAddGithub] = useState('')
   const [addName, setAddName] = useState('')
+  const [addParentEmail, setAddParentEmail] = useState('')
   const [adding, setAdding] = useState(false)
   const [addErr, setAddErr] = useState<string | null>(null)
+  // Parent-note review panel state
+  const [review, setReview] = useState<ReviewData | null>(null)
+  const [reviewNote, setReviewNote] = useState('')
+  const [reviewBusy, setReviewBusy] = useState(false)
+  const [reviewErr, setReviewErr] = useState<string | null>(null)
+  const [sending, setSending] = useState(false)
   const [preview, setPreview] = useState<{ lessonName: string; questions: PreviewQ[] } | null>(null)
   const [previewBusy, setPreviewBusy] = useState(false)
   const [previewAnswers, setPreviewAnswers] = useState<Record<string, string>>({})
@@ -113,7 +134,11 @@ export function InstructorQuizTabPage() {
       const res = await fetch('/api/quiz/instructor/students', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ githubUsername: gh, name: addName.trim() || undefined }),
+        body: JSON.stringify({
+          githubUsername: gh,
+          name: addName.trim() || undefined,
+          parentEmail: addParentEmail.trim() || undefined,
+        }),
       })
       if (!res.ok) {
         const e = (await res.json().catch(() => ({}))) as { error?: string }
@@ -122,11 +147,47 @@ export function InstructorQuizTabPage() {
       const created = (await res.json()) as Student
       await refetchRoster()
       setStudentId(created.id)
-      setAddGithub(''); setAddName('')
+      setAddGithub(''); setAddName(''); setAddParentEmail('')
     } catch (e) {
       setAddErr(e instanceof Error ? e.message : 'Could not add student')
     } finally {
       setAdding(false)
+    }
+  }
+
+  async function openReview(quizId: number) {
+    setReviewBusy(true); setReviewErr(null); setReview(null)
+    try {
+      const data = await getJSON<ReviewData>(`/api/quiz/instructor/quizzes/${quizId}/review`)
+      setReview(data)
+      setReviewNote(data.parentNote ?? '')
+    } catch {
+      setReviewErr('Could not load this quiz for review.')
+    } finally {
+      setReviewBusy(false)
+    }
+  }
+
+  async function sendParentNote() {
+    if (!review) return
+    setSending(true); setReviewErr(null)
+    try {
+      const res = await fetch(`/api/quiz/instructor/quizzes/${review.quizId}/send-parent-note`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note: reviewNote }),
+      })
+      if (!res.ok) {
+        const e = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(e.error ?? 'Could not send note')
+      }
+      const data = (await res.json()) as { parentNoteSentAt: string; emailed: boolean }
+      setReview((r) => (r ? { ...r, parentNoteSentAt: data.parentNoteSentAt, parentNote: reviewNote } : r))
+      refetch()
+    } catch (e) {
+      setReviewErr(e instanceof Error ? e.message : 'Could not send note')
+    } finally {
+      setSending(false)
     }
   }
 
@@ -186,6 +247,8 @@ export function InstructorQuizTabPage() {
             className="rounded border border-slate-300 px-2 py-1 text-sm" />
           <input value={addName} onChange={(e) => setAddName(e.target.value)} placeholder="name (optional)"
             className="rounded border border-slate-300 px-2 py-1 text-sm" />
+          <input value={addParentEmail} onChange={(e) => setAddParentEmail(e.target.value)} placeholder="parent email (optional)"
+            type="email" className="rounded border border-slate-300 px-2 py-1 text-sm" />
           <button type="button" onClick={handleAddStudent} disabled={!addGithub.trim() || adding}
             className="rounded bg-slate-700 px-3 py-1.5 text-sm text-white hover:bg-slate-800 disabled:opacity-50">
             {adding ? 'Adding…' : 'Add'}
@@ -328,28 +391,114 @@ export function InstructorQuizTabPage() {
               <th className="px-4 py-3 text-left font-medium text-slate-600">Status</th>
               <th className="px-4 py-3 text-left font-medium text-slate-600">Score</th>
               <th className="px-4 py-3 text-left font-medium text-slate-600">Assigned</th>
+              <th className="px-4 py-3 text-left font-medium text-slate-600">Parent note</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {(myStudents ?? []).map((r) => (
+            {(myStudents ?? []).map((r) => {
+              const completed = r.status === 'completed'
+              return (
               <tr key={r.quizId} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-slate-800">{r.studentName} <span className="text-slate-400">({r.githubUsername ?? '—'})</span></td>
                 <td className="px-4 py-3 text-slate-700">{r.lessonName}</td>
-                <td className="px-4 py-3 text-slate-600">{r.status}</td>
+                <td className="px-4 py-3 text-slate-600">
+                  {completed && !r.parentNoteSentAt
+                    ? <span className="rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">Awaiting review</span>
+                    : r.status}
+                </td>
                 <td className="px-4 py-3">
                   {r.score == null ? <span className="text-slate-400">—</span> : (
                     <span className={r.passed ? 'text-green-700' : 'text-red-700'}>{r.score}% {r.passed ? '✓' : '✗'}</span>
                   )}
                 </td>
                 <td className="px-4 py-3 text-slate-600">{new Date(r.createdAt).toLocaleDateString()}</td>
+                <td className="px-4 py-3">
+                  {completed ? (
+                    <button onClick={() => openReview(r.quizId)} disabled={reviewBusy}
+                      className="rounded border border-slate-300 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50">
+                      {r.parentNoteSentAt ? 'Review / re-send' : 'Review & send'}
+                    </button>
+                  ) : (
+                    <span className="text-xs text-slate-400">—</span>
+                  )}
+                </td>
               </tr>
-            ))}
+              )
+            })}
             {(myStudents ?? []).length === 0 && (
-              <tr><td colSpan={5} className="px-4 py-6 text-center text-slate-500">No quizzes assigned yet.</td></tr>
+              <tr><td colSpan={6} className="px-4 py-6 text-center text-slate-500">No quizzes assigned yet.</td></tr>
             )}
           </tbody>
         </table>
       </div>
+
+      {/* Parent-note review panel */}
+      {review && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4">
+          <div className="my-8 w-full max-w-2xl rounded-lg bg-white p-6 shadow-xl">
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-800">
+                Review — {review.studentName} · {review.lessonName}
+              </h2>
+              <button onClick={() => setReview(null)} className="text-sm text-slate-500 hover:underline">Close</button>
+            </div>
+
+            <div className={`mb-4 rounded-lg p-3 ${review.passed ? 'bg-green-50' : 'bg-red-50'}`}>
+              <span className="text-2xl font-bold">{review.score}%</span>{' '}
+              <span className={review.passed ? 'text-green-700' : 'text-red-700'}>
+                {review.passed ? 'Passed' : 'Not passed'}
+              </span>
+            </div>
+
+            <ol className="mb-4 max-h-64 space-y-2 overflow-y-auto">
+              {review.results.map((r, i) => (
+                <li key={r.questionId} className="rounded border border-slate-200 p-2 text-sm">
+                  <p className="text-slate-600">
+                    Q{i + 1} — answer: {r.studentAnswer || <em className="text-slate-400">blank</em>}
+                  </p>
+                  <p className={r.correct ? 'font-medium text-green-700' : 'font-medium text-red-700'}>
+                    {r.correct ? 'Correct' : `Incorrect (correct: ${r.correctAnswer})`}
+                  </p>
+                </li>
+              ))}
+            </ol>
+
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Note to parent {review.parentEmail ? <span className="font-normal text-slate-400">→ {review.parentEmail}</span> : null}
+            </label>
+            <textarea
+              value={reviewNote}
+              onChange={(e) => setReviewNote(e.target.value)}
+              rows={4}
+              placeholder="Add a short note about how the student did…"
+              className="mb-2 w-full rounded border border-slate-300 px-3 py-2 text-sm"
+            />
+
+            {!review.parentEmail && (
+              <p className="mb-2 text-sm text-amber-700">
+                No parent email on file for this student. Add one via “Add a student” above before sending.
+              </p>
+            )}
+            {reviewErr && <p className="mb-2 text-sm text-red-600">{reviewErr}</p>}
+            {review.parentNoteSentAt && (
+              <p className="mb-2 text-sm text-slate-500">
+                Last sent {new Date(review.parentNoteSentAt).toLocaleString()}
+              </p>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setReview(null)}
+                className="rounded border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+                Cancel
+              </button>
+              <button onClick={sendParentNote} disabled={!review.parentEmail || sending}
+                className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+                {sending ? 'Sending…' : review.parentNoteSentAt ? 'Re-send to parent' : 'Send to parent'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

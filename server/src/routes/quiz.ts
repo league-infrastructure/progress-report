@@ -17,7 +17,7 @@ import { sampleQuestions, markSeen } from '../services/quiz/sampler';
 import { gradeAttempt } from '../services/quiz/grader';
 import { mintToken, resolveToken, consumeToken, TokenError } from '../services/quiz/tokenizer';
 import { getPlacement, gradePlacement } from '../services/quiz/placement';
-import { sendPlacementResultEmail } from '../services/email';
+import { sendPlacementResultEmail, sendParentQuizNote } from '../services/email';
 
 export const quizRouter = Router();
 
@@ -291,12 +291,17 @@ quizRouter.get('/instructor/roster', requireQuizRole('instructor', 'admin'), (re
 // roster — lets an instructor assign a quiz to any student by their GitHub name.
 quizRouter.post('/instructor/students', requireQuizRole('instructor', 'admin'), (req, res, next) => {
   try {
-    const { githubUsername, name } = req.body as { githubUsername?: string; name?: string };
+    const { githubUsername, name, parentEmail } = req.body as {
+      githubUsername?: string;
+      name?: string;
+      parentEmail?: string;
+    };
     const gh = (githubUsername ?? '').trim();
     if (!gh) {
       res.status(400).json({ error: 'githubUsername required' });
       return;
     }
+    const guardianEmail = (parentEmail ?? '').trim() || null;
     const instructorId = req.session.quizUser!.instructorId ?? -1;
     let student = db
       .select()
@@ -306,10 +311,14 @@ quizRouter.post('/instructor/students', requireQuizRole('instructor', 'admin'), 
     if (!student) {
       const [created] = db
         .insert(students)
-        .values({ name: name?.trim() || gh, githubUsername: gh })
+        .values({ name: name?.trim() || gh, githubUsername: gh, guardianEmail })
         .returning()
         .all();
       student = created;
+    } else if (guardianEmail && !student.guardianEmail) {
+      // Backfill a guardian email if the student exists but doesn't have one yet.
+      db.update(students).set({ guardianEmail }).where(eq(students.id, student.id)).run();
+      student = { ...student, guardianEmail };
     }
     db.insert(instructorStudents)
       .values({ instructorId, studentId: student.id })
@@ -387,6 +396,7 @@ quizRouter.get('/instructor/my-students', requireQuizRole('instructor', 'admin')
         score: quizAttempts.score,
         passed: quizAttempts.passed,
         submittedAt: quizAttempts.submittedAt,
+        parentNoteSentAt: quizzes.parentNoteSentAt,
       })
       .from(quizzes)
       .innerJoin(students, eq(quizzes.studentId, students.id))
@@ -434,6 +444,117 @@ quizRouter.get('/instructor/preview', requireQuizRole('instructor', 'admin'), (r
     res.json({ lessonName: lesson.name, questions });
   } catch (err) {
     next(err);
+  }
+});
+
+// ---------- instructor review of a completed assigned quiz ----------
+
+/** Load a quiz and assert the requester (instructor) owns it, or is an admin. */
+function loadOwnedQuiz(quizId: number, req: import('express').Request) {
+  const quiz = db.select().from(quizzes).where(eq(quizzes.id, quizId)).get();
+  if (!quiz) throw new QuizAccessError('Quiz not found', 404);
+  const role = req.session.quizUser!.role;
+  const instructorId = req.session.quizUser!.instructorId ?? null;
+  if (role !== 'admin' && quiz.instructorId !== instructorId) {
+    throw new QuizAccessError('Not your quiz', 403);
+  }
+  return quiz;
+}
+
+// Instructor review view: score + per-question results WITH correct answers,
+// the student name + stored guardian email, and the current parent note state.
+quizRouter.get('/instructor/quizzes/:id/review', requireQuizRole('instructor', 'admin'), (req, res, next) => {
+  try {
+    const quizId = Number(req.params.id);
+    const quiz = loadOwnedQuiz(quizId, req);
+    const attempt = db
+      .select()
+      .from(quizAttempts)
+      .where(eq(quizAttempts.quizId, quizId))
+      .orderBy(desc(quizAttempts.submittedAt))
+      .get();
+    const student = db.select().from(students).where(eq(students.id, quiz.studentId)).get();
+    const lesson = db.select().from(quizLessons).where(eq(quizLessons.id, quiz.lessonId)).get();
+
+    let results: ReturnType<typeof gradeAttempt>['results'] = [];
+    let score = 0;
+    let passed = false;
+    if (attempt) {
+      const rows = db
+        .select()
+        .from(quizQuestions)
+        .where(inArray(quizQuestions.id, quiz.questionIds))
+        .all();
+      const byId = new Map(rows.map((q) => [q.id, q]));
+      const ordered = quiz.questionIds
+        .map((id) => byId.get(id))
+        .filter((q): q is QuizQuestion => Boolean(q));
+      const graded = gradeAttempt(ordered, attempt.answers);
+      results = graded.results;
+      score = attempt.score;
+      passed = attempt.passed;
+    }
+
+    res.json({
+      quizId,
+      status: quiz.status,
+      studentName: student?.name ?? null,
+      parentEmail: student?.guardianEmail ?? null,
+      lessonName: lesson?.name ?? null,
+      score,
+      passed,
+      results,
+      parentNote: quiz.parentNote,
+      parentNoteSentAt: quiz.parentNoteSentAt,
+    });
+  } catch (err) {
+    handleKnownError(err, res, next);
+  }
+});
+
+// Send (or re-send) the instructor's reviewed note to the student's guardian.
+// Persists the edited note + stamps parentNoteSentAt. Re-sending is allowed.
+quizRouter.post('/instructor/quizzes/:id/send-parent-note', requireQuizRole('instructor', 'admin'), async (req, res, next) => {
+  try {
+    const quizId = Number(req.params.id);
+    const quiz = loadOwnedQuiz(quizId, req);
+    if (quiz.status !== 'completed') {
+      res.status(409).json({ error: 'Quiz is not completed yet' });
+      return;
+    }
+    const note = ((req.body?.note ?? '') as string).trim();
+    const student = db.select().from(students).where(eq(students.id, quiz.studentId)).get();
+    const parentEmail = student?.guardianEmail?.trim();
+    if (!parentEmail) {
+      res.status(400).json({ error: 'No parent email on file for this student' });
+      return;
+    }
+    const attempt = db
+      .select()
+      .from(quizAttempts)
+      .where(eq(quizAttempts.quizId, quizId))
+      .orderBy(desc(quizAttempts.submittedAt))
+      .get();
+    const lesson = db.select().from(quizLessons).where(eq(quizLessons.id, quiz.lessonId)).get();
+
+    const sent = await sendParentQuizNote({
+      parentEmail,
+      studentName: student?.name ?? '',
+      lessonName: lesson?.name ?? 'Quiz',
+      score: attempt?.score ?? 0,
+      passed: attempt?.passed ?? false,
+      note,
+    });
+
+    const sentAt = new Date();
+    db.update(quizzes)
+      .set({ parentNote: note || null, parentNoteSentAt: sentAt })
+      .where(eq(quizzes.id, quizId))
+      .run();
+
+    res.json({ emailed: sent, parentNoteSentAt: sentAt, parentEmail });
+  } catch (err) {
+    handleKnownError(err, res, next);
   }
 });
 

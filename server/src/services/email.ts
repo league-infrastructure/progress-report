@@ -267,6 +267,103 @@ export async function sendPlacementResultEmail(params: {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Parent quiz-result note (instructor-reviewed, sent to the guardian)
+// ---------------------------------------------------------------------------
+
+function buildParentQuizNoteHtml(params: {
+  studentName: string;
+  lessonName: string;
+  score: number;
+  passed: boolean;
+  note: string;
+}): string {
+  const { studentName, lessonName, score, passed, note } = params;
+  const noteLines = note
+    .split('\n')
+    .map((line) => `<p style="margin:0 0 12px 0;color:#374151;font-size:15px;line-height:1.6;">${line || '&nbsp;'}</p>`)
+    .join('');
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /><title>Quiz Result</title></head>
+<body style="margin:0;padding:0;background-color:#f5f5f5;font-family:Inter,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f5f5f5;padding:32px 16px;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+        <tr><td style="background-color:#f37121;padding:28px 32px;text-align:center;">
+          <img src="https://www.jointheleague.org/_astro/wordmark-h-1200.DPj-wZBK_Z2jTnVL.webp" alt="The LEAGUE of Amazing Programmers" width="260" style="display:block;margin:0 auto;max-width:260px;" />
+        </td></tr>
+        <tr><td style="background-color:#1e293b;padding:16px 32px;">
+          <p style="margin:0;color:#ffffff;font-size:13px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;">Quiz Result</p>
+          <p style="margin:4px 0 0 0;color:#f37121;font-size:20px;font-weight:700;">${studentName} &mdash; ${lessonName}</p>
+        </td></tr>
+        <tr><td style="padding:32px;">
+          <div style="background-color:${passed ? '#f0fdf4' : '#fef2f2'};border-radius:8px;padding:20px;margin-bottom:24px;">
+            <p style="margin:0;color:#6b7280;font-size:13px;">Score</p>
+            <p style="margin:4px 0 0 0;color:${passed ? '#15803d' : '#b45309'};font-size:28px;font-weight:700;">${score}%</p>
+            <p style="margin:6px 0 0 0;color:#374151;font-size:14px;">${passed ? 'Passed' : 'Keep practicing'}</p>
+          </div>
+          ${noteLines}
+        </td></tr>
+        <tr><td style="padding:20px 32px;background-color:#1e293b;text-align:center;">
+          <p style="margin:0;font-size:12px;color:#94a3b8;">&copy; ${new Date().getFullYear()} The LEAGUE of Amazing Programmers &bull; <a href="https://www.jointheleague.org" style="color:#f37121;text-decoration:none;">jointheleague.org</a></p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
+/**
+ * Email an instructor-reviewed quiz-result note to a student's guardian.
+ * Best-effort: returns true if sent, false if email is unconfigured or the send
+ * failed. Never throws, so the API can return its result regardless.
+ */
+export async function sendParentQuizNote(params: {
+  parentEmail: string;
+  studentName: string;
+  lessonName: string;
+  score: number;
+  passed: boolean;
+  note: string;
+}): Promise<boolean> {
+  const from = process.env.SENDGRID_FROM_EMAIL;
+  if (!process.env.SENDGRID_API_KEY || !from) {
+    // eslint-disable-next-line no-console
+    console.warn('[parent-quiz-note] SENDGRID not configured; skipping send.');
+    return false;
+  }
+  const studentName = params.studentName?.trim() || 'your student';
+  const noteText = params.note?.trim() || `${studentName} completed a quiz (${params.lessonName}) and scored ${params.score}%.`;
+  try {
+    await sgMail.send({
+      to: params.parentEmail,
+      from,
+      subject: `[LEAGUE] Quiz Result — ${studentName}`,
+      text: [
+        `Quiz Result — ${studentName} (${params.lessonName})`,
+        `Score: ${params.score}% (${params.passed ? 'Passed' : 'Keep practicing'})`,
+        '',
+        noteText,
+      ].join('\n'),
+      html: buildParentQuizNoteHtml({
+        studentName,
+        lessonName: params.lessonName,
+        score: params.score,
+        passed: params.passed,
+        note: noteText,
+      }),
+    });
+    return true;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[parent-quiz-note] send failed:', err);
+    return false;
+  }
+}
+
 export async function sendReviewEmail(params: {
   toEmail: string;
   studentName: string;
