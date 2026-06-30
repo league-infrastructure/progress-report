@@ -163,6 +163,7 @@ export async function seedQuiz(opts: { reset?: boolean } = {}): Promise<void> {
           .split('-')
           .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
           .join(' '),
+        repo: indexLevel.repo,
         order: levelOrder + 1,
       })
       .onConflictDoUpdate({
@@ -172,6 +173,7 @@ export async function seedQuiz(opts: { reset?: boolean } = {}): Promise<void> {
             .split('-')
             .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
             .join(' '),
+          repo: indexLevel.repo,
           order: levelOrder + 1,
         },
       });

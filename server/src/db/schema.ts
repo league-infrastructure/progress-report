@@ -214,6 +214,9 @@ export const quizLevels = sqliteTable('quiz_levels', {
   id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
   slug: text('slug').notNull().unique(),
   name: text('name').notNull(),
+  // GitHub repo name for this level (e.g. 'Python-Apprentice'); used to locate
+  // the student's fork when gating quizzes on recipe completion.
+  repo: text('repo'),
   order: integer('order').notNull(),
 });
 

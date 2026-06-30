@@ -18,6 +18,7 @@ import { gradeAttempt } from '../services/quiz/grader';
 import { mintToken, resolveToken, consumeToken, TokenError } from '../services/quiz/tokenizer';
 import { getPlacement, gradePlacement } from '../services/quiz/placement';
 import { sendPlacementResultEmail, sendParentQuizNote } from '../services/email';
+import { checkRecipeCompletion } from '../services/quiz/completion';
 
 export const quizRouter = Router();
 
@@ -291,17 +292,14 @@ quizRouter.get('/instructor/roster', requireQuizRole('instructor', 'admin'), (re
 // roster — lets an instructor assign a quiz to any student by their GitHub name.
 quizRouter.post('/instructor/students', requireQuizRole('instructor', 'admin'), (req, res, next) => {
   try {
-    const { githubUsername, name, parentEmail } = req.body as {
-      githubUsername?: string;
-      name?: string;
-      parentEmail?: string;
-    };
+    const { githubUsername, name } = req.body as { githubUsername?: string; name?: string };
     const gh = (githubUsername ?? '').trim();
     if (!gh) {
       res.status(400).json({ error: 'githubUsername required' });
       return;
     }
-    const guardianEmail = (parentEmail ?? '').trim() || null;
+    // Parent/guardian email is NOT set here — it comes from the Pike13 sync
+    // (students.guardianEmail), the same source the progress reports use.
     const instructorId = req.session.quizUser!.instructorId ?? -1;
     let student = db
       .select()
@@ -311,14 +309,10 @@ quizRouter.post('/instructor/students', requireQuizRole('instructor', 'admin'), 
     if (!student) {
       const [created] = db
         .insert(students)
-        .values({ name: name?.trim() || gh, githubUsername: gh, guardianEmail })
+        .values({ name: name?.trim() || gh, githubUsername: gh })
         .returning()
         .all();
       student = created;
-    } else if (guardianEmail && !student.guardianEmail) {
-      // Backfill a guardian email if the student exists but doesn't have one yet.
-      db.update(students).set({ guardianEmail }).where(eq(students.id, student.id)).run();
-      student = { ...student, guardianEmail };
     }
     db.insert(instructorStudents)
       .values({ instructorId, studentId: student.id })
@@ -345,7 +339,7 @@ quizRouter.get('/instructor/levels', requireQuizRole('instructor', 'admin'), (_r
   }
 });
 
-quizRouter.post('/instructor/assign', requireQuizRole('instructor', 'admin'), (req, res, next) => {
+quizRouter.post('/instructor/assign', requireQuizRole('instructor', 'admin'), async (req, res, next) => {
   try {
     const { studentId, lessonId, bypassReason } = req.body as {
       studentId?: number;
@@ -356,6 +350,35 @@ quizRouter.post('/instructor/assign', requireQuizRole('instructor', 'admin'), (r
       res.status(400).json({ error: 'studentId and lessonId required' });
       return;
     }
+
+    // Gate on GitHub recipe completion unless the instructor is bypassing.
+    // The student must have completed every recipe in the lesson directory
+    // (file present in their fork AND changed from the canonical starter).
+    if (!bypassReason) {
+      const lesson = db.select().from(quizLessons).where(eq(quizLessons.id, lessonId)).get();
+      const student = db.select().from(students).where(eq(students.id, studentId)).get();
+      const level = lesson
+        ? db.select().from(quizLevels).where(eq(quizLevels.id, lesson.levelId)).get()
+        : undefined;
+      if (lesson) {
+        const completion = await checkRecipeCompletion({
+          githubUsername: student?.githubUsername ?? null,
+          levelRepo: level?.repo ?? null,
+          lessonPath: lesson.path,
+        });
+        if (!completion.complete) {
+          res.status(409).json({
+            error: completion.checked
+              ? 'Student must complete all recipes in this lesson before taking the quiz.'
+              : completion.reason ?? 'Could not verify recipe completion.',
+            incomplete: completion.incomplete,
+            checked: completion.checked,
+          });
+          return;
+        }
+      }
+    }
+
     const questionIds = sampleQuestions(lessonId, studentId);
     if (questionIds.length === 0) {
       res.status(400).json({ error: 'Lesson has no questions' });

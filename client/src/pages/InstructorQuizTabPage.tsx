@@ -64,7 +64,6 @@ export function InstructorQuizTabPage() {
   const [err, setErr] = useState<string | null>(null)
   const [addGithub, setAddGithub] = useState('')
   const [addName, setAddName] = useState('')
-  const [addParentEmail, setAddParentEmail] = useState('')
   const [adding, setAdding] = useState(false)
   const [addErr, setAddErr] = useState<string | null>(null)
   // Parent-note review panel state
@@ -112,6 +111,16 @@ export function InstructorQuizTabPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ studentId, lessonId, bypassReason: bypass ? bypassReason || 'instructor override' : undefined }),
       })
+      if (res.status === 409) {
+        const e = (await res.json().catch(() => ({}))) as { error?: string; incomplete?: string[]; checked?: boolean }
+        const list = (e.incomplete ?? []).join(', ')
+        const base = e.error ?? 'Student has not completed the required recipes.'
+        throw new Error(
+          list
+            ? `${base} Needs to finish: ${list}. Use “Bypass completion gate” to assign anyway.`
+            : `${base} Use “Bypass completion gate” to assign anyway.`,
+        )
+      }
       if (!res.ok) {
         const e = (await res.json().catch(() => ({}))) as { error?: string }
         throw new Error(e.error ?? 'Assign failed')
@@ -137,7 +146,6 @@ export function InstructorQuizTabPage() {
         body: JSON.stringify({
           githubUsername: gh,
           name: addName.trim() || undefined,
-          parentEmail: addParentEmail.trim() || undefined,
         }),
       })
       if (!res.ok) {
@@ -147,7 +155,7 @@ export function InstructorQuizTabPage() {
       const created = (await res.json()) as Student
       await refetchRoster()
       setStudentId(created.id)
-      setAddGithub(''); setAddName(''); setAddParentEmail('')
+      setAddGithub(''); setAddName('')
     } catch (e) {
       setAddErr(e instanceof Error ? e.message : 'Could not add student')
     } finally {
@@ -247,8 +255,6 @@ export function InstructorQuizTabPage() {
             className="rounded border border-slate-300 px-2 py-1 text-sm" />
           <input value={addName} onChange={(e) => setAddName(e.target.value)} placeholder="name (optional)"
             className="rounded border border-slate-300 px-2 py-1 text-sm" />
-          <input value={addParentEmail} onChange={(e) => setAddParentEmail(e.target.value)} placeholder="parent email (optional)"
-            type="email" className="rounded border border-slate-300 px-2 py-1 text-sm" />
           <button type="button" onClick={handleAddStudent} disabled={!addGithub.trim() || adding}
             className="rounded bg-slate-700 px-3 py-1.5 text-sm text-white hover:bg-slate-800 disabled:opacity-50">
             {adding ? 'Adding…' : 'Add'}
@@ -476,7 +482,8 @@ export function InstructorQuizTabPage() {
 
             {!review.parentEmail && (
               <p className="mb-2 text-sm text-amber-700">
-                No parent email on file for this student. Add one via “Add a student” above before sending.
+                No parent email on file for this student. It syncs from the student’s Pike13 account —
+                make sure their Pike13 profile has a guardian email, then re-sync.
               </p>
             )}
             {reviewErr && <p className="mb-2 text-sm text-red-600">{reviewErr}</p>}
