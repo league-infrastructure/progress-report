@@ -85,14 +85,22 @@ async function findStudentLessonFiles(
 > {
   const dirCandidates = [lessonPath, lessonPath.replace(/^lessons\//, '')];
 
-  // Primary: the student's fork of the canonical course repo, same path.
-  // Per the chosen model we gate against the canonical repo layout, so the
-  // student's <username>/<levelRepo> fork is the authoritative place to look.
-  const fork = `${githubUsername}/${levelRepo}`;
-  for (const dir of dirCandidates) {
-    const listed = await listRecipeFiles(fork, dir);
-    if (listed.ok && listed.files.length > 0) {
-      return { ok: true, files: listed.files, repo: fork };
+  // Primary: the student's fork of the canonical course repo. Two conventions
+  // are in use across LEAGUE (both verified against live repos):
+  //   1. <username>/<levelRepo>                     (e.g. ace-lim/Python-Games)
+  //   2. <studentOrg>/<levelRepo>-<username>        (e.g. League-Students/Python-Apprentice-jose-manuel)
+  // The student org is configurable via STUDENT_FORK_ORG (default League-Students).
+  const studentOrg = process.env.STUDENT_FORK_ORG ?? 'League-Students';
+  const forkCandidates = [
+    `${githubUsername}/${levelRepo}`,
+    `${studentOrg}/${levelRepo}-${githubUsername}`,
+  ];
+  for (const fork of forkCandidates) {
+    for (const dir of dirCandidates) {
+      const listed = await listRecipeFiles(fork, dir);
+      if (listed.ok && listed.files.length > 0) {
+        return { ok: true, files: listed.files, repo: fork };
+      }
     }
   }
 

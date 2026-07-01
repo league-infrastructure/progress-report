@@ -64,6 +64,16 @@ describe('checkRecipeCompletion', () => {
     expect(res.incomplete.sort()).toEqual(['b.py', 'c.py']);
   });
 
+  it('finds the org-style fork (studentOrg/<repo>-<user>) when the personal fork is absent', async () => {
+    mockGitHub({
+      [CANON]: { status: 200, body: dir([['a.py', 'starterA']]) },
+      // personal fork alice/Python-Apprentice 404s; org fork holds the work
+      ['League-Students/Python-Apprentice-alice/contents/lessons/30_Loops']: { status: 200, body: dir([['a.py', 'editedA']]) },
+    });
+    const res = await checkRecipeCompletion({ githubUsername: 'alice', levelRepo: 'Python-Apprentice', lessonPath: 'lessons/30_Loops' });
+    expect(res).toEqual({ complete: true, incomplete: [], checked: true });
+  });
+
   it('falls back to a discovered repo when the same-name fork is absent', async () => {
     mockGitHub({
       [CANON]: { status: 200, body: dir([['a.py', 'starterA']]) },

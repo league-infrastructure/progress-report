@@ -9,6 +9,12 @@ module.exports = {
   testEnvironment: 'node',
   rootDir: '.',
   testMatch: ['**/*.test.ts'],
+  // NOTE: server suites share the singleton `db` (server/src/db) against a
+  // persistent SQLite file, so a full run must start from a freshly-migrated
+  // DB (the npm test flow does this). Cross-suite data isolation is known-
+  // fragile and tracked separately; run with --runInBand on a fresh DB for
+  // deterministic results.
+  maxWorkers: 1,
   moduleDirectories: ['node_modules', path.join(serverRoot, 'node_modules')],
   transform: {
     '^.+\\.tsx?$': [
