@@ -1,7 +1,7 @@
 ---
 id: '011'
 title: "Wave 11 \u2014 Staff training compliance tracking (AB 506) with renewal notifications"
-status: in-progress
+status: done
 use-cases: []
 depends-on: []
 github-issue: ''
