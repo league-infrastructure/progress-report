@@ -219,6 +219,20 @@ export async function runSync(
   // who isn't a paid instructor, regardless of how their name is formatted.
   const volunteerStaff = allStaff.filter((s) => !pike13StaffIdToInstructorId.has(s.id));
 
+  // 3b. Upsert a staff_profiles row for EVERY staff member (instructors and
+  //     volunteers) so training-compliance can be tracked for all of them.
+  //     Keyed on the Pike13 staff id (stable and present for all staff).
+  for (const staff of allStaff) {
+    const kind = pike13StaffIdToInstructorId.has(staff.id) ? 'instructor' : 'volunteer';
+    await db
+      .insert(schema.staffProfiles)
+      .values({ pike13StaffId: staff.id, name: staff.name, email: staff.email ?? null, kind, active: true })
+      .onConflictDoUpdate({
+        target: schema.staffProfiles.pike13StaffId,
+        set: { name: staff.name, email: staff.email ?? null, kind, active: true },
+      });
+  }
+
   // 4. Fetch YTD event occurrences in weekly chunks.
   //    The Pike13 API requires both from= and to= to return historical events.
   const eventOccurrences: Pike13EventOccurrence[] = [];

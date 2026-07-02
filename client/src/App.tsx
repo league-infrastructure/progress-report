@@ -22,6 +22,7 @@ import { AdminLayout } from './components/AdminLayout'
 import { InstructorLayout } from './components/InstructorLayout'
 import { InstructorQuizTabPage } from './pages/InstructorQuizTabPage'
 import { AdminPastQuizzesPage } from './pages/AdminPastQuizzesPage'
+import { TrainingsPage } from './pages/TrainingsPage'
 import { QuizTokenPage } from './pages/QuizTokenPage'
 import { StudentDashboardPage } from './pages/StudentDashboardPage'
 import { PlacementPage } from './pages/PlacementPage'
@@ -85,6 +86,13 @@ function App() {
         <ProtectedRoute role="admin">
           <AdminLayout>
             <CompliancePage />
+          </AdminLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/admin/trainings">
+        <ProtectedRoute role="admin">
+          <AdminLayout>
+            <TrainingsPage />
           </AdminLayout>
         </ProtectedRoute>
       </Route>

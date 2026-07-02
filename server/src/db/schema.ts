@@ -310,6 +310,50 @@ export const quizAssignmentTokens = sqliteTable('quiz_assignment_tokens', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
+// ---------- Staff training compliance (AB 506 etc.) ----------
+
+// One profile per Pike13 staff member — instructors AND volunteers. Keyed on the
+// Pike13 staff id so volunteers (who have no users/instructors record) are still
+// trackable. Populated during Pike13 sync.
+export const staffProfiles = sqliteTable('staff_profiles', {
+  id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
+  pike13StaffId: integer('pike13_staff_id').notNull().unique(),
+  name: text('name').notNull(),
+  email: text('email'),
+  kind: text('kind').notNull().default('volunteer'), // 'instructor' | 'volunteer'
+  active: integer('active', { mode: 'boolean' }).notNull().default(true),
+  createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+});
+
+// Catalog of required trainings (e.g. AB 506 Mandated Reporter).
+export const trainingTypes = sqliteTable('training_types', {
+  id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
+  name: text('name').notNull().unique(),
+  description: text('description'),
+  active: integer('active', { mode: 'boolean' }).notNull().default(true),
+  order: integer('order').notNull().default(0),
+});
+
+// Per-staff, per-training compliance record.
+export const staffTrainings = sqliteTable(
+  'staff_trainings',
+  {
+    id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
+    staffProfileId: integer('staff_profile_id')
+      .notNull()
+      .references(() => staffProfiles.id),
+    trainingTypeId: integer('training_type_id')
+      .notNull()
+      .references(() => trainingTypes.id),
+    met: integer('met', { mode: 'boolean' }).notNull().default(false),
+    driveUrl: text('drive_url'),
+    expiresAt: integer('expires_at', { mode: 'timestamp' }),
+    notes: text('notes'),
+    updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [unique().on(t.staffProfileId, t.trainingTypeId)],
+);
+
 // ---------- Exported types ----------
 
 export type User = typeof users.$inferSelect;
@@ -338,6 +382,12 @@ export type VolunteerSchedule = typeof volunteerSchedule.$inferSelect;
 export type VolunteerEventSchedule = typeof volunteerEventSchedule.$inferSelect;
 export type Pike13AdminToken = typeof pike13AdminToken.$inferSelect;
 export type NewPike13AdminToken = typeof pike13AdminToken.$inferInsert;
+export type StaffProfile = typeof staffProfiles.$inferSelect;
+export type NewStaffProfile = typeof staffProfiles.$inferInsert;
+export type TrainingType = typeof trainingTypes.$inferSelect;
+export type NewTrainingType = typeof trainingTypes.$inferInsert;
+export type StaffTraining = typeof staffTrainings.$inferSelect;
+export type NewStaffTraining = typeof staffTrainings.$inferInsert;
 
 // Quiz types
 export type QuizRole = 'student' | 'instructor' | 'admin';

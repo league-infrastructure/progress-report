@@ -23,6 +23,7 @@ import { reviewsRouter } from './routes/reviews';
 import { templatesRouter } from './routes/templates';
 import { checkinsRouter } from './routes/checkins';
 import { adminRouter } from './routes/admin';
+import { trainingsRouter } from './routes/trainings';
 import { volunteerHoursRouter } from './routes/volunteer-hours';
 import { feedbackRouter } from './routes/feedback';
 import { errorHandler } from './middleware/errorHandler';
@@ -30,6 +31,7 @@ import { startScheduler } from './services/scheduler';
 import { slackRouter } from './routes/slack';
 import { quizRouter } from './routes/quiz';
 import { seedQuiz } from './db/seed-quiz';
+import { seedTrainings } from './db/seed-trainings';
 import type { SessionUser } from './types/session';
 
 // Test personas used by POST /api/auth/login in test mode
@@ -129,6 +131,7 @@ app.use('/api', reviewsRouter);
 app.use('/api', templatesRouter);
 app.use('/api', checkinsRouter);
 app.use('/api', adminRouter);
+app.use('/api', trainingsRouter);
 app.use('/api', volunteerHoursRouter);
 app.use('/api', feedbackRouter);
 
@@ -148,6 +151,9 @@ if (process.env.NODE_ENV === 'production') {
 if (require.main === module) {
   seedQuiz().catch((err: unknown) =>
     console.error('[startup] quiz seed failed:', err),
+  );
+  seedTrainings().catch((err: unknown) =>
+    console.error('[startup] training seed failed:', err),
   );
   app.listen(port, '0.0.0.0', () => {
     console.log(`Server listening on http://localhost:${port}`);
