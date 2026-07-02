@@ -12,6 +12,7 @@ interface TrainingRecord {
   driveUrl: string | null
   expiresAt: string | null
   notes: string | null
+  updatedAt?: string | null
 }
 interface StaffRow {
   id: number
@@ -33,14 +34,22 @@ async function fetchTrainings(): Promise<TrainingsResponse> {
 }
 
 const RENEWAL_WINDOW_DAYS = 30
+const STALE_MONTHS = 12
 
-function cellStatus(rec: TrainingRecord | undefined): 'ok' | 'not_met' | 'expiring' | 'expired' {
+function cellStatus(rec: TrainingRecord | undefined): 'ok' | 'not_met' | 'expiring' | 'expired' | 'stale' {
   if (!rec || !rec.met) return 'not_met'
+  const now = Date.now()
   if (rec.expiresAt) {
     const exp = new Date(rec.expiresAt).getTime()
-    const now = Date.now()
     if (exp < now) return 'expired'
     if (exp <= now + RENEWAL_WINDOW_DAYS * 864e5) return 'expiring'
+    return 'ok'
+  }
+  // met but no expiry date — flag for review once it's been stale a long time
+  if (rec.updatedAt) {
+    const staleBefore = new Date()
+    staleBefore.setMonth(staleBefore.getMonth() - STALE_MONTHS)
+    if (new Date(rec.updatedAt).getTime() < staleBefore.getTime()) return 'stale'
   }
   return 'ok'
 }
@@ -154,7 +163,7 @@ export function TrainingsPage() {
                     const status = cellStatus(rec)
                     const flag =
                       status === 'expired' ? 'border-red-300 bg-red-50'
-                      : status === 'expiring' ? 'border-amber-300 bg-amber-50'
+                      : status === 'expiring' || status === 'stale' ? 'border-amber-300 bg-amber-50'
                       : status === 'not_met' ? 'border-slate-200'
                       : 'border-green-200 bg-green-50'
                     return (
@@ -169,6 +178,7 @@ export function TrainingsPage() {
                             {rec?.met ? 'Met' : 'Not met'}
                             {status === 'expiring' && <span className="text-amber-700">· expiring</span>}
                             {status === 'expired' && <span className="text-red-700">· expired</span>}
+                            {status === 'stale' && <span className="text-amber-700">· review</span>}
                           </label>
                           <input
                             type="date"

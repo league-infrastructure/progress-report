@@ -7,7 +7,7 @@ import { trainingsRouter } from '../../server/src/routes/trainings';
 import { errorHandler } from '../../server/src/middleware/errorHandler';
 import type { SessionUser } from '../../server/src/types/session';
 import { db } from '../../server/src/db';
-import { computeTrainingAlerts } from '../../server/src/services/trainingAlerts';
+import { computeTrainingAlerts, runTrainingCheck } from '../../server/src/services/trainingAlerts';
 
 let staffId: number;
 let volunteerId: number;
@@ -126,5 +126,33 @@ describe('computeTrainingAlerts', () => {
     const alerts3 = await computeTrainingAlerts(now);
     const trainer3 = alerts3.find((a) => a.staffProfileId === staffId && a.trainingTypeId === ab506Id);
     expect(trainer3?.reason).toBe('expired');
+  });
+
+  it('flags a met training with NO expiry as stale once updatedAt is older than the window', async () => {
+    const now = new Date('2026-07-01T00:00:00Z');
+    // met, no expiry, updated long ago (> 12 months) -> stale
+    await db.update(schema.staffTrainings)
+      .set({ met: true, expiresAt: null, updatedAt: new Date('2024-01-01T00:00:00Z') })
+      .where(eq(schema.staffTrainings.staffProfileId, staffId));
+    const stale = await computeTrainingAlerts(now);
+    expect(stale.find((a) => a.staffProfileId === staffId && a.trainingTypeId === ab506Id)?.reason).toBe('stale');
+
+    // met, no expiry, updated recently -> NOT flagged
+    await db.update(schema.staffTrainings)
+      .set({ met: true, expiresAt: null, updatedAt: new Date('2026-06-15T00:00:00Z') })
+      .where(eq(schema.staffTrainings.staffProfileId, staffId));
+    const fresh = await computeTrainingAlerts(now);
+    expect(fresh.find((a) => a.staffProfileId === staffId && a.trainingTypeId === ab506Id)).toBeUndefined();
+  });
+});
+
+describe('runTrainingCheck (shared by route + scheduler)', () => {
+  it('creates a notification when there are alerts and reports counts', async () => {
+    const before = db.select().from(schema.adminNotifications).all().length;
+    const result = await runTrainingCheck(new Date('2026-07-01T00:00:00Z'));
+    expect(result.alertCount).toBeGreaterThan(0);
+    expect(result.notified).toBe(true);
+    const after = db.select().from(schema.adminNotifications).all().length;
+    expect(after).toBe(before + 1);
   });
 });

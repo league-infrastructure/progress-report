@@ -1,10 +1,9 @@
 import { Router } from 'express';
 import { eq, asc } from 'drizzle-orm';
-import sgMail from '@sendgrid/mail';
 import { db } from '../db';
-import { staffProfiles, trainingTypes, staffTrainings, adminNotifications, adminSettings } from '../db/schema';
+import { staffProfiles, trainingTypes, staffTrainings } from '../db/schema';
 import { isAdmin } from '../middleware/auth';
-import { computeTrainingAlerts, summarizeAlerts } from '../services/trainingAlerts';
+import { computeTrainingAlerts, runTrainingCheck } from '../services/trainingAlerts';
 
 export const trainingsRouter = Router();
 
@@ -41,6 +40,7 @@ trainingsRouter.get('/admin/trainings', async (_req, res, next) => {
           driveUrl: r.driveUrl,
           expiresAt: r.expiresAt,
           notes: r.notes,
+          updatedAt: r.updatedAt,
         })),
       })),
     });
@@ -100,38 +100,8 @@ trainingsRouter.get('/admin/trainings/alerts', async (_req, res, next) => {
 // notification and send a summary email for anything unmet/expiring.
 trainingsRouter.post('/admin/trainings/check', async (_req, res, next) => {
   try {
-    const alerts = await computeTrainingAlerts();
-    const summary = summarizeAlerts(alerts);
-
-    let notified = false;
-    let emailed = false;
-    if (alerts.length > 0) {
-      await db.insert(adminNotifications).values({ message: summary, isRead: false });
-      notified = true;
-
-      const from = process.env.SENDGRID_FROM_EMAIL;
-      if (process.env.SENDGRID_API_KEY && from) {
-        const adminEmails = (await db.select({ email: adminSettings.email }).from(adminSettings))
-          .map((r) => r.email)
-          .filter(Boolean);
-        if (adminEmails.length > 0) {
-          try {
-            sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-            await sgMail.send({
-              to: adminEmails,
-              from,
-              subject: `[LEAGUE] Staff training compliance — ${alerts.length} item(s) need attention`,
-              text: summary,
-            });
-            emailed = true;
-          } catch (e) {
-            // eslint-disable-next-line no-console
-            console.error('[trainings-check] email failed:', e);
-          }
-        }
-      }
-    }
-    res.json({ alertCount: alerts.length, notified, emailed });
+    const result = await runTrainingCheck();
+    res.json(result);
   } catch (err) {
     next(err);
   }
