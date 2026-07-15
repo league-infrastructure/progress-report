@@ -110,6 +110,10 @@ function resolveQuizzesDir(): string {
 // ---------------------------------------------------------------------------
 
 export async function seedQuiz(opts: { reset?: boolean } = {}): Promise<void> {
+  const quizzesDir = resolveQuizzesDir();
+  const indexPath = path.join(quizzesDir, 'index.json');
+  const index: IndexFile = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
+
   if (opts.reset) {
     // Clear quiz curriculum + dependent quiz data so the banks can be re-seeded
     // (e.g. after the section grouping changed). FK-safe order: children first.
@@ -122,22 +126,26 @@ export async function seedQuiz(opts: { reset?: boolean } = {}): Promise<void> {
     await db.delete(quizLevels);
     console.log('[seed-quiz] Reset: cleared existing quiz curriculum + data.');
   } else {
-    // --- Guard: skip if questions are already seeded ---
-    const [{ value: existingCount }] = await db
-      .select({ value: count() })
-      .from(quizQuestions);
-
-    if (existingCount > 0) {
+    // --- Guard: skip only when every level in the index is already present ---
+    // The seed loop is fully idempotent (every insert is onConflictDoUpdate), so
+    // re-running is safe and never touches student quizzes/attempts. We skip the
+    // work only when there's nothing new to add — i.e. all index levels already
+    // exist. This lets a NEW level (e.g. Java added to an existing Python-only
+    // deployment) be seeded additively on boot without a destructive --reset.
+    const existingLevels = await db.select({ slug: quizLevels.slug }).from(quizLevels);
+    const existingSlugs = new Set(existingLevels.map((l) => l.slug));
+    const allPresent =
+      index.levels.length > 0 && index.levels.every((l) => existingSlugs.has(l.level));
+    if (allPresent) {
+      const [{ value: existingCount }] = await db
+        .select({ value: count() })
+        .from(quizQuestions);
       console.log(
-        `[seed-quiz] Already seeded (${existingCount} questions present). Skipping.`,
+        `[seed-quiz] All ${index.levels.length} levels already present (${existingCount} questions). Skipping.`,
       );
       return;
     }
   }
-
-  const quizzesDir = resolveQuizzesDir();
-  const indexPath = path.join(quizzesDir, 'index.json');
-  const index: IndexFile = JSON.parse(fs.readFileSync(indexPath, 'utf8'));
 
   let totalLessons = 0;
   let totalQuestions = 0;
