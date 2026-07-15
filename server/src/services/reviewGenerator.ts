@@ -44,6 +44,28 @@ export function sanitizeGithubUsername(raw: string): string {
   return match ? match[0] : '';
 }
 
+/**
+ * Strip Markdown emphasis and em dashes from AI-generated review text so the
+ * parent-facing review is plain prose. The model is also instructed to avoid
+ * these, but we enforce it defensively in case it slips.
+ * - **bold** / __bold__ -> bold
+ * - *italic* / _italic_ -> italic
+ * - em dash / en dash -> a plain ", " or " - " where it reads naturally
+ */
+export function toPlainReviewText(text: string): string {
+  return text
+    // Bold: **x** or __x__
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
+    // Italic: *x* or _x_ (single markers)
+    .replace(/(?<![*\w])\*([^*\n]+)\*(?!\w)/g, '$1')
+    .replace(/(?<![_\w])_([^_\n]+)_(?!\w)/g, '$1')
+    // Em/en dashes surrounded by spaces -> a plain hyphen with spaces.
+    .replace(/\s+[—–]\s+/g, ' - ')
+    // Any remaining em/en dashes (no surrounding spaces) -> hyphen.
+    .replace(/[—–]/g, '-');
+}
+
 /** A quiz the student completed for a lesson/module they worked on this month. */
 export interface CompletedQuizInfo {
   lessonName: string;
@@ -564,7 +586,7 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
     const placeholderDescriptions: Record<AiPlaceholder, string> = {
       '{{progress}}': 'A warm paragraph about what topics/concepts the student worked on this month',
       '{{highlights}}': 'A paragraph highlighting specific things the student did well and how it builds their skills',
-      '{{instructorNotes}}': '2–4 sentences: one optional light suggestion framed as something to explore, then what the instructor plans to work on together next',
+      '{{instructorNotes}}': '2 to 4 sentences: one optional light suggestion framed as something to explore, then what the instructor plans to work on together next',
     };
     // Use simple keys (no braces) in the JSON contract so Claude returns them reliably.
     const sectionList = present.map((p) => `"${PLACEHOLDER_KEYS[p]}": ${placeholderDescriptions[p]}`).join('\n');
@@ -573,8 +595,9 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
       system: `You are an encouraging coding instructor writing sections of a monthly progress review for a parent/guardian.
-Tone: warm, positive, encouraging. Never mention lesson numbers — use topic names (e.g. "loops", "functions").
-Base everything ONLY on the data provided. Respond with ONLY a valid JSON object — no extra text.`,
+Tone: warm, positive, encouraging. Never mention lesson numbers, use topic names (e.g. "loops", "functions").
+Formatting: plain text only. Do NOT use Markdown, bold, italics, or em/en dashes; use commas or "and" instead.
+Base everything ONLY on the data provided. Respond with ONLY a valid JSON object, no extra text.`,
       messages: [{
         role: 'user',
         content: `Fill in the following sections for the review. Respond with a JSON object containing only these keys:
@@ -592,10 +615,11 @@ ${contextBlock}`,
       sections = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
     } catch { /* leave sections empty — fall back to placeholder text */ }
 
-    // Substitute AI placeholders with generated content
+    // Substitute AI placeholders with generated content (plain text enforced)
     let filled = template!;
     for (const p of present) {
-      const value = (sections as Record<string, string>)[PLACEHOLDER_KEYS[p]] ?? `[${p} not generated]`;
+      const rawValue = (sections as Record<string, string>)[PLACEHOLDER_KEYS[p]];
+      const value = rawValue ? toPlainReviewText(rawValue) : `[${p} not generated]`;
       filled = filled.replace(new RegExp(p.replace(/[{}]/g, '\\$&'), 'g'), value);
     }
 
@@ -623,8 +647,13 @@ Tone rules:
 - Focus on the most advanced lessons the student worked on — these show where they are in the curriculum now
 - Refer to lessons by their topic name (e.g. "loops", "functions", "classes") — NEVER by a number like "lesson 3" or "lesson 7"
 - Only briefly mention earlier topics if they're directly relevant to understanding the advanced work
-- Do NOT make high-achieving students feel they need to do more — keep any suggestions light and optional-sounding
+- Do NOT make high-achieving students feel they need to do more; keep any suggestions light and optional-sounding
 - Base everything ONLY on the commit data and file paths provided; never invent details
+
+Formatting rules (strict):
+- Write in plain text only. Do NOT use Markdown.
+- Do NOT use bold (**), italics (*), or any other emphasis markers.
+- Do NOT use em dashes or en dashes. Use commas, periods, or the word "and" instead.
 
 Structure (no headers, flowing paragraphs):
 1. Progress paragraph — what they worked on, what topic they've reached, what concepts that topic covers
@@ -638,16 +667,18 @@ ${contextBlock}
 Instructions:
 - Open with attendance and the topic they're currently working on (use the topic name, not a number)
 - Lead with the most advanced topic work, not the earliest
-- Keep any improvement suggestion light — one sentence max, framed as "something to explore" not a gap
-- End with 2–3 sentences from the instructor on what they'll work on together next
-- No greeting, no sign-off, 3 paragraphs`,
+- Keep any improvement suggestion light, one sentence max, framed as "something to explore" not a gap
+- End with 2 to 3 sentences from the instructor on what they'll work on together next
+- No greeting, no sign-off, 3 paragraphs
+- Plain text only: no Markdown, no bold, no italics, no em dashes`,
       }],
     });
 
-    const llmBody = (message.content[0]?.type === 'text' ? message.content[0].text : '').trim();
+    const llmBody = toPlainReviewText((message.content[0]?.type === 'text' ? message.content[0].text : '').trim());
+    const opening = `Here is ${studentName}'s progress report for the month of ${monthLabel}.`;
     const greeting = guardianName ? `Dear ${guardianName},` : 'Dear LEAGUE Family,';
     const signOff = `Warm regards,\n${instructorName}\n${instructorEmail}`;
-    const parts = [greeting, '', llmBody];
+    const parts = [opening, '', greeting, '', llmBody];
     if (attendanceSection) parts.push('', attendanceSection);
     if (quizResultsNote) parts.push('', quizResultsNote);
     parts.push('', githubSection, '', signOff);

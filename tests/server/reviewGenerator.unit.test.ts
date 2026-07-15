@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import request from 'supertest';
-import { sanitizeGithubUsername, ReviewInputError } from '../../server/src/services/reviewGenerator';
+import { sanitizeGithubUsername, toPlainReviewText, ReviewInputError } from '../../server/src/services/reviewGenerator';
 import { errorHandler } from '../../server/src/middleware/errorHandler';
 
 describe('sanitizeGithubUsername', () => {
@@ -28,6 +28,36 @@ describe('sanitizeGithubUsername', () => {
   it('returns empty string when nothing valid can be recovered', () => {
     expect(sanitizeGithubUsername('(no github)')).toBe('');
     expect(sanitizeGithubUsername('   ')).toBe('');
+  });
+});
+
+describe('toPlainReviewText', () => {
+  it('removes bold markers', () => {
+    expect(toPlainReviewText('He did **great** work')).toBe('He did great work');
+    expect(toPlainReviewText('He did __great__ work')).toBe('He did great work');
+  });
+
+  it('removes italic markers', () => {
+    expect(toPlainReviewText('He explored *loops* this month')).toBe('He explored loops this month');
+    expect(toPlainReviewText('He explored _loops_ this month')).toBe('He explored loops this month');
+  });
+
+  it('replaces a spaced em dash with a plain hyphen', () => {
+    expect(toPlainReviewText('Steady progress — well done')).toBe('Steady progress - well done');
+  });
+
+  it('replaces en dashes and tight em dashes', () => {
+    expect(toPlainReviewText('2–4 sentences')).toBe('2-4 sentences');
+    expect(toPlainReviewText('functions—classes')).toBe('functions-classes');
+  });
+
+  it('leaves clean prose untouched', () => {
+    const s = 'Jayden worked on loops and functions, showing steady growth.';
+    expect(toPlainReviewText(s)).toBe(s);
+  });
+
+  it('does not strip underscores inside identifiers', () => {
+    expect(toPlainReviewText('the file my_module.py')).toBe('the file my_module.py');
   });
 });
 
