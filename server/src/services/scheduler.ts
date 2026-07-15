@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import { isSlackConfigured } from './slack';
 import { sendMonthlyReminders } from './slackReminder';
 import { runTrainingCheck } from './trainingAlerts';
+import { runQuizCompletionCheck } from './quizAlerts';
 
 export function startScheduler(): void {
   // Day of month to send reminders (default: 25th). Set SLACK_REMIND_DAY to override.
@@ -38,4 +39,20 @@ export function startScheduler(): void {
   });
 
   console.log('[scheduler] Biweekly training compliance check scheduled for the 1st & 15th at 09:00 UTC');
+
+  // Weekly quiz-completion sweep — Mondays at 09:00 UTC. DMs each instructor
+  // scheduled with a student this month if that student has quizzes that are
+  // still incomplete, so the quiz is finished before the work is signed off.
+  cron.schedule('0 9 * * 1', async () => {
+    if (!isSlackConfigured()) return;
+    console.log('[scheduler] Running weekly quiz-completion check');
+    try {
+      const result = await runQuizCompletionCheck();
+      console.log(`[scheduler] Quiz check: DMs sent=${result.sent}, not found in Slack=${result.notFound}`);
+    } catch (err) {
+      console.error('[scheduler] Quiz-completion check failed:', err);
+    }
+  });
+
+  console.log('[scheduler] Weekly quiz-completion check scheduled for Mondays at 09:00 UTC');
 }

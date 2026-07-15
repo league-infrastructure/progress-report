@@ -22,6 +22,7 @@ import { lastMondayOfMonth } from '../utils/dateUtils';
 import sgMail from '@sendgrid/mail';
 import { isSlackConfigured } from '../services/slack';
 import { sendMonthlyReminders } from '../services/slackReminder';
+import { runQuizCompletionCheck } from '../services/quizAlerts';
 import { generateComplianceReport } from '../services/slackReport';
 import { generateReviewDraft, sendReview } from '../services/reviewGenerator';
 export const adminRouter = Router();
@@ -634,6 +635,30 @@ adminRouter.post('/admin/slack/remind', async (req, res, next) => {
         : new Date().toISOString().slice(0, 7);
 
     const result = await sendMonthlyReminders(month);
+    res.json({ month, ...result });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/admin/slack/quiz-check
+// Body: { month?: string }
+// Runs the quiz-completion sweep on demand (same logic as the weekly scheduler):
+// DMs each instructor scheduled with a student this month who has incomplete quizzes.
+adminRouter.post('/admin/slack/quiz-check', async (req, res, next) => {
+  try {
+    if (!isSlackConfigured()) {
+      res.status(503).json({ error: 'Slack is not configured (SLACK_BOT_TOKEN missing)' });
+      return;
+    }
+
+    const { month: monthParam } = req.body as { month?: string };
+    const month =
+      monthParam && /^\d{4}-\d{2}$/.test(monthParam)
+        ? monthParam
+        : new Date().toISOString().slice(0, 7);
+
+    const result = await runQuizCompletionCheck(month);
     res.json({ month, ...result });
   } catch (err) {
     next(err);
