@@ -1,0 +1,766 @@
+{
+  "name": "General Java Placement Assessment",
+  "description": "A 40-question multiple-choice placement test spanning the full Java curriculum (Level 0 through Level 5). Used to place a prospective student into the right Java level.",
+  "language": "java",
+  "question_count": 40,
+  "auto_graded": true,
+  "mastery_pct": 70,
+  "collect_before_start": [
+    "name",
+    "email"
+  ],
+  "bands": [
+    {
+      "id": "Level0",
+      "label": "Level 0 \u2014 syntax, variables, loops & conditionals",
+      "level": "java",
+      "question_count": 8,
+      "place_at": {
+        "level": "java",
+        "lesson": "levels/Level0"
+      }
+    },
+    {
+      "id": "Level1",
+      "label": "Level 1 \u2014 methods, classes & objects",
+      "level": "java",
+      "question_count": 8,
+      "place_at": {
+        "level": "java",
+        "lesson": "levels/Level1"
+      }
+    },
+    {
+      "id": "Level2",
+      "label": "Level 2 \u2014 arrays, ArrayLists & inheritance",
+      "level": "java",
+      "question_count": 7,
+      "place_at": {
+        "level": "java",
+        "lesson": "levels/Level2"
+      }
+    },
+    {
+      "id": "Level3",
+      "label": "Level 3 \u2014 2D arrays, maps, sorting, strings, stacks & recursion",
+      "level": "java",
+      "question_count": 7,
+      "place_at": {
+        "level": "java",
+        "lesson": "levels/Level3"
+      }
+    },
+    {
+      "id": "Level4",
+      "label": "Level 4 \u2014 generics, enums, exceptions & polymorphism",
+      "level": "java",
+      "question_count": 5,
+      "place_at": {
+        "level": "java",
+        "lesson": "levels/Level4"
+      }
+    },
+    {
+      "id": "Level5",
+      "label": "Level 5 \u2014 lambdas, streams, files, threads & networking",
+      "level": "java",
+      "question_count": 5,
+      "place_at": {
+        "level": "java",
+        "lesson": "levels/Level5"
+      }
+    }
+  ],
+  "placement_rubric": {
+    "method": "first-unmastered-band",
+    "mastery_pct": 70,
+    "explanation": "Score each level as a percentage of its questions answered correctly. Walk the levels in order; the student is placed at the START of the first level scoring below the mastery threshold. If every level is mastered, use 'placed_beyond'.",
+    "placed_beyond": {
+      "level": "java",
+      "lesson": "complete",
+      "note": "Mastered all assessed Java content \u2014 ready for advanced projects. Recommend instructor review."
+    }
+  },
+  "questions": [
+    {
+      "id": "placement/Level0/q01",
+      "band": "Level0",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "What does this print?",
+      "code": "for (int i=0;i<3;i++) System.out.println(\"HELLO\");",
+      "options": [
+        "HELLO once",
+        "HELLO three times",
+        "Nothing",
+        "Error"
+      ],
+      "answer": "HELLO three times",
+      "explanation": "i runs 0,1,2."
+    },
+    {
+      "id": "placement/Level0/q02",
+      "band": "Level0",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "Which prints text to the console?",
+      "code": null,
+      "options": [
+        "console.log",
+        "System.out.println",
+        "showInputDialog",
+        "print()"
+      ],
+      "answer": "System.out.println",
+      "explanation": "println prints to console."
+    },
+    {
+      "id": "placement/Level0/q03",
+      "band": "Level0",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "showInputDialog returns what type?",
+      "code": null,
+      "options": [
+        "int",
+        "String",
+        "boolean",
+        "double"
+      ],
+      "answer": "String",
+      "explanation": "Input dialogs return Strings."
+    },
+    {
+      "id": "placement/Level0/q04",
+      "band": "Level0",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "\"5\" + \"5\" prints?",
+      "code": null,
+      "options": [
+        "10",
+        "55",
+        "Error",
+        "5"
+      ],
+      "answer": "55",
+      "explanation": "Strings concatenate."
+    },
+    {
+      "id": "placement/Level0/q05",
+      "band": "Level0",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "Variable names should start with?",
+      "code": null,
+      "options": [
+        "A number",
+        "A lowercase letter",
+        "A capital",
+        "An underscore"
+      ],
+      "answer": "A lowercase letter",
+      "explanation": "camelCase, lowercase start."
+    },
+    {
+      "id": "placement/Level0/q06",
+      "band": "Level0",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "This loop prints nothing. Why?",
+      "code": "for(int i=0;i>3;i++) System.out.println(i);",
+      "options": [
+        "i>3 is false at start",
+        "println wrong",
+        "missing import",
+        "i-- needed"
+      ],
+      "answer": "i>3 is false at start",
+      "explanation": "0 is not > 3."
+    },
+    {
+      "id": "placement/Level0/q07",
+      "band": "Level0",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "if(name==\"Bob\") fails to match. Fix?",
+      "code": null,
+      "options": [
+        "name.equals(\"Bob\")",
+        "name=\"Bob\"",
+        "name===\"Bob\"",
+        "equals(name)"
+      ],
+      "answer": "name.equals(\"Bob\")",
+      "explanation": "Strings use .equals."
+    },
+    {
+      "id": "placement/Level0/q08",
+      "band": "Level0",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "count++ does what?",
+      "code": null,
+      "options": [
+        "adds 1",
+        "subtracts 1",
+        "doubles",
+        "nothing"
+      ],
+      "answer": "adds 1",
+      "explanation": "++ increments."
+    },
+    {
+      "id": "placement/Level1/q01",
+      "band": "Level1",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "getNumberOfGoals(){ return n; } returns?",
+      "code": null,
+      "options": [
+        "void",
+        "int",
+        "String",
+        "boolean"
+      ],
+      "answer": "int",
+      "explanation": "int return type."
+    },
+    {
+      "id": "placement/Level1/q02",
+      "band": "Level1",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "Exit a while(true) with?",
+      "code": null,
+      "options": [
+        "stop",
+        "break",
+        "exit",
+        "end"
+      ],
+      "answer": "break",
+      "explanation": "break exits."
+    },
+    {
+      "id": "placement/Level1/q03",
+      "band": "Level1",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "static method belongs to?",
+      "code": null,
+      "options": [
+        "an object",
+        "the class",
+        "a loop",
+        "main"
+      ],
+      "answer": "the class",
+      "explanation": "Class-level."
+    },
+    {
+      "id": "placement/Level1/q04",
+      "band": "Level1",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "Create a Cat named Tom?",
+      "code": null,
+      "options": [
+        "new Cat(\"Tom\")",
+        "Cat(\"Tom\")",
+        "make Cat Tom",
+        "Cat.new(Tom)"
+      ],
+      "answer": "new Cat(\"Tom\")",
+      "explanation": "new + constructor."
+    },
+    {
+      "id": "placement/Level1/q05",
+      "band": "Level1",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "A constructor's name matches?",
+      "code": null,
+      "options": [
+        "main",
+        "the class",
+        "run",
+        "the field"
+      ],
+      "answer": "the class",
+      "explanation": "Constructor = class name."
+    },
+    {
+      "id": "placement/Level1/q06",
+      "band": "Level1",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "this.name = name sets?",
+      "code": null,
+      "options": [
+        "the parameter",
+        "the field to the parameter",
+        "nothing",
+        "an error"
+      ],
+      "answer": "the field to the parameter",
+      "explanation": "this = field."
+    },
+    {
+      "id": "placement/Level1/q07",
+      "band": "Level1",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "private fields are?",
+      "code": null,
+      "options": [
+        "public",
+        "hidden outside the class",
+        "static",
+        "loops"
+      ],
+      "answer": "hidden outside the class",
+      "explanation": "Encapsulation."
+    },
+    {
+      "id": "placement/Level1/q08",
+      "band": "Level1",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "Binary 1010 in decimal?",
+      "code": null,
+      "options": [
+        "5",
+        "10",
+        "2",
+        "1010"
+      ],
+      "answer": "10",
+      "explanation": "8+2."
+    },
+    {
+      "id": "placement/Level2/q01",
+      "band": "Level2",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "Create an array of 5 Strings?",
+      "code": null,
+      "options": [
+        "new String[5]",
+        "String[5]",
+        "String(5)",
+        "array 5"
+      ],
+      "answer": "new String[5]",
+      "explanation": "new Type[size]."
+    },
+    {
+      "id": "placement/Level2/q02",
+      "band": "Level2",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "First array index?",
+      "code": null,
+      "options": [
+        "1",
+        "0",
+        "-1",
+        "depends"
+      ],
+      "answer": "0",
+      "explanation": "Zero-based."
+    },
+    {
+      "id": "placement/Level2/q03",
+      "band": "Level2",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "Array size via?",
+      "code": null,
+      "options": [
+        "size()",
+        "length",
+        "count",
+        "len"
+      ],
+      "answer": "length",
+      "explanation": "length field."
+    },
+    {
+      "id": "placement/Level2/q04",
+      "band": "Level2",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "Add to an ArrayList?",
+      "code": null,
+      "options": [
+        "add()",
+        "push()",
+        "[]=",
+        "append()"
+      ],
+      "answer": "add()",
+      "explanation": "add appends."
+    },
+    {
+      "id": "placement/Level2/q05",
+      "band": "Level2",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "ArrayList size via?",
+      "code": null,
+      "options": [
+        "length",
+        "size()",
+        "count",
+        "len"
+      ],
+      "answer": "size()",
+      "explanation": "size() method."
+    },
+    {
+      "id": "placement/Level2/q06",
+      "band": "Level2",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "List of ints uses?",
+      "code": null,
+      "options": [
+        "ArrayList<int>",
+        "ArrayList<Integer>",
+        "int[]",
+        "ArrayList<num>"
+      ],
+      "answer": "ArrayList<Integer>",
+      "explanation": "Wrapper type."
+    },
+    {
+      "id": "placement/Level2/q07",
+      "band": "Level2",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "ArrayList vs array?",
+      "code": null,
+      "options": [
+        "fixed size",
+        "grows and shrinks",
+        "primitives only",
+        "no methods"
+      ],
+      "answer": "grows and shrinks",
+      "explanation": "Dynamic."
+    },
+    {
+      "id": "placement/Level3/q01",
+      "band": "Level3",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "Declare a 2D int array?",
+      "code": null,
+      "options": [
+        "int[][] a",
+        "int[] a",
+        "2d int a",
+        "int a[][3]"
+      ],
+      "answer": "int[][] a",
+      "explanation": "Two brackets."
+    },
+    {
+      "id": "placement/Level3/q02",
+      "band": "Level3",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "grid[0][1] accesses?",
+      "code": null,
+      "options": [
+        "row1 col0",
+        "row0 col1",
+        "element1",
+        "error"
+      ],
+      "answer": "row0 col1",
+      "explanation": "[row][col]."
+    },
+    {
+      "id": "placement/Level3/q03",
+      "band": "Level3",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "Loops to iterate a 2D array?",
+      "code": null,
+      "options": [
+        "1",
+        "2",
+        "3",
+        "0"
+      ],
+      "answer": "2",
+      "explanation": "Nested."
+    },
+    {
+      "id": "placement/Level3/q04",
+      "band": "Level3",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "HashMap store: map.___(k,v)?",
+      "code": null,
+      "options": [
+        "add",
+        "put",
+        "set",
+        "insert"
+      ],
+      "answer": "put",
+      "explanation": "put(k,v)."
+    },
+    {
+      "id": "placement/Level3/q05",
+      "band": "Level3",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "HashMap get by key?",
+      "code": null,
+      "options": [
+        "get(k)",
+        "find(k)",
+        "value(k)",
+        "[k]"
+      ],
+      "answer": "get(k)",
+      "explanation": "get(key)."
+    },
+    {
+      "id": "placement/Level3/q06",
+      "band": "Level3",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "HashMap keys are?",
+      "code": null,
+      "options": [
+        "duplicated",
+        "unique",
+        "null only",
+        "sorted"
+      ],
+      "answer": "unique",
+      "explanation": "Unique keys."
+    },
+    {
+      "id": "placement/Level3/q07",
+      "band": "Level3",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "list.remove(0) removes?",
+      "code": null,
+      "options": [
+        "value 0",
+        "index 0",
+        "the list",
+        "nothing"
+      ],
+      "answer": "index 0",
+      "explanation": "By index."
+    },
+    {
+      "id": "placement/Level4/q01",
+      "band": "Level4",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "int[][] a={{1,2},{3,4}}; a[1][1]?",
+      "code": null,
+      "options": [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "answer": "4",
+      "explanation": "Row1 col1."
+    },
+    {
+      "id": "placement/Level4/q02",
+      "band": "Level4",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "Loops for a 2D array?",
+      "code": null,
+      "options": [
+        "1",
+        "2",
+        "3",
+        "0"
+      ],
+      "answer": "2",
+      "explanation": "Nested."
+    },
+    {
+      "id": "placement/Level4/q03",
+      "band": "Level4",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "Generics use which symbols?",
+      "code": null,
+      "options": [
+        "( )",
+        "< >",
+        "[ ]",
+        "{ }"
+      ],
+      "answer": "< >",
+      "explanation": "Angle brackets."
+    },
+    {
+      "id": "placement/Level4/q04",
+      "band": "Level4",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "Class generic can be int?",
+      "code": null,
+      "options": [
+        "yes",
+        "no, object type",
+        "only int",
+        "only double"
+      ],
+      "answer": "no, object type",
+      "explanation": "Wrapper needed."
+    },
+    {
+      "id": "placement/Level4/q05",
+      "band": "Level4",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "break in a switch?",
+      "code": null,
+      "options": [
+        "restarts",
+        "prevents fall-through",
+        "exits program",
+        "nothing"
+      ],
+      "answer": "prevents fall-through",
+      "explanation": "Stops fall-through."
+    },
+    {
+      "id": "placement/Level5/q01",
+      "band": "Level5",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "A lambda is?",
+      "code": null,
+      "options": [
+        "a class",
+        "a short anonymous method",
+        "a loop",
+        "a variable"
+      ],
+      "answer": "a short anonymous method",
+      "explanation": "Anonymous fn."
+    },
+    {
+      "id": "placement/Level5/q02",
+      "band": "Level5",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "Lambda arrow syntax?",
+      "code": null,
+      "options": [
+        "=>",
+        "->",
+        "::",
+        "<-"
+      ],
+      "answer": "->",
+      "explanation": "-> arrow."
+    },
+    {
+      "id": "placement/Level5/q03",
+      "band": "Level5",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "filter() keeps?",
+      "code": null,
+      "options": [
+        "all",
+        "matching elements",
+        "none",
+        "transformed"
+      ],
+      "answer": "matching elements",
+      "explanation": "Selects."
+    },
+    {
+      "id": "placement/Level5/q04",
+      "band": "Level5",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "reduce() produces?",
+      "code": null,
+      "options": [
+        "a stream",
+        "a single value",
+        "a filter",
+        "a map"
+      ],
+      "answer": "a single value",
+      "explanation": "Aggregate."
+    },
+    {
+      "id": "placement/Level5/q05",
+      "band": "Level5",
+      "source_question_id": "",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "Read a file line by line with?",
+      "code": null,
+      "options": [
+        "read()",
+        "readLine()",
+        "write()",
+        "accept()"
+      ],
+      "answer": "readLine()",
+      "explanation": "BufferedReader."
+    }
+  ]
+}

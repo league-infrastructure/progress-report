@@ -79,15 +79,256 @@
           "question_count": 15
         }
       ]
+    },
+    {
+      "level": "java",
+      "repo": "Java",
+      "bank_file": "java.bank.json",
+      "lesson_count": 37,
+      "question_count": 1280,
+      "lessons": [
+        {
+          "id": "java/Level0/Module0",
+          "name": "Level0 Module0",
+          "module": "Level0",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level0/Module1",
+          "name": "Level0 Module1",
+          "module": "Level0",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level0/Module2",
+          "name": "Level0 Module2",
+          "module": "Level0",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level0/Module3",
+          "name": "Level0 Module3",
+          "module": "Level0",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level0/Module4",
+          "name": "Level0 Module4",
+          "module": "Level0",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level0/Module5",
+          "name": "Level0 Module5",
+          "module": "Level0",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level0/LevelTest",
+          "name": "Level0 Test",
+          "module": "Level0",
+          "question_count": 48
+        },
+        {
+          "id": "java/Level1/Module0",
+          "name": "Level1 Module0",
+          "module": "Level1",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level1/Module1",
+          "name": "Level1 Module1",
+          "module": "Level1",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level1/Module2",
+          "name": "Level1 Module2",
+          "module": "Level1",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level1/Module3",
+          "name": "Level1 Module3",
+          "module": "Level1",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level1/Module4",
+          "name": "Level1 Module4",
+          "module": "Level1",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level1/LevelTest",
+          "name": "Level1 Test",
+          "module": "Level1",
+          "question_count": 48
+        },
+        {
+          "id": "java/Level2/Module0",
+          "name": "Level2 Module0",
+          "module": "Level2",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level2/Module1",
+          "name": "Level2 Module1",
+          "module": "Level2",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level2/Module2",
+          "name": "Level2 Module2",
+          "module": "Level2",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level2/LevelTest",
+          "name": "Level2 Test",
+          "module": "Level2",
+          "question_count": 48
+        },
+        {
+          "id": "java/Level3/Module0",
+          "name": "Level3 Module0",
+          "module": "Level3",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level3/Module1",
+          "name": "Level3 Module1",
+          "module": "Level3",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level3/Module2",
+          "name": "Level3 Module2",
+          "module": "Level3",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level3/Module3",
+          "name": "Level3 Module3",
+          "module": "Level3",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level3/Module4",
+          "name": "Level3 Module4",
+          "module": "Level3",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level3/Module5",
+          "name": "Level3 Module5",
+          "module": "Level3",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level3/LevelTest",
+          "name": "Level3 Test",
+          "module": "Level3",
+          "question_count": 48
+        },
+        {
+          "id": "java/Level4/Module0",
+          "name": "Level4 Module0",
+          "module": "Level4",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level4/Module1",
+          "name": "Level4 Module1",
+          "module": "Level4",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level4/Module2",
+          "name": "Level4 Module2",
+          "module": "Level4",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level4/Module3",
+          "name": "Level4 Module3",
+          "module": "Level4",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level4/Module4",
+          "name": "Level4 Module4",
+          "module": "Level4",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level4/Module5",
+          "name": "Level4 Module5",
+          "module": "Level4",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level4/LevelTest",
+          "name": "Level4 Test",
+          "module": "Level4",
+          "question_count": 48
+        },
+        {
+          "id": "java/Level5/Module0",
+          "name": "Level5 Module0",
+          "module": "Level5",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level5/Module1",
+          "name": "Level5 Module1",
+          "module": "Level5",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level5/Module2",
+          "name": "Level5 Module2",
+          "module": "Level5",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level5/Module3",
+          "name": "Level5 Module3",
+          "module": "Level5",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level5/Module4",
+          "name": "Level5 Module4",
+          "module": "Level5",
+          "question_count": 32
+        },
+        {
+          "id": "java/Level5/LevelTest",
+          "name": "Level5 Test",
+          "module": "Level5",
+          "question_count": 48
+        }
+      ]
     }
   ],
   "placement_assessment": {
     "file": "placement-assessment.json",
     "question_count": 40
   },
+  "placement_assessments": {
+    "python": {
+      "file": "placement-assessment.python.json",
+      "question_count": 40
+    },
+    "java": {
+      "file": "placement-assessment.java.json",
+      "question_count": 40
+    }
+  },
   "totals": {
-    "levels": 2,
-    "lessons": 10,
-    "questions": 543
+    "levels": 3,
+    "lessons": 47,
+    "questions": 1823
   }
 }

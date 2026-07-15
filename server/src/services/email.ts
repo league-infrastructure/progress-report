@@ -1,6 +1,14 @@
 import sgMail from '@sendgrid/mail';
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY ?? '');
+// Only configure SendGrid when a real key is present. The SDK throws on an
+// empty or malformed key, and this module is imported at startup (and in tests)
+// regardless of whether email is configured — e.g. in dev/CI without a key, or
+// on deployments where only Pike13 notes are used. Send functions below already
+// no-op when the key is missing, so guarding the import keeps them safe.
+const sendgridKey = process.env.SENDGRID_API_KEY ?? '';
+if (sendgridKey.startsWith('SG.')) {
+  sgMail.setApiKey(sendgridKey);
+}
 
 const APP_URL = process.env.APP_URL ?? 'http://localhost:5173';
 
@@ -238,6 +246,7 @@ export async function sendPlacementResultEmail(params: {
   takerEmail: string;
   adminEmails: string[];
   result: PlacementEmailResult;
+  language?: 'python' | 'java';
 }): Promise<boolean> {
   const from = process.env.SENDGRID_FROM_EMAIL;
   if (!process.env.SENDGRID_API_KEY || !from) {
@@ -246,6 +255,7 @@ export async function sendPlacementResultEmail(params: {
     return false;
   }
   const takerName = params.takerName?.trim() || 'there';
+  const languageLabel = params.language === 'java' ? 'Java' : 'Python';
   const bcc = Array.from(
     new Set(params.adminEmails.map((e) => e.trim().toLowerCase()).filter(Boolean)),
   ).filter((e) => e !== params.takerEmail.trim().toLowerCase());
@@ -255,7 +265,7 @@ export async function sendPlacementResultEmail(params: {
       to: params.takerEmail,
       ...(bcc.length ? { bcc } : {}),
       from,
-      subject: `[LEAGUE] Your Python Placement Result — ${takerName}`,
+      subject: `[LEAGUE] Your ${languageLabel} Placement Result — ${takerName}`,
       text: buildPlacementText({ takerName, result: params.result }),
       html: buildPlacementHtml({ takerName, result: params.result }),
     });

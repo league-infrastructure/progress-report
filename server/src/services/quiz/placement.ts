@@ -38,7 +38,20 @@ interface PlacementFile {
   questions: RawQuestion[];
 }
 
-function load(): PlacementFile {
+export type PlacementLanguage = 'python' | 'java';
+
+// Map a requested language to its compiled placement file. Python keeps the
+// legacy filename so old links and the default endpoint keep working.
+const PLACEMENT_FILES: Record<PlacementLanguage, string> = {
+  python: 'placement-assessment.json',
+  java: 'placement-assessment.java.json',
+};
+
+export function normalizeLanguage(input?: string): PlacementLanguage {
+  return input?.toLowerCase() === 'java' ? 'java' : 'python';
+}
+
+function load(language: PlacementLanguage = 'python'): PlacementFile {
   // Re-read each call so regenerated banks are served without a server restart.
   // In production QUIZ_DATA_DIR points at the copied quizzes directory; in dev
   // it is unset and we resolve relative to this file (repo root).
@@ -47,7 +60,7 @@ function load(): PlacementFile {
   const quizzesDir = override
     ? path.resolve(override)
     : path.join(path.resolve(__dirname, '../../../..'), 'Quiz-App', 'quizzes');
-  const file = path.join(quizzesDir, 'placement-assessment.json');
+  const file = path.join(quizzesDir, PLACEMENT_FILES[language]);
   if (!fs.existsSync(file)) {
     throw new Error(`Placement assessment not found at ${file}`);
   }
@@ -64,10 +77,13 @@ export interface PublicPlacementQuestion {
   options: string[];
 }
 
-export function getPlacement(): { name: string; questionCount: number; questions: PublicPlacementQuestion[] } {
-  const p = load();
+export function getPlacement(
+  language: PlacementLanguage = 'python',
+): { name: string; language: PlacementLanguage; questionCount: number; questions: PublicPlacementQuestion[] } {
+  const p = load(language);
   return {
     name: p.name,
+    language,
     questionCount: p.question_count,
     questions: p.questions.map((q) => ({
       id: q.id,
@@ -99,8 +115,11 @@ export interface PlacementResult {
   recommended: { level: string; lesson: string; label: string; note?: string };
 }
 
-export function gradePlacement(answers: Record<string, string>): PlacementResult {
-  const p = load();
+export function gradePlacement(
+  answers: Record<string, string>,
+  language: PlacementLanguage = 'python',
+): PlacementResult {
+  const p = load(language);
   const mastery = p.placement_rubric?.mastery_pct ?? p.mastery_pct ?? 70;
 
   const tally = new Map<string, { correct: number; total: number }>();

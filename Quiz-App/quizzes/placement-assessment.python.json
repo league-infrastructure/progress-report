@@ -1,0 +1,785 @@
+{
+  "name": "General Python Placement Assessment",
+  "description": "A 40-question multiple-choice placement test spanning the full Python Apprentice and Python Games concept range. Used to place a prospective student into the right course and starting lesson.",
+  "question_count": 40,
+  "auto_graded": true,
+  "mastery_pct": 70,
+  "collect_before_start": [
+    "name",
+    "email"
+  ],
+  "bands": [
+    {
+      "id": "basics",
+      "label": "Python basics \u2014 types, operators & logic",
+      "level": "python-apprentice",
+      "question_count": 11,
+      "place_at": {
+        "level": "python-apprentice",
+        "lesson": "lessons/10_Turtles"
+      }
+    },
+    {
+      "id": "loops",
+      "label": "Loops & iteration",
+      "level": "python-apprentice",
+      "question_count": 11,
+      "place_at": {
+        "level": "python-apprentice",
+        "lesson": "lessons/30_Loops"
+      }
+    },
+    {
+      "id": "data-functions",
+      "label": "Data structures & functions",
+      "level": "python-apprentice",
+      "question_count": 10,
+      "place_at": {
+        "level": "python-apprentice",
+        "lesson": "lessons/40_Data_Structures_Func"
+      }
+    },
+    {
+      "id": "oop",
+      "label": "Classes & objects (OOP)",
+      "level": "python-games",
+      "question_count": 8,
+      "place_at": {
+        "level": "python-games",
+        "lesson": "lessons/02_Classes_and_Objects"
+      }
+    }
+  ],
+  "placement_rubric": {
+    "method": "first-unmastered-band",
+    "mastery_pct": 70,
+    "explanation": "Score each band as a percentage of its questions answered correctly. Walk the bands in order; the student is placed at the START of the first band scoring below the mastery threshold. If every band is mastered, use 'placed_beyond'.",
+    "placed_beyond": {
+      "level": "python-games",
+      "lesson": "complete",
+      "note": "Mastered all assessed Python content \u2014 ready for Python Games projects or the next level (Java). Recommend instructor review."
+    }
+  },
+  "questions": [
+    {
+      "id": "placement/basics/q01",
+      "band": "basics",
+      "source_question_id": "python-apprentice/10_Operators_and_Types/q01",
+      "source_lesson": "python-apprentice/20_Types_and_Logic",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "What does this print?",
+      "code": "x = \"10\"\ny = \"20\"\nprint(x + y)",
+      "options": [
+        "30",
+        "1020",
+        "\"30\"",
+        "TypeError"
+      ],
+      "answer": "1020",
+      "explanation": "Both values are strings, so + concatenates them into \"1020\"."
+    },
+    {
+      "id": "placement/basics/q02",
+      "band": "basics",
+      "source_question_id": "python-apprentice/60_Simple_Adder/q01",
+      "source_lesson": "python-apprentice/20_Types_and_Logic",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "What is the overall goal of this program?",
+      "code": null,
+      "options": [
+        "Ask for one number and double it",
+        "Ask for two numbers and display their sum",
+        "Ask the user's age",
+        "Convert a number to binary"
+      ],
+      "answer": "Ask for two numbers and display their sum",
+      "explanation": "The opening docstring says to ask for two numbers and display the sum."
+    },
+    {
+      "id": "placement/basics/q03",
+      "band": "basics",
+      "source_question_id": "python-apprentice/60_Simple_Adder/q02",
+      "source_lesson": "python-apprentice/20_Types_and_Logic",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "If you collect both numbers as strings and use +, what happens?",
+      "code": "first = \"10\"\nsecond = \"20\"\nprint(first + second)",
+      "options": [
+        "It prints 30",
+        "It prints 1020 (the strings are joined)",
+        "It raises a TypeError",
+        "It prints 10 20"
+      ],
+      "answer": "It prints 1020 (the strings are joined)",
+      "explanation": "With strings, + concatenates, so you must convert to numbers to add."
+    },
+    {
+      "id": "placement/basics/q04",
+      "band": "basics",
+      "source_question_id": "python-apprentice/60_Simple_Adder/q05",
+      "source_lesson": "python-apprentice/20_Types_and_Logic",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "Which method hides the main window so only the dialogs show?",
+      "code": null,
+      "options": [
+        "mainloop",
+        "withdraw",
+        "showinfo",
+        "askinteger"
+      ],
+      "answer": "withdraw",
+      "explanation": "The comment hints to use the withdraw method to hide the window."
+    },
+    {
+      "id": "placement/basics/q05",
+      "band": "basics",
+      "source_question_id": "python-apprentice/50_My_Ages/q05",
+      "source_lesson": "python-apprentice/20_Types_and_Logic",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "Based on the age groups, which message fits an age of 15?",
+      "code": "# 13-19: Teen\n# 20-64: Adult",
+      "options": [
+        "Baby",
+        "Child",
+        "Teen",
+        "Adult"
+      ],
+      "answer": "Teen",
+      "explanation": "15 falls in the 13-19 range, which is the Teen group."
+    },
+    {
+      "id": "placement/basics/q06",
+      "band": "basics",
+      "source_question_id": "python-apprentice/30_Control_Flow/q05",
+      "source_lesson": "python-apprentice/20_Types_and_Logic",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "What does this print?",
+      "code": "a = 5\ns = \"hello there\"\nif a == 5 and s.startswith('hello'):\n    print(\"Hooray!\")",
+      "options": [
+        "Nothing",
+        "Hooray!",
+        "True",
+        "An error"
+      ],
+      "answer": "Hooray!",
+      "explanation": "a == 5 is True and s starts with 'hello', so both sides of and are True."
+    },
+    {
+      "id": "placement/basics/q07",
+      "band": "basics",
+      "source_question_id": "python-apprentice/50_My_Ages/q01",
+      "source_lesson": "python-apprentice/20_Types_and_Logic",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "Which call asks the user for their age as a whole number?",
+      "code": null,
+      "options": [
+        "simpledialog.askinteger(\"Your Age\", \"How old are you?\")",
+        "simpledialog.askfloat(\"Your Age\", \"How old are you?\")",
+        "messagebox.showinfo(\"Your Age\", \"How old are you?\")",
+        "simpledialog.askstring(\"Your Age\", \"How old are you?\")"
+      ],
+      "answer": "simpledialog.askinteger(\"Your Age\", \"How old are you?\")",
+      "explanation": "askinteger() returns the user's answer as an integer."
+    },
+    {
+      "id": "placement/basics/q08",
+      "band": "basics",
+      "source_question_id": "python-apprentice/30_Control_Flow/q03",
+      "source_lesson": "python-apprentice/20_Types_and_Logic",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "Which operator should go in the blank to check whether a equals 10 inside an if statement?",
+      "code": "if a ___ 10:\n    print(\"ten\")",
+      "options": [
+        "=",
+        "==",
+        "<-",
+        ":="
+      ],
+      "answer": "==",
+      "explanation": "Use == to compare for equality; a single = would assign instead."
+    },
+    {
+      "id": "placement/basics/q09",
+      "band": "basics",
+      "source_question_id": "python-apprentice/40_Working_With_Numbers/q03",
+      "source_lesson": "python-apprentice/20_Types_and_Logic",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "What does print(bin(11)) display?",
+      "code": null,
+      "options": [
+        "1011",
+        "0b1011",
+        "0b11",
+        "0xb"
+      ],
+      "answer": "0b1011",
+      "explanation": "bin() returns a string with a 0b prefix, and 11 in binary is 1011."
+    },
+    {
+      "id": "placement/basics/q10",
+      "band": "basics",
+      "source_question_id": "python-apprentice/40_Working_With_Numbers/q09",
+      "source_lesson": "python-apprentice/20_Types_and_Logic",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "Using the place values, what is the binary number 10110101 in decimal?",
+      "code": "# place values: 128 64 32 16 8 4 2 1\n# digits:         1  0  1  1 0 1 0 1",
+      "options": [
+        "165",
+        "181",
+        "171",
+        "128"
+      ],
+      "answer": "181",
+      "explanation": "Add the place values with a 1: 128 + 32 + 16 + 4 + 1 = 181."
+    },
+    {
+      "id": "placement/basics/q11",
+      "band": "basics",
+      "source_question_id": "python-apprentice/30_Control_Flow/q02",
+      "source_lesson": "python-apprentice/20_Types_and_Logic",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "Given a = 10, what does print(a == 11) display?",
+      "code": null,
+      "options": [
+        "True",
+        "False",
+        "11",
+        "a == 11"
+      ],
+      "answer": "False",
+      "explanation": "a is 10, not 11, so the comparison evaluates to False."
+    },
+    {
+      "id": "placement/loops/q01",
+      "band": "loops",
+      "source_question_id": "python-apprentice/140_More_Loops/q03",
+      "source_lesson": "python-apprentice/30_Loops",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "What does this loop print?",
+      "code": "i = 0\nwhile True:\n    print(i, end=' ')\n    if i >= 5:\n        break\n    i = i + 1",
+      "options": [
+        "0 1 2 3 4 5",
+        "0 1 2 3 4",
+        "0 1 2 3 4 5 6",
+        "It runs forever"
+      ],
+      "answer": "0 1 2 3 4 5",
+      "explanation": "It prints i, and 5 prints before the break fires (the check comes after the print)."
+    },
+    {
+      "id": "placement/loops/q02",
+      "band": "loops",
+      "source_question_id": "python-apprentice/120_More_Iterables/q13",
+      "source_lesson": "python-apprentice/30_Loops",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "What does this print?",
+      "code": "from itertools import chain\nlist1 = [1, 2, 3]\nlist2 = ['a', 'b', 'c']\nfor item in chain(list1, list2):\n    print(item, end=' ')",
+      "options": [
+        "1 2 3 a b c",
+        "1 a 2 b 3 c",
+        "[1, 2, 3, 'a', 'b', 'c']",
+        "a b c 1 2 3"
+      ],
+      "answer": "1 2 3 a b c",
+      "explanation": "chain() yields all of list1 first, then all of list2."
+    },
+    {
+      "id": "placement/loops/q03",
+      "band": "loops",
+      "source_question_id": "python-apprentice/140_More_Loops/q05",
+      "source_lesson": "python-apprentice/30_Loops",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "What does the continue statement do?",
+      "code": null,
+      "options": [
+        "Skips the rest of the current iteration and goes back to the start of the loop",
+        "Ends the loop completely",
+        "Prints the current value",
+        "Adds one to the counter"
+      ],
+      "answer": "Skips the rest of the current iteration and goes back to the start of the loop",
+      "explanation": "continue jumps to the next loop iteration without finishing the current body."
+    },
+    {
+      "id": "placement/loops/q04",
+      "band": "loops",
+      "source_question_id": "python-apprentice/140_More_Loops/q10",
+      "source_lesson": "python-apprentice/30_Loops",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "What does count() from itertools produce?",
+      "code": null,
+      "options": [
+        "An endless sequence of numbers 0, 1, 2, 3, ...",
+        "A list of exactly ten numbers",
+        "The count of items in a list",
+        "Random numbers"
+      ],
+      "answer": "An endless sequence of numbers 0, 1, 2, 3, ...",
+      "explanation": "count() is an infinite iterator returning numbers sequentially."
+    },
+    {
+      "id": "placement/loops/q05",
+      "band": "loops",
+      "source_question_id": "python-apprentice/120_More_Iterables/q11",
+      "source_lesson": "python-apprentice/30_Loops",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "Why must cycle() almost always be combined with islice() or a break?",
+      "code": null,
+      "options": [
+        "Because cycle() repeats forever and would otherwise never stop",
+        "Because cycle() only works on numbers",
+        "Because cycle() needs two lists",
+        "Because cycle() reverses the list"
+      ],
+      "answer": "Because cycle() repeats forever and would otherwise never stop",
+      "explanation": "cycle() is infinite, so you need something to limit it."
+    },
+    {
+      "id": "placement/loops/q06",
+      "band": "loops",
+      "source_question_id": "python-apprentice/110_FizzBuzz_Gui_Grid/q02",
+      "source_lesson": "python-apprentice/30_Loops",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "When a number is displayed, how is its color decided?",
+      "code": null,
+      "options": [
+        "Blue if the sum of its digits is even, red if odd",
+        "Blue if the number is even, red if odd",
+        "Always blue",
+        "Red if divisible by 5"
+      ],
+      "answer": "Blue if the sum of its digits is even, red if odd",
+      "explanation": "The lesson colors by the sum of the digits, not the number itself."
+    },
+    {
+      "id": "placement/loops/q07",
+      "band": "loops",
+      "source_question_id": "python-apprentice/140_More_Loops/q07",
+      "source_lesson": "python-apprentice/30_Loops",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "When does the else block on a loop run?",
+      "code": null,
+      "options": [
+        "When the loop finishes normally, but not if break ends it",
+        "Every time the loop body runs",
+        "Only when the loop body never runs",
+        "Only when break is used"
+      ],
+      "answer": "When the loop finishes normally, but not if break ends it",
+      "explanation": "The else clause runs on normal completion and is skipped by break."
+    },
+    {
+      "id": "placement/loops/q08",
+      "band": "loops",
+      "source_question_id": "python-apprentice/120_More_Iterables/q01",
+      "source_lesson": "python-apprentice/30_Loops",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "What does this loop print on its first iteration?",
+      "code": "colors = ['red', 'blue', 'black', 'orange']\nfor i in enumerate(colors):\n    print(i)",
+      "options": [
+        "(0, 'red')",
+        "0 red",
+        "'red'",
+        "(1, 'red')"
+      ],
+      "answer": "(0, 'red')",
+      "explanation": "Without unpacking, enumerate yields a tuple of the index and item, starting at 0."
+    },
+    {
+      "id": "placement/loops/q09",
+      "band": "loops",
+      "source_question_id": "python-apprentice/160_Extras/q07",
+      "source_lesson": "python-apprentice/30_Loops",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "In the Euler-style version, the value n**4 % 15 is always one of which set?",
+      "code": null,
+      "options": [
+        "1, 6, 10, or 0",
+        "0, 3, 5, or 15",
+        "1, 2, 3, or 4",
+        "any number 0 to 14"
+      ],
+      "answer": "1, 6, 10, or 0",
+      "explanation": "The lesson states these are the only remainders, each mapping to a label."
+    },
+    {
+      "id": "placement/loops/q10",
+      "band": "loops",
+      "source_question_id": "python-apprentice/110_FizzBuzz_Gui_Grid/q01",
+      "source_lesson": "python-apprentice/30_Loops",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "According to the rules, which divisibility check must come first?",
+      "code": null,
+      "options": [
+        "divisible by 15",
+        "divisible by 5",
+        "divisible by 3",
+        "divisible by 10"
+      ],
+      "answer": "divisible by 15",
+      "explanation": "Any multiple of 15 is also a multiple of 5 and 3, so check 15 first."
+    },
+    {
+      "id": "placement/loops/q11",
+      "band": "loops",
+      "source_question_id": "python-apprentice/90_Fizz_Buzz_Badgers/q02",
+      "source_lesson": "python-apprentice/30_Loops",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "What does the program print for i = 10?",
+      "code": null,
+      "options": [
+        "10 \ud83e\udda1 badger",
+        "10 \ud83c\udf44 mushroom",
+        "10 \ud83d\udc0d snake!",
+        "10"
+      ],
+      "answer": "10 \ud83e\udda1 badger",
+      "explanation": "10 is divisible by 5 but not 15 or 3, so the badger branch runs."
+    },
+    {
+      "id": "placement/data-functions/q01",
+      "band": "data-functions",
+      "source_question_id": "python-apprentice/50_Splat_Comprehension/q01",
+      "source_lesson": "python-apprentice/40_Data_Structures_Func",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "Given the array below, what does two_dimensional_array[1][2] return?",
+      "code": "two_dimensional_array = [\n        [1, 2, 3],\n        [4, 5, 6],\n        [7, 8, 9]\n    ]\nprint(two_dimensional_array[1][2])",
+      "options": [
+        "6",
+        "4",
+        "8",
+        "2"
+      ],
+      "answer": "6",
+      "explanation": "Index [1] is the second row [4,5,6], and [2] picks the third element, 6."
+    },
+    {
+      "id": "placement/data-functions/q02",
+      "band": "data-functions",
+      "source_question_id": "python-apprentice/20_Exceptions/q10",
+      "source_lesson": "python-apprentice/40_Data_Structures_Func",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "What does this statement do?",
+      "code": "assert False",
+      "options": [
+        "Raises an AssertionError",
+        "Prints False",
+        "Returns None silently",
+        "Raises a ValueError"
+      ],
+      "answer": "Raises an AssertionError",
+      "explanation": "assert raises an AssertionError when its condition is false."
+    },
+    {
+      "id": "placement/data-functions/q03",
+      "band": "data-functions",
+      "source_question_id": "python-apprentice/60_Tic_Tac_Toe/q01",
+      "source_lesson": "python-apprentice/40_Data_Structures_Func",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "How is the Tic Tac Toe board stored?",
+      "code": null,
+      "options": [
+        "As a 3x3 2D array (a list of lists)",
+        "As a single flat list of 9 items",
+        "As a dictionary of coordinates",
+        "As a set of marks"
+      ],
+      "answer": "As a 3x3 2D array (a list of lists)",
+      "explanation": "The board is built as a 3x3 grid where each cell starts as None."
+    },
+    {
+      "id": "placement/data-functions/q04",
+      "band": "data-functions",
+      "source_question_id": "python-apprentice/40_Funny_Words_Db/q09",
+      "source_lesson": "python-apprentice/40_Data_Structures_Func",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "Inside update_listbox, which dict method gives you both the word and its definition to build each display string?",
+      "code": null,
+      "options": [
+        "db.items()",
+        "db.keys()",
+        "db.values()",
+        "db.sort()"
+      ],
+      "answer": "db.items()",
+      "explanation": "items() yields key-value pairs, which you can turn into strings."
+    },
+    {
+      "id": "placement/data-functions/q05",
+      "band": "data-functions",
+      "source_question_id": "python-apprentice/60_Tic_Tac_Toe/q05",
+      "source_lesson": "python-apprentice/40_Data_Structures_Func",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "What does check_row return when there is no winner on the line it is given?",
+      "code": null,
+      "options": [
+        "None",
+        "False",
+        "An empty string",
+        "0"
+      ],
+      "answer": "None",
+      "explanation": "The docstring says it returns the token if there is one, otherwise None."
+    },
+    {
+      "id": "placement/data-functions/q06",
+      "band": "data-functions",
+      "source_question_id": "python-apprentice/60_Tic_Tac_Toe/q06",
+      "source_lesson": "python-apprentice/40_Data_Structures_Func",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "How should check_win be built, according to the instructions?",
+      "code": null,
+      "options": [
+        "By calling check_row for each row, column, and diagonal",
+        "By checking only the rows",
+        "By comparing the whole board to a winning board",
+        "By counting the number of X marks"
+      ],
+      "answer": "By calling check_row for each row, column, and diagonal",
+      "explanation": "check_win reuses check_row on every line of the board."
+    },
+    {
+      "id": "placement/data-functions/q07",
+      "band": "data-functions",
+      "source_question_id": "python-apprentice/30_Dicts_Sets/q12",
+      "source_lesson": "python-apprentice/40_Data_Structures_Func",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "Given my_dict = {'a': 1, 'b': 2, 'c': 3}, what does 'a' in my_dict return?",
+      "code": "my_dict = {'a': 1, 'b': 2, 'c': 3}\nprint('a' in my_dict)",
+      "options": [
+        "True",
+        "False",
+        "1",
+        "An error"
+      ],
+      "answer": "True",
+      "explanation": "For a dict, in checks for the existence of a key, and 'a' is a key."
+    },
+    {
+      "id": "placement/data-functions/q08",
+      "band": "data-functions",
+      "source_question_id": "python-apprentice/10_Functions/q11",
+      "source_lesson": "python-apprentice/40_Data_Structures_Func",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "Using the functions f(a, b) = a + b and g(c, d) = c + d, what is the value of g(f(1, 2), f(3, 4))?",
+      "code": "def f(a, b):\n    return a + b\n\ndef g(c, d):\n    return c + d\n\ng(f(1, 2), f(3, 4))",
+      "options": [
+        "10",
+        "7",
+        "3",
+        "21"
+      ],
+      "answer": "10",
+      "explanation": "f(1,2) is 3, f(3,4) is 7, and g(3, 7) is 10."
+    },
+    {
+      "id": "placement/data-functions/q09",
+      "band": "data-functions",
+      "source_question_id": "python-apprentice/60_Tic_Tac_Toe/q08",
+      "source_lesson": "python-apprentice/40_Data_Structures_Func",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "The instructions say to use which values for the player marks inside your functions?",
+      "code": null,
+      "options": [
+        "The constants X_MARK and O_MARK",
+        "The strings \"x\" and \"o\"",
+        "The numbers 1 and 2",
+        "True and False"
+      ],
+      "answer": "The constants X_MARK and O_MARK",
+      "explanation": "The file says to use the constants instead of the raw strings."
+    },
+    {
+      "id": "placement/data-functions/q10",
+      "band": "data-functions",
+      "source_question_id": "python-apprentice/30_Dicts_Sets/q05",
+      "source_lesson": "python-apprentice/40_Data_Structures_Func",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "What does list(set(my_list)) produce when my_list = ['a','a','b','b','c','c']?",
+      "code": "my_list = ['a','a','b','b','c','c']\nprint(list(set(my_list)))",
+      "options": [
+        "A list of the unique items: 'a', 'b', 'c'",
+        "['a','a','b','b','c','c']",
+        "A set of all six items",
+        "An error"
+      ],
+      "answer": "A list of the unique items: 'a', 'b', 'c'",
+      "explanation": "Converting to a set removes duplicates, then back to a list keeps the unique items."
+    },
+    {
+      "id": "placement/oop/q01",
+      "band": "oop",
+      "source_question_id": "python-games/02_Classes_and_Objects/q01",
+      "source_lesson": "python-games/02_Classes_and_Objects",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "Which statement best describes the relationship between a class and an object?",
+      "code": null,
+      "options": [
+        "A class is a copy of an object",
+        "A class is a blueprint and an object is built from it",
+        "An object is a blueprint for a class",
+        "They are exactly the same thing"
+      ],
+      "answer": "A class is a blueprint and an object is built from it",
+      "explanation": "A class defines the type; an object is one instance made from that blueprint."
+    },
+    {
+      "id": "placement/oop/q02",
+      "band": "oop",
+      "source_question_id": "python-games/02_Classes_and_Objects/q09",
+      "source_lesson": "python-games/02_Classes_and_Objects",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "What does the line class Parent(Person): mean?",
+      "code": null,
+      "options": [
+        "Parent contains a Person variable",
+        "Parent inherits from Person",
+        "Person inherits from Parent",
+        "Parent and Person are unrelated"
+      ],
+      "answer": "Parent inherits from Person",
+      "explanation": "Putting Person in the parentheses makes Parent a derived class of Person."
+    },
+    {
+      "id": "placement/oop/q03",
+      "band": "oop",
+      "source_question_id": "python-games/02_Classes_and_Objects/q05",
+      "source_lesson": "python-games/02_Classes_and_Objects",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "When does the __init__ method run?",
+      "code": null,
+      "options": [
+        "Every frame",
+        "When the program ends",
+        "Automatically when a new object is created",
+        "Only when you call it by name"
+      ],
+      "answer": "Automatically when a new object is created",
+      "explanation": "__init__ is the initializer that runs as the object is built."
+    },
+    {
+      "id": "placement/oop/q04",
+      "band": "oop",
+      "source_question_id": "python-games/02_Classes_and_Objects/q12",
+      "source_lesson": "python-games/02_Classes_and_Objects",
+      "type": "multiple_choice",
+      "category": "theory",
+      "question": "What does polymorphism mean?",
+      "code": null,
+      "options": [
+        "A class can have many objects",
+        "The same method name can do different things in different classes",
+        "Objects can change color",
+        "A program can have many classes"
+      ],
+      "answer": "The same method name can do different things in different classes",
+      "explanation": "'Poly' means many and 'morph' means form, so the method takes many forms."
+    },
+    {
+      "id": "placement/oop/q05",
+      "band": "oop",
+      "source_question_id": "python-games/02_Classes_and_Objects/q03",
+      "source_lesson": "python-games/02_Classes_and_Objects",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "Given the Person class, which line creates a Person object named Alice who is 14?",
+      "code": "class Person:\n    def __init__(self, name, age):\n        self.name = name\n        self.age = age",
+      "options": [
+        "Person.name = \"Alice\"",
+        "alice = Person(\"Alice\", 14)",
+        "alice = Person.new(\"Alice\", 14)",
+        "Person(\"Alice\").age = 14"
+      ],
+      "answer": "alice = Person(\"Alice\", 14)",
+      "explanation": "Calling the class like a function runs __init__ and builds the object."
+    },
+    {
+      "id": "placement/oop/q06",
+      "band": "oop",
+      "source_question_id": "python-games/02_Classes_and_Objects/q08",
+      "source_lesson": "python-games/02_Classes_and_Objects",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "What will this code print?",
+      "code": "class Person:\n    def __init__(self, name, age):\n        self.name = name\n        self.age = age\n\nalice = Person(\"Alice\", 14)\nprint(alice.name)",
+      "options": [
+        "name",
+        "Alice",
+        "14",
+        "Person"
+      ],
+      "answer": "Alice",
+      "explanation": "alice.name returns the value stored when the object was created."
+    },
+    {
+      "id": "placement/oop/q07",
+      "band": "oop",
+      "source_question_id": "python-games/02_Classes_and_Objects/q13",
+      "source_lesson": "python-games/02_Classes_and_Objects",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "The function get_name_and_age(person) was written for a Person. Why can you also pass it a Parent or a Child object?",
+      "code": null,
+      "options": [
+        "Because Parent and Child are kinds of Person (polymorphism)",
+        "Because all functions accept any object",
+        "Because Parent and Child have no __init__",
+        "Because you used super()"
+      ],
+      "answer": "Because Parent and Child are kinds of Person (polymorphism)",
+      "explanation": "Derived classes can be used anywhere their base class is expected."
+    },
+    {
+      "id": "placement/oop/q08",
+      "band": "oop",
+      "source_question_id": "python-games/02_Classes_and_Objects/q04",
+      "source_lesson": "python-games/02_Classes_and_Objects",
+      "type": "multiple_choice",
+      "category": "coding",
+      "question": "Which symbol do you use to access an object's attribute or method, like getting alice's name?",
+      "code": null,
+      "options": [
+        "The comma (,)",
+        "The dot (.)",
+        "The colon (:)",
+        "The arrow (->)"
+      ],
+      "answer": "The dot (.)",
+      "explanation": "alice.name uses the dot to reach the name attribute inside the object."
+    }
+  ]
+}

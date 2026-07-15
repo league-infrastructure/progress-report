@@ -32,11 +32,12 @@ interface PlacementResult {
 const LEVEL_NAMES: Record<string, string> = {
   'python-apprentice': 'Python Apprentice',
   'python-games': 'Python Games',
+  java: 'Java',
 }
 
 function prettyLesson(lesson: string): string {
   if (lesson === 'complete') return ''
-  return lesson.replace(/^lessons\//, '')
+  return lesson.replace(/^lessons\//, '').replace(/^levels\//, '')
 }
 
 export function PlacementPage() {
@@ -57,7 +58,7 @@ export function PlacementPage() {
     setBusy(true)
     setError(null)
     try {
-      const res = await fetch('/api/quiz/placement')
+      const res = await fetch(`/api/quiz/placement?language=${language}`)
       if (!res.ok) throw new Error('Could not load the placement test.')
       const data = (await res.json()) as { questions: PQuestion[] }
       setQuestions(data.questions)
@@ -76,7 +77,7 @@ export function PlacementPage() {
       const res = await fetch('/api/quiz/placement/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, answers }),
+        body: JSON.stringify({ name, email, answers, language }),
       })
       if (!res.ok) throw new Error('Could not score the placement test.')
       setResult((await res.json()) as PlacementResult)
@@ -111,30 +112,23 @@ export function PlacementPage() {
           </select>
         </div>
 
-        {language === 'java' ? (
-          <div className="mt-6 rounded bg-amber-50 p-4 text-sm text-amber-800">
-            The <strong>Java</strong> placement test is coming soon — Java content will be added later.
-            For now, choose <strong>Python</strong>.
-          </div>
-        ) : (
-          <form className="mt-6 space-y-4" onSubmit={startTest}>
-            <label className="block text-sm text-slate-700">
-              Name
-              <input value={name} onChange={(e) => setName(e.target.value)} required
-                className="mt-1 w-full rounded border border-slate-300 px-3 py-2" placeholder="Your name" />
-            </label>
-            <label className="block text-sm text-slate-700">
-              Email
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
-                className="mt-1 w-full rounded border border-slate-300 px-3 py-2" placeholder="you@example.com" />
-            </label>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <button type="submit" disabled={busy}
-              className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50">
-              {busy ? 'Loading…' : 'Begin placement test'}
-            </button>
-          </form>
-        )}
+        <form className="mt-6 space-y-4" onSubmit={startTest}>
+          <label className="block text-sm text-slate-700">
+            Name
+            <input value={name} onChange={(e) => setName(e.target.value)} required
+              className="mt-1 w-full rounded border border-slate-300 px-3 py-2" placeholder="Your name" />
+          </label>
+          <label className="block text-sm text-slate-700">
+            Email
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
+              className="mt-1 w-full rounded border border-slate-300 px-3 py-2" placeholder="you@example.com" />
+          </label>
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          <button type="submit" disabled={busy}
+            className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50">
+            {busy ? 'Loading…' : 'Begin placement test'}
+          </button>
+        </form>
         <p className="mt-6 text-xs text-slate-400">40 multiple-choice questions · auto-graded · ~20 minutes.</p>
       </div>
     )
@@ -188,7 +182,9 @@ export function PlacementPage() {
   const answeredCount = questions.filter((q) => (answers[q.id] ?? '') !== '').length
   return (
     <div className={wrap}>
-      <h1 className="text-2xl font-bold text-slate-800">Python Placement Test</h1>
+      <h1 className="text-2xl font-bold text-slate-800">
+        {language === 'java' ? 'Java' : 'Python'} Placement Test
+      </h1>
       <p className="mb-6 text-slate-500">{answeredCount} of {questions.length} answered. Answer as many as you can.</p>
       <ol className="space-y-5">
         {questions.map((q, i) => (

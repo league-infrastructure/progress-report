@@ -39,6 +39,11 @@ SOURCES = [
     ("python-games-quiz-concepts.json", "python-games", "Python-Games"),
 ]
 
+# Java curriculum. Its concept file has a different shape (levels -> modules ->
+# quiz_pool, plus a per-level level_test_pool and a top-level
+# global_assessment_pool), so it gets a dedicated builder below.
+JAVA_SOURCE = ("java-curriculum-quiz-concepts.json", "java", "Java")
+
 
 def module_of(level: str, path: str, name: str) -> str:
     """Top-level module a lesson belongs to.
@@ -121,6 +126,99 @@ def build_bank(src_file: str, level: str, repo: str) -> dict:
         )
     return {
         "level": level,
+        "repo": repo,
+        "generated_from": src_file,
+        "lesson_count": len(lessons_out),
+        "question_count": total_q,
+        "lessons": lessons_out,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Java bank
+# ---------------------------------------------------------------------------
+
+def _normalize_java_question(level: str, lesson_name: str, idx: int, q: dict) -> dict:
+    """Normalize a Java quiz_pool question into the canonical bank shape.
+
+    Java question ids are ``java/<Level>/<lesson>/qNN`` so they stay unique and
+    stable across the whole bank.
+    """
+    return {
+        "id": f"{level}/{lesson_name}/q{idx:02d}",
+        "type": q.get("type", "multiple_choice"),
+        "category": q.get("category", "theory"),
+        "question": (q.get("question") or "").strip(),
+        "code": q.get("code"),
+        "options": q.get("options", []),
+        "answer": q.get("answer", ""),
+        "explanation": q.get("explanation", ""),
+        "concept_id": q.get("concept_id"),
+    }
+
+
+def build_java_bank(src_file: str, level_slug: str, repo: str) -> dict:
+    """Build the Java bank from the curriculum spec.
+
+    Each spec module becomes one lesson (quiz). In addition, every spec level
+    contributes a synthetic ``<Level> Test`` lesson built from its
+    ``level_test_pool`` so instructors can assign a cumulative level exam from
+    the same UI. Lessons are ordered so a level's modules come first, then its
+    level test, then the next level.
+    """
+    raw = json.loads((QUIZ_APP / src_file).read_text())
+
+    lessons_out = []
+    order = 0
+    total_q = 0
+    for spec_level in raw.get("levels", []):
+        lvl = spec_level["level"]  # e.g. "Level0"
+        # One lesson per module.
+        for module in spec_level.get("modules", []):
+            order += 1
+            name = f"{lvl} {module['name']}"  # e.g. "Level0 Module0"
+            questions = [
+                _normalize_java_question(level_slug, name, i, q)
+                for i, q in enumerate(module["quiz_pool"]["questions"], start=1)
+            ]
+            total_q += len(questions)
+            lessons_out.append(
+                {
+                    "id": f"{level_slug}/{lvl}/{module['name']}",
+                    "name": name,
+                    "module": lvl,
+                    "path": module.get("path", f"levels/{lvl}/{module['name']}"),
+                    "order": order,
+                    "concepts": module.get("concepts", []),
+                    "question_count": len(questions),
+                    "questions": questions,
+                }
+            )
+        # Cumulative level test lesson.
+        level_test = spec_level.get("level_test_pool")
+        if level_test and level_test.get("questions"):
+            order += 1
+            name = f"{lvl} Test"
+            questions = [
+                _normalize_java_question(level_slug, name, i, q)
+                for i, q in enumerate(level_test["questions"], start=1)
+            ]
+            total_q += len(questions)
+            lessons_out.append(
+                {
+                    "id": f"{level_slug}/{lvl}/LevelTest",
+                    "name": name,
+                    "module": lvl,
+                    "path": f"levels/{lvl}",
+                    "order": order,
+                    "concepts": [],
+                    "question_count": len(questions),
+                    "questions": questions,
+                }
+            )
+
+    return {
+        "level": level_slug,
         "repo": repo,
         "generated_from": src_file,
         "lesson_count": len(lessons_out),
@@ -328,12 +426,141 @@ def build_placement(banks: dict[str, dict]) -> dict:
     }
 
 
+# ---------------------------------------------------------------------------
+# Java placement assessment
+# ---------------------------------------------------------------------------
+
+# Java placement bands mirror the curriculum's six levels. A student is placed
+# at the START of the first level they have not mastered. Level is inferred from
+# each question's concept_id prefix (``l0m0-...`` -> Level0).
+JAVA_LEVELS = ["Level0", "Level1", "Level2", "Level3", "Level4", "Level5"]
+JAVA_LEVEL_LABELS = {
+    "Level0": "Level 0 — syntax, variables, loops & conditionals",
+    "Level1": "Level 1 — methods, classes & objects",
+    "Level2": "Level 2 — arrays, ArrayLists & inheritance",
+    "Level3": "Level 3 — 2D arrays, maps, sorting, strings, stacks & recursion",
+    "Level4": "Level 4 — generics, enums, exceptions & polymorphism",
+    "Level5": "Level 5 — lambdas, streams, files, threads & networking",
+}
+JAVA_PLACEMENT_TOTAL = 40
+
+
+def _java_level_of(concept_id: str | None) -> str | None:
+    """Level a Java question belongs to, from its concept_id (``l3m2-...``)."""
+    if not concept_id or len(concept_id) < 2 or concept_id[0] != "l":
+        return None
+    digit = concept_id[1]
+    return f"Level{digit}" if digit.isdigit() else None
+
+
+def build_java_placement(src_file: str) -> dict:
+    """Build the Java placement test from the spec's global_assessment_pool.
+
+    Multiple-choice questions are grouped by level, then round-robin selected to
+    a balanced 40-question test. Placement lands the student at the start of the
+    first level they have not mastered; mastering all six places them beyond.
+    """
+    raw = json.loads((QUIZ_APP / src_file).read_text())
+    pool = raw.get("global_assessment_pool", {}).get("questions", [])
+
+    by_level: dict[str, list] = {lvl: [] for lvl in JAVA_LEVELS}
+    for q in pool:
+        if q.get("type") != "multiple_choice":
+            continue
+        lvl = _java_level_of(q.get("concept_id"))
+        if lvl in by_level:
+            by_level[lvl].append(q)
+
+    # Round-robin across levels to fill up to the target.
+    picked: dict[str, list] = {lvl: [] for lvl in JAVA_LEVELS}
+    cursor = {lvl: 0 for lvl in JAVA_LEVELS}
+    total = 0
+    progressed = True
+    while total < JAVA_PLACEMENT_TOTAL and progressed:
+        progressed = False
+        for lvl in JAVA_LEVELS:
+            if total >= JAVA_PLACEMENT_TOTAL:
+                break
+            if cursor[lvl] < len(by_level[lvl]):
+                picked[lvl].append(by_level[lvl][cursor[lvl]])
+                cursor[lvl] += 1
+                total += 1
+                progressed = True
+
+    questions: list[dict] = []
+    band_counts: dict[str, int] = {}
+    for lvl in JAVA_LEVELS:
+        for pos, q in enumerate(picked[lvl], start=1):
+            band_counts[lvl] = band_counts.get(lvl, 0) + 1
+            questions.append(
+                {
+                    "id": f"placement/{lvl}/q{pos:02d}",
+                    "band": lvl,
+                    "source_question_id": q.get("id", ""),
+                    "type": "multiple_choice",
+                    "category": q.get("category", "theory"),
+                    "question": q["question"],
+                    "code": q.get("code"),
+                    "options": q["options"],
+                    "answer": q["answer"],
+                    "explanation": q.get("explanation", ""),
+                }
+            )
+
+    bands = [
+        {
+            "id": lvl,
+            "label": JAVA_LEVEL_LABELS[lvl],
+            "level": "java",
+            "question_count": band_counts.get(lvl, 0),
+            # Place at the first (module) lesson of this level.
+            "place_at": {"level": "java", "lesson": f"levels/{lvl}"},
+        }
+        for lvl in JAVA_LEVELS
+        if band_counts.get(lvl, 0) > 0
+    ]
+
+    return {
+        "name": "General Java Placement Assessment",
+        "description": (
+            "A 40-question multiple-choice placement test spanning the full "
+            "Java curriculum (Level 0 through Level 5). Used to place a "
+            "prospective student into the right Java level."
+        ),
+        "language": "java",
+        "question_count": len(questions),
+        "auto_graded": True,
+        "mastery_pct": MASTERY_PCT,
+        "collect_before_start": ["name", "email"],
+        "bands": bands,
+        "placement_rubric": {
+            "method": "first-unmastered-band",
+            "mastery_pct": MASTERY_PCT,
+            "explanation": (
+                "Score each level as a percentage of its questions answered "
+                "correctly. Walk the levels in order; the student is placed at "
+                "the START of the first level scoring below the mastery "
+                "threshold. If every level is mastered, use 'placed_beyond'."
+            ),
+            "placed_beyond": {
+                "level": "java",
+                "lesson": "complete",
+                "note": (
+                    "Mastered all assessed Java content — ready for advanced "
+                    "projects. Recommend instructor review."
+                ),
+            },
+        },
+        "questions": questions,
+    }
+
+
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     banks: dict[str, dict] = {}
     manifest_levels = []
-    for src_file, level, repo in SOURCES:
-        bank = build_bank(src_file, level, repo)
+
+    def emit_bank(bank: dict, level: str, repo: str) -> None:
         banks[level] = bank
         out = OUT_DIR / f"{level}.bank.json"
         out.write_text(json.dumps(bank, indent=2) + "\n")
@@ -357,18 +584,44 @@ def main() -> int:
         )
         print(f"  {level}: {bank['lesson_count']} lessons, {bank['question_count']} questions -> {out.name}")
 
-    placement = build_placement(banks)
-    (OUT_DIR / "placement-assessment.json").write_text(json.dumps(placement, indent=2) + "\n")
-    print(f"  placement: {placement['question_count']} questions -> placement-assessment.json")
+    for src_file, level, repo in SOURCES:
+        emit_bank(build_bank(src_file, level, repo), level, repo)
+
+    # Java bank (module quizzes + per-level cumulative tests).
+    java_src, java_level, java_repo = JAVA_SOURCE
+    if (QUIZ_APP / java_src).exists():
+        emit_bank(build_java_bank(java_src, java_level, java_repo), java_level, java_repo)
+
+    # Per-language placement assessments. The Python test keeps the legacy
+    # filename so existing links / the default endpoint keep working.
+    py_placement = build_placement(banks)
+    (OUT_DIR / "placement-assessment.json").write_text(json.dumps(py_placement, indent=2) + "\n")
+    (OUT_DIR / "placement-assessment.python.json").write_text(json.dumps(py_placement, indent=2) + "\n")
+    print(f"  placement (python): {py_placement['question_count']} questions -> placement-assessment.json")
+
+    placement_assessments = {
+        "python": {"file": "placement-assessment.python.json", "question_count": py_placement["question_count"]},
+    }
+
+    if (QUIZ_APP / java_src).exists():
+        java_placement = build_java_placement(java_src)
+        (OUT_DIR / "placement-assessment.java.json").write_text(json.dumps(java_placement, indent=2) + "\n")
+        placement_assessments["java"] = {
+            "file": "placement-assessment.java.json",
+            "question_count": java_placement["question_count"],
+        }
+        print(f"  placement (java): {java_placement['question_count']} questions -> placement-assessment.java.json")
 
     manifest = {
         "generated_by": "scripts/build_quizzes.py",
         "quiz_format_version": 1,
         "levels": manifest_levels,
+        # Legacy single-language pointer (Python) kept for backwards compat.
         "placement_assessment": {
             "file": "placement-assessment.json",
-            "question_count": placement["question_count"],
+            "question_count": py_placement["question_count"],
         },
+        "placement_assessments": placement_assessments,
         "totals": {
             "levels": len(manifest_levels),
             "lessons": sum(l["lesson_count"] for l in manifest_levels),

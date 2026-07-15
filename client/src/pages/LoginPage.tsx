@@ -72,7 +72,7 @@ export function LoginPage() {
         <div style={{ marginTop: 20, fontSize: 12.5 }}>
           New to the League?{' '}
           <a href="/placement" style={{ color: 'var(--color-primary, #2563eb)', textDecoration: 'underline' }}>
-            Take the Python placement test
+            Take the coding placement test
           </a>
         </div>
 

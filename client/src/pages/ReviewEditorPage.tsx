@@ -82,6 +82,7 @@ export function ReviewEditorPage() {
   const [testSendError, setTestSendError] = useState('')
   const [generateState, setGenerateState] = useState<'idle' | 'loading' | 'error'>('idle')
   const [generateError, setGenerateError] = useState('')
+  const [quizStatus, setQuizStatus] = useState<{ completed: { lessonName: string; score: number; passed: boolean }[]; missing: string[] } | null>(null)
 
   useEffect(() => {
     if (review) {
@@ -162,8 +163,12 @@ export function ReviewEditorPage() {
         const data = await res.json().catch(() => ({}))
         throw new Error((data as { error?: string }).error ?? 'Generation failed')
       }
-      const data = await res.json() as { body: string; commitCount: number; repoCount: number }
+      const data = await res.json() as {
+        body: string; commitCount: number; repoCount: number
+        quizStatus?: { completed: { lessonName: string; score: number; passed: boolean }[]; missing: string[] }
+      }
       setBody(data.body)
+      setQuizStatus(data.quizStatus ?? null)
       setDirty(true)
       setGenerateState('idle')
     } catch (err) {
@@ -331,6 +336,19 @@ export function ReviewEditorPage() {
       )}
       {generateState === 'error' && (
         <p style={{ marginTop: 12, fontSize: 13, color: 'var(--color-danger)' }}>Generate failed: {generateError}</p>
+      )}
+      {quizStatus && quizStatus.missing.length > 0 && (
+        <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 8, background: '#fffbeb', border: '1px solid #fde68a', fontSize: 13, color: '#92400e' }}>
+          <strong>Quiz needed:</strong> {review.studentName} has moved on from{' '}
+          {quizStatus.missing.join(', ')} without completing the quiz
+          {quizStatus.missing.length > 1 ? 'zes' : ''}. Assign the quiz before this work is considered complete.
+        </div>
+      )}
+      {quizStatus && quizStatus.completed.length > 0 && (
+        <div style={{ marginTop: 12, padding: '10px 12px', borderRadius: 8, background: '#f0fdf4', border: '1px solid #bbf7d0', fontSize: 13, color: '#166534' }}>
+          <strong>Quiz results included in this review:</strong>{' '}
+          {quizStatus.completed.map((q) => `${q.lessonName} — ${q.score}% (${q.passed ? 'passed' : 'not yet passed'})`).join('; ')}.
+        </div>
       )}
     </div>
   )

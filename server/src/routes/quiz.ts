@@ -16,7 +16,7 @@ import { requireQuizRole, assertOwnQuiz, QuizAccessError } from '../middleware/q
 import { sampleQuestions, markSeen } from '../services/quiz/sampler';
 import { gradeAttempt } from '../services/quiz/grader';
 import { mintToken, resolveToken, consumeToken, TokenError } from '../services/quiz/tokenizer';
-import { getPlacement, gradePlacement } from '../services/quiz/placement';
+import { getPlacement, gradePlacement, normalizeLanguage } from '../services/quiz/placement';
 import { sendPlacementResultEmail, sendParentQuizNote } from '../services/email';
 import { checkRecipeCompletion } from '../services/quiz/completion';
 
@@ -26,9 +26,10 @@ export const quizRouter = Router();
 // Placement assessment (public, no authentication)
 // ============================================================
 
-quizRouter.get('/placement', (_req, res, next) => {
+quizRouter.get('/placement', (req, res, next) => {
   try {
-    res.json(getPlacement());
+    const language = normalizeLanguage(req.query.language as string | undefined);
+    res.json(getPlacement(language));
   } catch (err) {
     next(err);
   }
@@ -36,12 +37,14 @@ quizRouter.get('/placement', (_req, res, next) => {
 
 quizRouter.post('/placement/submit', async (req, res, next) => {
   try {
-    const { name, email, answers } = req.body as {
+    const { name, email, answers, language } = req.body as {
       name?: string;
       email?: string;
       answers?: Record<string, string>;
+      language?: string;
     };
-    const result = gradePlacement(answers ?? {});
+    const lang = normalizeLanguage(language);
+    const result = gradePlacement(answers ?? {}, lang);
 
     // Email the result to the taker + all admins. Awaited so we can tell the
     // page whether it actually went out, but sendPlacementResultEmail never
@@ -59,10 +62,11 @@ quizRouter.post('/placement/submit', async (req, res, next) => {
         takerEmail,
         adminEmails,
         result,
+        language: lang,
       });
     }
 
-    res.json({ ...result, emailed, emailTo: emailed ? takerEmail : null });
+    res.json({ ...result, language: lang, emailed, emailTo: emailed ? takerEmail : null });
   } catch (err) {
     next(err);
   }

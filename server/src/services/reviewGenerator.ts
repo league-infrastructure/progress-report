@@ -1,15 +1,107 @@
 import { and, desc, eq, gte, lt } from 'drizzle-orm';
 import Anthropic from '@anthropic-ai/sdk';
 import { db } from '../db';
-import { monthlyReviews, students, instructors, users, studentAttendance, pike13Tokens, reviewTemplates } from '../db/schema';
+import {
+  monthlyReviews,
+  students,
+  instructors,
+  users,
+  studentAttendance,
+  pike13Tokens,
+  reviewTemplates,
+  quizzes,
+  quizLessons,
+  quizAttempts,
+} from '../db/schema';
 import { sendPike13Note, buildPike13NoteText } from './pike13Notes';
 import { sendReviewEmail } from './email';
 import { isLeagueRepoName, leagueOrgPrefix } from './github';
+
+/** A quiz the student completed for a lesson/module they worked on this month. */
+export interface CompletedQuizInfo {
+  lessonName: string;
+  score: number;
+  passed: boolean;
+}
+
+/**
+ * Quiz coverage for the lessons/modules a student worked on during the review
+ * period. `missing` lists the curriculum positions the student has advanced
+ * through that have NO completed quiz — the instructor is warned they must have
+ * the student take it. `completed` lists quizzes already taken, whose results
+ * are folded into the parent-facing review.
+ */
+export interface QuizStatus {
+  completed: CompletedQuizInfo[];
+  missing: string[];
+}
 
 export interface GeneratedDraft {
   body: string;
   commitCount: number;
   repoCount: number;
+  quizStatus: QuizStatus;
+}
+
+/**
+ * Normalize a lesson/module label to a comparable token so GitHub-derived names
+ * (e.g. "Level1-Module0", "30_Loops", "Loops") match quiz-bank lesson names
+ * (e.g. "Level1 Module0", "30_Loops"). Lowercased, alphanumerics only.
+ */
+function quizMatchToken(label: string): string {
+  return label.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/**
+ * Look up the student's completed quizzes and reconcile them against the set of
+ * curriculum positions (lesson/module labels) they worked on this review period.
+ *
+ * A completed quiz whose lesson matches a worked-on position is reported so the
+ * result can be included in the parent review. Any worked-on position WITHOUT a
+ * completed quiz is reported as `missing` so the instructor is prompted to have
+ * the student take it before moving on.
+ */
+export async function getQuizStatus(studentId: number, workedOnLabels: string[]): Promise<QuizStatus> {
+  const workedTokens = new Map<string, string>(); // token -> display label
+  for (const label of workedOnLabels) {
+    const tok = quizMatchToken(label);
+    if (tok) workedTokens.set(tok, label);
+  }
+  if (workedTokens.size === 0) return { completed: [], missing: [] };
+
+  // All quizzes for this student, with lesson name and latest attempt score.
+  const rows = await db
+    .select({
+      status: quizzes.status,
+      lessonName: quizLessons.name,
+      score: quizAttempts.score,
+      passed: quizAttempts.passed,
+      submittedAt: quizAttempts.submittedAt,
+    })
+    .from(quizzes)
+    .innerJoin(quizLessons, eq(quizzes.lessonId, quizLessons.id))
+    .leftJoin(quizAttempts, eq(quizAttempts.quizId, quizzes.id))
+    .where(eq(quizzes.studentId, studentId))
+    .orderBy(desc(quizAttempts.submittedAt));
+
+  // Best (most recent) completed attempt per lesson token.
+  const completedByToken = new Map<string, CompletedQuizInfo>();
+  for (const r of rows) {
+    if (r.status !== 'completed' || r.score === null || r.score === undefined) continue;
+    const tok = quizMatchToken(r.lessonName);
+    if (!completedByToken.has(tok)) {
+      completedByToken.set(tok, { lessonName: r.lessonName, score: r.score, passed: Boolean(r.passed) });
+    }
+  }
+
+  const completed: CompletedQuizInfo[] = [];
+  const missing: string[] = [];
+  for (const [tok, label] of workedTokens) {
+    const done = completedByToken.get(tok);
+    if (done) completed.push(done);
+    else missing.push(label);
+  }
+  return { completed, missing };
 }
 
 const AI_PLACEHOLDERS = ['{{progress}}', '{{highlights}}', '{{instructorNotes}}'] as const;
@@ -388,6 +480,26 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
     ? `Current curriculum position: working on "${highestLessonName}"${allLessonNames.length > 1 ? ` (also covered: ${allLessonNames.slice(0, -1).join(', ')})` : ''}.`
     : '';
 
+  // Curriculum positions the student worked on this period, used to reconcile
+  // against quizzes. Java repos are named per module (e.g. "Level1-Module0"),
+  // which matches the Java quiz lesson names; Python lesson names come from the
+  // parsed lessons/ paths. We include both so either curriculum matches.
+  const workedOnLabels = Array.from(
+    new Set([
+      ...[...repoData.values()].map((r) => r.shortName),
+      ...lessonsSeen.values(),
+    ]),
+  );
+  const quizStatus = await getQuizStatus(review.studentId, workedOnLabels);
+
+  // Completed quiz results are surfaced to the parent in the review; the model
+  // is told about them so it can mention them naturally.
+  const quizResultsNote = quizStatus.completed.length
+    ? `Quiz results this period:\n${quizStatus.completed
+        .map((q) => `• ${q.lessonName}: ${q.score}% (${q.passed ? 'passed' : 'not yet passed'})`)
+        .join('\n')}`
+    : '';
+
   const attendanceSection = attendanceDates.length > 0
     ? `Class sessions attended (${monthLabel}):\n${attendanceDates.map((d) => `• ${d}`).join('\n')}`
     : '';
@@ -402,6 +514,7 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
     `Student: ${studentName} | Month: ${monthLabel}`,
     attendanceDates.length > 0 ? `Attendance: ${attendanceDates.join(', ')} (${attendanceDates.length} session${attendanceDates.length === 1 ? '' : 's'})` : '',
     lessonProgressNote,
+    quizResultsNote,
     '',
     `Curriculum activity (${monthLabel}):`,
     commitSummary,
@@ -504,11 +617,12 @@ Instructions:
     const signOff = `Warm regards,\n${instructorName}\n${instructorEmail}`;
     const parts = [greeting, '', llmBody];
     if (attendanceSection) parts.push('', attendanceSection);
+    if (quizResultsNote) parts.push('', quizResultsNote);
     parts.push('', githubSection, '', signOff);
     finalBody = parts.join('\n');
   }
 
-  return { body: finalBody, commitCount: totalCommits, repoCount: repoData.size };
+  return { body: finalBody, commitCount: totalCommits, repoCount: repoData.size, quizStatus };
 }
 
 /** Load everything needed to send a review. */
