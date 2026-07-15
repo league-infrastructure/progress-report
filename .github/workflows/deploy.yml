@@ -1,0 +1,109 @@
+name: Build & Deploy
+
+# Builds the app image on a GitHub-hosted runner, pushes it to GHCR, and
+# deploys the stack to the Docker Swarm over SSH — so no local machine is
+# needed to ship. Mirrors scripts/build_image.sh + scripts/deploy_stack.sh.
+
+on:
+  push:
+    branches:
+      - sprint/002-quiz-app-foundation-student-access-instructor-tab-admin-past-quizzes-page
+  workflow_dispatch:
+
+concurrency:
+  # Never let two deploys run at once; a newer push cancels an in-flight one.
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE_REPO: ghcr.io/league-infrastructure/progress-report
+  STACK_NAME: progress-report
+  SWARM_HOST: root@swarm1.dojtl.net
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write # push to GHCR with the built-in GITHUB_TOKEN
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # The image tag is the package.json version — the single source of truth
+      # for "which code is live", the same as the local build script uses.
+      - name: Resolve image tag
+        id: tag
+        run: echo "tag=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Swarm nodes are linux/amd64 — build that one arch natively (fast, no QEMU).
+      - name: Build & push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE_REPO }}:${{ steps.tag.outputs.tag }}
+            ${{ env.IMAGE_REPO }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # --- Deploy to the swarm over SSH ---
+      # Uses the docker SSH context, the same mechanism the local deploy uses.
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SWARM_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          echo "${{ secrets.SWARM_SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+          cat >> ~/.ssh/config <<'EOF'
+          Host swarm1
+            HostName swarm1.dojtl.net
+            User root
+            IdentityFile ~/.ssh/id_deploy
+            IdentitiesOnly yes
+          EOF
+          chmod 600 ~/.ssh/config
+
+      # The app container reads its secrets from .env via `env_file`. The full
+      # prod .env is stored as a single secret and written here for the deploy.
+      - name: Write prod .env
+        run: |
+          printf '%s' "${{ secrets.PROD_ENV_FILE }}" > .env
+          # Ensure the tag we just built is the one deployed, regardless of what
+          # APP_TAG the .env may carry.
+          {
+            echo "APP_TAG=${{ steps.tag.outputs.tag }}"
+            echo "IMAGE_REPO=${{ env.IMAGE_REPO }}"
+          } >> .env
+
+      - name: Deploy stack to swarm
+        env:
+          DOCKER_CONTEXT: swarm1
+        run: |
+          docker context create swarm1 --docker "host=ssh://${SWARM_HOST}" 2>/dev/null || true
+          set -a
+          . ./.env
+          set +a
+          docker --context swarm1 stack deploy \
+            --with-registry-auth \
+            -c docker-compose.yml \
+            "$STACK_NAME"
+
+      - name: Report
+        run: |
+          echo "Deployed ${IMAGE_REPO}:${{ steps.tag.outputs.tag }} to stack ${STACK_NAME}."
+          echo "The container migrates and boot-seeds quizzes on startup."
