@@ -656,7 +656,7 @@ Formatting rules (strict):
 - Do NOT use em dashes or en dashes. Use commas, periods, or the word "and" instead.
 
 Structure (no headers, flowing paragraphs):
-1. Progress paragraph — what they worked on, what topic they've reached, what concepts that topic covers
+1. Progress paragraph — begin conversationally by introducing the report, e.g. "Here is ${studentName}'s progress report for the month of ${monthLabel}," then flow naturally into what they worked on, what topic they've reached, and what concepts that topic covers
 2. Effort & highlights paragraph — specific things done well, how the work builds their skills
 3. Instructor notes (2–4 sentences only) — one gentle suggestion for the student if helpful, then a brief plan for how the instructor will support them next. Keep this encouraging, never prescriptive.`,
       messages: [{
@@ -665,7 +665,7 @@ Structure (no headers, flowing paragraphs):
 ${contextBlock}
 
 Instructions:
-- Open with attendance and the topic they're currently working on (use the topic name, not a number)
+- Open the first paragraph conversationally by introducing the report, e.g. "Here is ${studentName}'s progress report for the month of ${monthLabel}," then continue into attendance and the topic they're currently working on (use the topic name, not a number)
 - Lead with the most advanced topic work, not the earliest
 - Keep any improvement suggestion light, one sentence max, framed as "something to explore" not a gap
 - End with 2 to 3 sentences from the instructor on what they'll work on together next
@@ -674,11 +674,13 @@ Instructions:
       }],
     });
 
+    // The LLM opens its first paragraph with the "Here is <student>'s progress
+    // report for the month of <month>," intro in a conversational tone, so we
+    // don't inject a separate opening line here.
     const llmBody = toPlainReviewText((message.content[0]?.type === 'text' ? message.content[0].text : '').trim());
-    const opening = `Here is ${studentName}'s progress report for the month of ${monthLabel}.`;
     const greeting = guardianName ? `Dear ${guardianName},` : 'Dear LEAGUE Family,';
     const signOff = `Warm regards,\n${instructorName}\n${instructorEmail}`;
-    const parts = [opening, '', greeting, '', llmBody];
+    const parts = [greeting, '', llmBody];
     if (attendanceSection) parts.push('', attendanceSection);
     if (quizResultsNote) parts.push('', quizResultsNote);
     parts.push('', githubSection, '', signOff);
