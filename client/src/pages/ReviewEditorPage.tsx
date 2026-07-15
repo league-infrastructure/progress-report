@@ -223,6 +223,24 @@ export function ReviewEditorPage() {
         )}
       </div>
 
+      {review.sharedWith && review.sharedWith.length > 0 && (
+        <p style={{ marginBottom: 16, borderRadius: 8, padding: '10px 14px', fontSize: 13, background: '#fffbeb', color: '#92400e', border: '1px solid #fde68a' }}>
+          {review.sharedWith.length === 1 ? (
+            <>
+              <strong>{review.sharedWith[0].name}</strong> also worked with {review.studentName} this
+              month ({review.sharedWith[0].dates.join(', ')}), so some of this student's work may
+              overlap with their sessions.
+            </>
+          ) : (
+            <>
+              Other instructors also worked with {review.studentName} this month, so some of this
+              student's work may overlap with their sessions:{' '}
+              {review.sharedWith.map((s) => `${s.name} (${s.dates.join(', ')})`).join('; ')}.
+            </>
+          )}
+        </p>
+      )}
+
       {isSent && (
         <p style={{ marginBottom: 16, borderRadius: 8, padding: '10px 14px', fontSize: 13, background: '#f0fdf4', color: 'var(--color-success)', border: '1px solid #bbf7d0' }}>
           This review has been marked as sent.

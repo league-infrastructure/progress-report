@@ -1,5 +1,12 @@
 export type ReviewStatus = 'pending' | 'draft' | 'sent';
 
+/** Another instructor who also worked with this student during the review month. */
+export interface SharedInstructor {
+  instructorId: number;
+  name: string;
+  dates: string[];
+}
+
 export interface ReviewDto {
   id: number;
   studentId: number;
@@ -12,4 +19,6 @@ export interface ReviewDto {
   sentAt: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Present on the single-review fetch; other instructors sharing this student this month. */
+  sharedWith?: SharedInstructor[];
 }

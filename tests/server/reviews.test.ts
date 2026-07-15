@@ -226,3 +226,61 @@ describe('Reviews API CRUD', () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe('Reviews API shared-instructor note', () => {
+  const testApp = buildTestApp();
+
+  async function asPrimary() {
+    const agent = request.agent(testApp);
+    await agent.post('/test/login').send(instrUser(instructorId));
+    return agent;
+  }
+
+  afterEach(async () => {
+    await db.delete(schema.studentAttendance).where(eq(schema.studentAttendance.studentId, studentId));
+  });
+
+  it('returns empty sharedWith when no other instructor worked with the student', async () => {
+    const agent = await asPrimary();
+    const res = await agent.get(`/api/reviews/${reviewId}`);
+    expect(res.status).toBe(200);
+    expect(res.body.sharedWith).toEqual([]);
+  });
+
+  it('reports another instructor who has attendance for the student in the review month', async () => {
+    // reviewId is for `studentId` in 2025-11. Seed alt-instructor attendance that month.
+    await db.insert(schema.studentAttendance).values([
+      { studentId, instructorId: altInstructorId, attendedAt: new Date(2025, 10, 6), eventOccurrenceId: 'occ-1' },
+      { studentId, instructorId: altInstructorId, attendedAt: new Date(2025, 10, 13), eventOccurrenceId: 'occ-2' },
+    ]);
+
+    const agent = await asPrimary();
+    const res = await agent.get(`/api/reviews/${reviewId}`);
+    expect(res.status).toBe(200);
+    expect(res.body.sharedWith).toHaveLength(1);
+    expect(res.body.sharedWith[0]).toMatchObject({ instructorId: altInstructorId, name: 'Alt Instructor' });
+    expect(res.body.sharedWith[0].dates).toHaveLength(2);
+  });
+
+  it('does not count the requesting instructor as sharing', async () => {
+    await db.insert(schema.studentAttendance).values({
+      studentId, instructorId, attendedAt: new Date(2025, 10, 20), eventOccurrenceId: 'occ-self',
+    });
+
+    const agent = await asPrimary();
+    const res = await agent.get(`/api/reviews/${reviewId}`);
+    expect(res.status).toBe(200);
+    expect(res.body.sharedWith).toEqual([]);
+  });
+
+  it('ignores attendance outside the review month', async () => {
+    await db.insert(schema.studentAttendance).values({
+      studentId, instructorId: altInstructorId, attendedAt: new Date(2025, 11, 3), eventOccurrenceId: 'occ-dec',
+    });
+
+    const agent = await asPrimary();
+    const res = await agent.get(`/api/reviews/${reviewId}`);
+    expect(res.status).toBe(200);
+    expect(res.body.sharedWith).toEqual([]);
+  });
+});

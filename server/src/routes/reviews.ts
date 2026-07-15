@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, ne, gte, lt } from 'drizzle-orm';
 import { db } from '../db';
-import { monthlyReviews, students, instructors, users, pike13Tokens } from '../db/schema';
+import { monthlyReviews, students, instructors, users, pike13Tokens, studentAttendance } from '../db/schema';
 import { isActiveInstructor } from '../middleware/auth';
 import { sendReviewEmail, sendTestReviewEmail } from '../services/email';
 import { sendPike13Note, buildPike13NoteText } from '../services/pike13Notes';
@@ -10,6 +10,61 @@ import { generateReviewDraft } from '../services/reviewGenerator';
 export const reviewsRouter = Router();
 
 reviewsRouter.use(isActiveInstructor);
+
+/** One other instructor who also worked with this student during the month. */
+interface SharedInstructor {
+  instructorId: number;
+  name: string;
+  dates: string[]; // human-readable session dates, e.g. "Tue, May 6"
+}
+
+/**
+ * Find instructors OTHER than `excludeInstructorId` who have recorded
+ * attendance for `studentId` within the review's month. Lets the review page
+ * warn that another instructor shares this student, so their work may overlap.
+ */
+async function findSharedInstructors(
+  studentId: number,
+  month: string,
+  excludeInstructorId: number,
+): Promise<SharedInstructor[]> {
+  const [yr, mo] = month.split('-').map((n) => parseInt(n, 10));
+  if (!yr || !mo) return [];
+  const monthStart = new Date(yr, mo - 1, 1);
+  const monthEnd = new Date(yr, mo, 1);
+
+  const rows = await db
+    .select({
+      instructorId: studentAttendance.instructorId,
+      name: users.name,
+      attendedAt: studentAttendance.attendedAt,
+    })
+    .from(studentAttendance)
+    .innerJoin(instructors, eq(studentAttendance.instructorId, instructors.id))
+    .innerJoin(users, eq(instructors.userId, users.id))
+    .where(
+      and(
+        eq(studentAttendance.studentId, studentId),
+        ne(studentAttendance.instructorId, excludeInstructorId),
+        gte(studentAttendance.attendedAt, monthStart),
+        lt(studentAttendance.attendedAt, monthEnd),
+      ),
+    )
+    .orderBy(studentAttendance.attendedAt);
+
+  const byInstructor = new Map<number, SharedInstructor>();
+  for (const r of rows) {
+    let entry = byInstructor.get(r.instructorId);
+    if (!entry) {
+      entry = { instructorId: r.instructorId, name: r.name, dates: [] };
+      byInstructor.set(r.instructorId, entry);
+    }
+    entry.dates.push(
+      r.attendedAt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+    );
+  }
+  return [...byInstructor.values()];
+}
 
 function formatReview(
   review: typeof monthlyReviews.$inferSelect,
@@ -125,7 +180,13 @@ reviewsRouter.get('/reviews/:id', async (req, res, next) => {
       return;
     }
 
-    res.json(formatReview(row.review, row.studentName, row.githubUsername));
+    const sharedWith = await findSharedInstructors(
+      row.review.studentId,
+      row.review.month,
+      instructorId,
+    );
+
+    res.json({ ...formatReview(row.review, row.studentName, row.githubUsername), sharedWith });
   } catch (err) {
     next(err);
   }
