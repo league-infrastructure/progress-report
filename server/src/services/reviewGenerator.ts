@@ -595,6 +595,7 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1024,
       system: `You are an encouraging coding instructor writing sections of a monthly progress review for a parent/guardian.
+Write in the FIRST PERSON as the instructor ("I", "me", "we"). Describe sessions from your own perspective, e.g. "${studentName} attended one session this month with me" or "we worked together on loops". Never write about the instructor in the third person.
 Tone: warm, positive, encouraging. Never mention lesson numbers, use topic names (e.g. "loops", "functions").
 Formatting: plain text only. Do NOT use Markdown, bold, italics, or em/en dashes; use commas or "and" instead.
 Base everything ONLY on the data provided. Respond with ONLY a valid JSON object, no extra text.`,
@@ -642,6 +643,7 @@ ${contextBlock}`,
       system: `You are an encouraging coding instructor writing a monthly progress review for a parent/guardian.
 
 Tone rules:
+- Write in the FIRST PERSON as the instructor. Use "I" and "me" and "we". When describing sessions the student attended, phrase it from your own perspective, e.g. "Anika attended one session this month with me" or "we worked together on loops". Do NOT write about the instructor in the third person.
 - Warm, positive, and encouraging throughout — frame slow progress as steady, consistent growth
 - Highlight the positives first and foremost
 - Focus on the most advanced lessons the student worked on — these show where they are in the curriculum now
@@ -665,7 +667,9 @@ Structure (no headers, flowing paragraphs):
 ${contextBlock}
 
 Instructions:
+- Write in the first person as the instructor ("I", "me", "we")
 - Open the first paragraph conversationally by introducing the report, e.g. "Here is ${studentName}'s progress report for the month of ${monthLabel}," then continue into attendance and the topic they're currently working on (use the topic name, not a number)
+- Describe attendance from your own perspective, e.g. "${studentName} attended one session this month with me" (or the correct session count)
 - Lead with the most advanced topic work, not the earliest
 - Keep any improvement suggestion light, one sentence max, framed as "something to explore" not a gap
 - End with 2 to 3 sentences from the instructor on what they'll work on together next
