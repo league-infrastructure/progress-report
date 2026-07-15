@@ -3,11 +3,14 @@ name: Build & Deploy
 # Builds the app image on a GitHub-hosted runner, pushes it to GHCR, and
 # deploys the stack to the Docker Swarm over SSH — so no local machine is
 # needed to ship. Mirrors scripts/build_image.sh + scripts/deploy_stack.sh.
+#
+# NOTE: Auto-deploy on push is disabled. The repo's Actions GITHUB_TOKEN is
+# denied write access to the GHCR package (permission_denied: write_package),
+# so this workflow can only be run manually (workflow_dispatch) once that
+# package permission is granted to the repo. Day-to-day deploys happen from a
+# developer machine via `npm run docker:build && npm run docker:deploy`.
 
 on:
-  push:
-    branches:
-      - sprint/002-quiz-app-foundation-student-access-instructor-tab-admin-past-quizzes-page
   workflow_dispatch:
 
 concurrency:
