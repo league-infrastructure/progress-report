@@ -17,6 +17,33 @@ import { sendPike13Note, buildPike13NoteText } from './pike13Notes';
 import { sendReviewEmail } from './email';
 import { isLeagueRepoName, leagueOrgPrefix } from './github';
 
+/**
+ * A deliberate, user-actionable error raised while generating a review draft
+ * (e.g. the student has no linked GitHub username, or there's no push activity
+ * for the month). Carries a 400 status so the error handler shows the message
+ * to the instructor instead of a generic "Internal server error".
+ */
+export class ReviewInputError extends Error {
+  status = 400;
+  constructor(message: string) {
+    super(message);
+    this.name = 'ReviewInputError';
+  }
+}
+
+/**
+ * Extract a valid GitHub username from a Pike13 custom-field value that may
+ * contain trailing annotations (e.g. "jayden0511 (PW: hunter2)", "user:token",
+ * "@name — note"). GitHub usernames are alphanumeric with single hyphens, so we
+ * take the leading run of valid characters and drop anything a human appended.
+ * Returns '' if no valid username can be recovered.
+ */
+export function sanitizeGithubUsername(raw: string): string {
+  const beforeColon = raw.split(':')[0];
+  const match = beforeColon.trim().replace(/^@/, '').match(/^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?/);
+  return match ? match[0] : '';
+}
+
 /** A quiz the student completed for a lesson/module they worked on this month. */
 export interface CompletedQuizInfo {
   lessonName: string;
@@ -198,10 +225,10 @@ export async function findReviewByGithubUsername(
     .innerJoin(students, eq(monthlyReviews.studentId, students.id))
     .where(eq(monthlyReviews.month, month));
 
-  const lower = githubUsername.toLowerCase().replace(/^@/, '');
+  const lower = sanitizeGithubUsername(githubUsername).toLowerCase();
   const matches = rows.filter((r) => {
-    const stored = (r.githubUsername ?? '').split(':')[0].trim().toLowerCase();
-    return stored === lower;
+    const stored = sanitizeGithubUsername(r.githubUsername ?? '').toLowerCase();
+    return stored !== '' && stored === lower;
   });
 
   if (matches.length === 0) return { error: `No student found with GitHub username "@${githubUsername}" for ${month}` };
@@ -225,8 +252,8 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
     .innerJoin(users, eq(instructors.userId, users.id))
     .where(eq(monthlyReviews.id, reviewId));
 
-  if (!row) throw new Error('Review not found');
-  if (!row.githubUsername) throw new Error('This student has no GitHub username linked in Pike13');
+  if (!row) throw new ReviewInputError('Review not found');
+  if (!row.githubUsername) throw new ReviewInputError('This student has no GitHub username linked in Pike13');
 
   // If no template was passed (e.g. from Slack bot/command), use the instructor's
   // most recently updated template so the Slack paths benefit from template-guided generation.
@@ -241,7 +268,12 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
   }
 
   const { studentName, guardianName, instructorName, instructorEmail, review } = row;
-  const githubUsername = row.githubUsername.split(':')[0].trim();
+  const githubUsername = sanitizeGithubUsername(row.githubUsername);
+  if (!githubUsername) {
+    throw new ReviewInputError(
+      `This student's GitHub username ("${row.githubUsername}") is not a valid username. Fix the GitHub field in Pike13.`,
+    );
+  }
   const month = review.month;
   const [yr, mo] = month.split('-');
   const monthLabel = new Date(Date.UTC(parseInt(yr), parseInt(mo) - 1, 15)).toLocaleString('en-US', {
@@ -282,7 +314,7 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
       `https://api.github.com/users/${encodeURIComponent(githubUsername)}/events?per_page=100&page=${page}`,
       { headers: ghHeaders },
     );
-    if (page === 1 && pageRes.status === 404) throw new Error(`GitHub user "${githubUsername}" not found`);
+    if (page === 1 && pageRes.status === 404) throw new ReviewInputError(`GitHub user "${githubUsername}" not found`);
     if (!pageRes.ok) break;
     const pageEvents = (await pageRes.json()) as GithubEvent[];
     if (pageEvents.length === 0) break;
@@ -297,7 +329,7 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
     const d = new Date(e.created_at);
     return d >= since && d <= until;
   });
-  if (pushEvents.length === 0) throw new Error(`No GitHub push activity found for @${githubUsername} in ${monthLabel}`);
+  if (pushEvents.length === 0) throw new ReviewInputError(`No GitHub push activity found for @${githubUsername} in ${monthLabel}`);
 
   const repoData = new Map<string, RepoData>();
   for (const event of pushEvents) {
@@ -366,7 +398,7 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
     } catch { /* Can't verify — leave it in */ }
   }
 
-  if (repoData.size === 0) throw new Error(`No League curriculum repos found for @${githubUsername} in ${monthLabel}. The student may have push activity but only on personal repos.`);
+  if (repoData.size === 0) throw new ReviewInputError(`No League curriculum repos found for @${githubUsername} in ${monthLabel}. The student may have push activity but only on personal repos.`);
 
   // Enrich commits with file details using SHAs already known from Events API.
   // Avoids the ?author= filter on the commits list endpoint, which silently returns
@@ -471,7 +503,7 @@ export async function generateReviewDraft(reviewId: number, template?: string): 
     return `Repository: ${shortName}\n${lines.join('\n')}`;
   }).filter(Boolean).join('\n\n');
 
-  if (!commitSummary) throw new Error(`No curriculum activity found for @${githubUsername} in ${monthLabel}`);
+  if (!commitSummary) throw new ReviewInputError(`No curriculum activity found for @${githubUsername} in ${monthLabel}`);
   if (!process.env.ANTHROPIC_API_KEY) throw new Error('ANTHROPIC_API_KEY is not configured');
 
   const highestLessonName = lessonsSeen.get(highestLesson);
