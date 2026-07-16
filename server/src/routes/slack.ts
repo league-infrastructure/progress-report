@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 import { verifySlackSignature } from '../middleware/verifySlack';
 import { generateComplianceReport, generateStudentStatusReport } from '../services/slackReport';
 import { sendMonthlyReminders } from '../services/slackReminder';
-import { runQuizCompletionCheck } from '../services/quizAlerts';
+import { runQuizCompletionCheck, getInstructorQuizGaps } from '../services/quizAlerts';
 import { isSlackConfigured, sendSlackDM, lookupSlackUserByEmail, postSlackMessage, postSlackBlocks } from '../services/slack';
 import { findReviewByStudentName, generateReviewDraft, sendReview, loadReviewForSend } from '../services/reviewGenerator';
 import { handleBotMessage } from '../services/slackBot';
@@ -258,21 +258,54 @@ slackRouter.post(
       }
 
       case '/quiz-check': {
-        res.json({ response_type: 'ephemeral', text: ':hourglass: Running the quiz-completion sweep for this week…' });
-        runQuizCompletionCheck()
-          .then(({ sent, notFound, results }) => {
-            if (results.length === 0) {
+        // `/quiz-check all` runs the full sweep and DMs every scheduled instructor.
+        // Bare `/quiz-check` is a private self-check: shows just the caller's own
+        // students scheduled this week who still need a quiz — no DMs sent.
+        const runAll = (text ?? '').trim().toLowerCase() === 'all';
+
+        if (runAll) {
+          res.json({ response_type: 'ephemeral', text: ':hourglass: Running the quiz-completion sweep for everyone this week…' });
+          runQuizCompletionCheck()
+            .then(({ sent, notFound, results }) => {
+              if (results.length === 0) {
+                return replyAsync(
+                  response_url,
+                  ':white_check_mark: No instructors need a nudge — every student scheduled this week has their quizzes completed (or no one is scheduled yet).',
+                );
+              }
+              const lines = results
+                .map((r) => `• *${r.instructorName}* — ${r.studentCount} student${r.studentCount === 1 ? '' : 's'}${r.dmSent ? '' : ' _(not found in Slack)_'}`)
+                .join('\n');
               return replyAsync(
                 response_url,
-                ':white_check_mark: No instructors need a nudge — every student scheduled this week has their quizzes completed (or no one is scheduled yet).',
+                `:white_check_mark: Quiz sweep done — ${sent} DM(s) delivered, ${notFound} instructor(s) not found in Slack.\n${lines}`,
+              );
+            })
+            .catch((err) => replyAsync(response_url, `:x: Failed: ${(err as Error).message}`));
+          break;
+        }
+
+        // Self-check for the calling instructor.
+        res.json({ response_type: 'ephemeral', text: ':hourglass: Checking your quizzes to hand out this week…' });
+        findInstructorBySlackId(user_id)
+          .then(async (instr) => {
+            if (!instr) {
+              return replyAsync(
+                response_url,
+                ":grey_question: I couldn't match your Slack account to an instructor. (Admins can run `/quiz-check all` to sweep everyone.)",
               );
             }
-            const lines = results
-              .map((r) => `• *${r.instructorName}* — ${r.studentCount} student${r.studentCount === 1 ? '' : 's'}${r.dmSent ? '' : ' _(not found in Slack)_'}`)
-              .join('\n');
+            const gaps = await getInstructorQuizGaps(instr.instructorId);
+            if (gaps.length === 0) {
+              return replyAsync(
+                response_url,
+                ':white_check_mark: You have no quizzes to hand out this week — every student you\'re scheduled with has their quizzes covered.',
+              );
+            }
+            const lines = gaps.map((g) => `• *${g.studentName}* — ${g.lessons.join(', ')}`).join('\n');
             return replyAsync(
               response_url,
-              `:white_check_mark: Quiz sweep done — ${sent} DM(s) delivered, ${notFound} instructor(s) not found in Slack.\n${lines}`,
+              `:memo: Quizzes to hand out this week (student${gaps.length === 1 ? '' : 's'} you're scheduled with who still need one):\n${lines}`,
             );
           })
           .catch((err) => replyAsync(response_url, `:x: Failed: ${(err as Error).message}`));
@@ -282,7 +315,7 @@ slackRouter.post(
       default:
         res.json({
           response_type: 'ephemeral',
-          text: `:grey_question: Unknown command \`${command}\`. Available: \`/student-reports [YYYY-MM]\`, \`/remind-instructor [name] [YYYY-MM]\`, \`/reports-status [name] [YYYY-MM]\`, \`/student-status <name> [YYYY-MM]\`, \`/send-report <name> [YYYY-MM]\`, \`/quiz-check\``,
+          text: `:grey_question: Unknown command \`${command}\`. Available: \`/student-reports [YYYY-MM]\`, \`/remind-instructor [name] [YYYY-MM]\`, \`/reports-status [name] [YYYY-MM]\`, \`/student-status <name> [YYYY-MM]\`, \`/send-report <name> [YYYY-MM]\`, \`/quiz-check\` (your quizzes to hand out this week; \`/quiz-check all\` DMs every instructor)`,
         });
     }
   },

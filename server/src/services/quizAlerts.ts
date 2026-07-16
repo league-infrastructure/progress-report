@@ -18,7 +18,7 @@ export interface QuizAlertResult {
   results: Array<{ instructorName: string; email: string; dmSent: boolean; studentCount: number }>;
 }
 
-interface StudentGap {
+export interface StudentGap {
   studentId: number;
   studentName: string;
   /** Lesson names of this student's assigned-but-not-completed quizzes. */
@@ -48,10 +48,13 @@ export function weekBounds(ref: Date): { weekStart: Date; weekEnd: Date } {
  * `now` is injectable for tests; defaults to the current time. Only quizzes with
  * status != 'completed' are considered.
  */
-export async function runQuizCompletionCheck(
-  now: Date = new Date(),
-): Promise<QuizAlertResult> {
-  const appUrl = (process.env.APP_URL ?? 'http://localhost:5173').replace(/\/$/, '');
+/**
+ * Compute, for the week containing `now`, a map of instructorId -> the students
+ * they are scheduled with this week who still have an incomplete quiz (with the
+ * outstanding lesson names). Shared by the DM sweep and the per-instructor
+ * self-check so both use identical "scheduled this week + incomplete" logic.
+ */
+export async function computeWeeklyQuizGaps(now: Date): Promise<Map<number, StudentGap[]>> {
   const { weekStart, weekEnd } = weekBounds(now);
 
   // This week's scheduled events, each carrying its instructors and the students
@@ -64,7 +67,7 @@ export async function runQuizCompletionCheck(
     .from(volunteerEventSchedule)
     .where(and(gte(volunteerEventSchedule.startAt, weekStart), lt(volunteerEventSchedule.startAt, weekEnd)));
 
-  if (scheduleRows.length === 0) return { sent: 0, notFound: 0, results: [] };
+  if (scheduleRows.length === 0) return new Map();
 
   // Resolve registered Pike13 person ids to local student ids. The schedule row
   // may already carry a studentId, but we resolve by pike13SyncId to stay correct
@@ -96,7 +99,7 @@ export async function runQuizCompletionCheck(
     }
   }
 
-  if (scheduledInstructorByStudent.size === 0) return { sent: 0, notFound: 0, results: [] };
+  if (scheduledInstructorByStudent.size === 0) return new Map();
 
   // Incomplete (assigned, never completed) quizzes with lesson names.
   const incompleteRows = await db
@@ -122,8 +125,6 @@ export async function runQuizCompletionCheck(
     if (!gap.lessons.includes(r.lessonName)) gap.lessons.push(r.lessonName);
   }
 
-  if (gapByStudent.size === 0) return { sent: 0, notFound: 0, results: [] };
-
   // Group gaps under the instructor scheduled with each student this week.
   const byInstructor = new Map<number, StudentGap[]>();
   for (const gap of gapByStudent.values()) {
@@ -131,6 +132,29 @@ export async function runQuizCompletionCheck(
     if (!byInstructor.has(instrId)) byInstructor.set(instrId, []);
     byInstructor.get(instrId)!.push(gap);
   }
+  return byInstructor;
+}
+
+/**
+ * The students a single instructor is scheduled with this week who still have an
+ * incomplete quiz (sorted by name). Used by the per-instructor Slack self-check.
+ */
+export async function getInstructorQuizGaps(
+  instructorId: number,
+  now: Date = new Date(),
+): Promise<StudentGap[]> {
+  const byInstructor = await computeWeeklyQuizGaps(now);
+  const gaps = byInstructor.get(instructorId) ?? [];
+  return [...gaps].sort((a, b) => a.studentName.localeCompare(b.studentName));
+}
+
+export async function runQuizCompletionCheck(
+  now: Date = new Date(),
+): Promise<QuizAlertResult> {
+  const appUrl = (process.env.APP_URL ?? 'http://localhost:5173').replace(/\/$/, '');
+  const byInstructor = await computeWeeklyQuizGaps(now);
+
+  if (byInstructor.size === 0) return { sent: 0, notFound: 0, results: [] };
 
   // Resolve instructor names/emails.
   const instructorRows = await db

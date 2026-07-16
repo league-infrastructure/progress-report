@@ -1,7 +1,7 @@
 import { eq, inArray } from 'drizzle-orm';
 import * as schema from '../../server/src/db/schema';
 import { db } from '../../server/src/db';
-import { runQuizCompletionCheck, weekBounds } from '../../server/src/services/quizAlerts';
+import { runQuizCompletionCheck, getInstructorQuizGaps, weekBounds } from '../../server/src/services/quizAlerts';
 
 // These tests exercise the detection + grouping logic. Slack is not configured
 // in the test env, so sendSlackDM returns false (no network); we assert on the
@@ -112,6 +112,18 @@ describe('runQuizCompletionCheck', () => {
     const result = await runQuizCompletionCheck(new Date('2020-01-08T12:00:00'));
     expect(result.results).toEqual([]);
     expect(result.sent).toBe(0);
+  });
+
+  it('getInstructorQuizGaps returns only the caller\'s scheduled-this-week gaps', async () => {
+    const gaps = await getInstructorQuizGaps(scheduledInstrId, NOW);
+    expect(gaps).toHaveLength(1);
+    expect(gaps[0]).toMatchObject({ studentId: studentA, studentName: 'Quiz Student A' });
+    expect(gaps[0].lessons).toContain('Level3-Module2');
+  });
+
+  it('getInstructorQuizGaps returns empty for an instructor with no scheduled gaps', async () => {
+    const gaps = await getInstructorQuizGaps(otherInstrId, NOW);
+    expect(gaps).toEqual([]);
   });
 
   it('resolves students by pike13SyncId when the schedule row lacks a studentId', async () => {
