@@ -6,10 +6,11 @@ import { adminRouter } from '../../server/src/routes/admin';
 import { errorHandler } from '../../server/src/middleware/errorHandler';
 import type { SessionUser } from '../../server/src/types/session';
 
-// Mock runSync so no real Pike13 calls are made
+// Mock the sync service so no real Pike13 calls are made. The route delegates
+// token resolution + sync to syncWithStoredToken.
 jest.mock('../../server/src/services/pike13Sync');
-import { runSync } from '../../server/src/services/pike13Sync';
-const mockRunSync = runSync as jest.MockedFunction<typeof runSync>;
+import { syncWithStoredToken } from '../../server/src/services/pike13Sync';
+const mockSync = syncWithStoredToken as jest.MockedFunction<typeof syncWithStoredToken>;
 
 import { db } from '../../server/src/db';
 
@@ -77,21 +78,27 @@ describe('POST /api/admin/sync/pike13 — auth', () => {
 
 describe('POST /api/admin/sync/pike13 — no token', () => {
   it('returns 409 when Pike13 is not connected', async () => {
+    mockSync.mockResolvedValueOnce({ ok: false, reason: 'not_connected' });
     const agent = await loginAs(buildTestApp(), ADMIN);
     const res = await agent.post('/api/admin/sync/pike13');
     expect(res.status).toBe(409);
     expect(res.body).toEqual({ error: 'Pike13 not connected' });
   });
+
+  it('returns 401 when the token refresh fails', async () => {
+    mockSync.mockResolvedValueOnce({ ok: false, reason: 'refresh_failed' });
+    const agent = await loginAs(buildTestApp(), ADMIN);
+    const res = await agent.post('/api/admin/sync/pike13');
+    expect(res.status).toBe(401);
+    expect(res.body).toEqual({ error: 'Pike13 token refresh failed' });
+  });
 });
 
 describe('POST /api/admin/sync/pike13 — sync', () => {
   it('returns 200 with SyncResult on success', async () => {
-    await db.insert(schema.pike13AdminToken).values({ accessToken: 'valid-token' });
-    mockRunSync.mockResolvedValueOnce({
-      studentsUpserted: 10,
-      instructorsUpserted: 0,
-      assignmentsCreated: 5,
-      hoursCreated: 3,
+    mockSync.mockResolvedValueOnce({
+      ok: true,
+      result: { studentsUpserted: 10, instructorsUpserted: 0, assignmentsCreated: 5, hoursCreated: 3 },
     });
 
     const agent = await loginAs(buildTestApp(), ADMIN);
@@ -99,6 +106,6 @@ describe('POST /api/admin/sync/pike13 — sync', () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ studentsUpserted: 10, instructorsUpserted: 0, assignmentsCreated: 5, hoursCreated: 3 });
-    expect(mockRunSync).toHaveBeenCalledWith(expect.anything(), 'valid-token');
+    expect(mockSync).toHaveBeenCalled();
   });
 });

@@ -615,3 +615,58 @@ export async function runSync(
 
   return { studentsUpserted, instructorsUpserted, assignmentsCreated, hoursCreated };
 }
+
+export type StoredTokenSyncResult =
+  | { ok: true; result: SyncResult }
+  | { ok: false; reason: 'not_connected' | 'no_refresh_token' | 'refresh_failed' };
+
+/**
+ * Resolve the stored Pike13 admin token (refreshing it if expired) and run a
+ * full sync. Shared by the admin route and the scheduled sync cron so both use
+ * identical token-refresh logic. Never throws for the expected "not connected /
+ * token expired" cases — returns a discriminated result instead.
+ */
+export async function syncWithStoredToken(db: DrizzleDb): Promise<StoredTokenSyncResult> {
+  const [token] = await db.select().from(schema.pike13AdminToken);
+  if (!token) return { ok: false, reason: 'not_connected' };
+
+  let accessToken = token.accessToken;
+
+  if (token.expiresAt && token.expiresAt < new Date()) {
+    if (!token.refreshToken) return { ok: false, reason: 'no_refresh_token' };
+
+    const refreshRes = await fetch('https://pike13.com/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_id: process.env.PIKE13_CLIENT_ID,
+        client_secret: process.env.PIKE13_CLIENT_SECRET,
+        grant_type: 'refresh_token',
+        refresh_token: token.refreshToken,
+      }),
+    });
+
+    if (!refreshRes.ok) return { ok: false, reason: 'refresh_failed' };
+
+    const refreshData = (await refreshRes.json()) as {
+      access_token: string;
+      refresh_token?: string;
+      expires_in?: number;
+    };
+
+    const expiresAt = refreshData.expires_in
+      ? new Date(Date.now() + refreshData.expires_in * 1000)
+      : null;
+
+    await db.update(schema.pike13AdminToken).set({
+      accessToken: refreshData.access_token,
+      refreshToken: refreshData.refresh_token ?? token.refreshToken,
+      expiresAt,
+    }).where(eq(schema.pike13AdminToken.id, token.id));
+
+    accessToken = refreshData.access_token;
+  }
+
+  const result = await runSync(db, accessToken);
+  return { ok: true, result };
+}

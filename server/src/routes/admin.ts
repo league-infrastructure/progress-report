@@ -17,7 +17,7 @@ import {
   type ReviewStatus,
 } from '../db/schema';
 import { isAdmin } from '../middleware/auth';
-import { runSync } from '../services/pike13Sync';
+import { syncWithStoredToken } from '../services/pike13Sync';
 import { lastMondayOfMonth } from '../utils/dateUtils';
 import sgMail from '@sendgrid/mail';
 import { isSlackConfigured } from '../services/slack';
@@ -550,59 +550,18 @@ adminRouter.get('/admin/pike13/status', async (_req, res, next) => {
 // POST /api/admin/sync/pike13
 adminRouter.post('/admin/sync/pike13', async (_req, res, next) => {
   try {
-    const [token] = await db.select().from(pike13AdminToken);
-
-    if (!token) {
-      res.status(409).json({ error: 'Pike13 not connected' });
+    const sync = await syncWithStoredToken(db);
+    if (!sync.ok) {
+      if (sync.reason === 'not_connected') {
+        res.status(409).json({ error: 'Pike13 not connected' });
+      } else if (sync.reason === 'no_refresh_token') {
+        res.status(401).json({ error: 'Pike13 token expired and no refresh token available' });
+      } else {
+        res.status(401).json({ error: 'Pike13 token refresh failed' });
+      }
       return;
     }
-
-    let accessToken = token.accessToken;
-
-    // Refresh if expired
-    if (token.expiresAt && token.expiresAt < new Date()) {
-      if (!token.refreshToken) {
-        res.status(401).json({ error: 'Pike13 token expired and no refresh token available' });
-        return;
-      }
-
-      const refreshRes = await fetch('https://pike13.com/oauth/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          client_id: process.env.PIKE13_CLIENT_ID,
-          client_secret: process.env.PIKE13_CLIENT_SECRET,
-          grant_type: 'refresh_token',
-          refresh_token: token.refreshToken,
-        }),
-      });
-
-      if (!refreshRes.ok) {
-        res.status(401).json({ error: 'Pike13 token refresh failed' });
-        return;
-      }
-
-      const refreshData = await refreshRes.json() as {
-        access_token: string;
-        refresh_token?: string;
-        expires_in?: number;
-      };
-
-      const expiresAt = refreshData.expires_in
-        ? new Date(Date.now() + refreshData.expires_in * 1000)
-        : null;
-
-      await db.update(pike13AdminToken).set({
-        accessToken: refreshData.access_token,
-        refreshToken: refreshData.refresh_token ?? token.refreshToken,
-        expiresAt,
-      }).where(eq(pike13AdminToken.id, token.id));
-
-      accessToken = refreshData.access_token;
-    }
-
-    const result = await runSync(db, accessToken);
-    res.json(result);
+    res.json(sync.result);
   } catch (err) {
     next(err);
   }
