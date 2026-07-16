@@ -642,24 +642,17 @@ adminRouter.post('/admin/slack/remind', async (req, res, next) => {
 });
 
 // POST /api/admin/slack/quiz-check
-// Body: { month?: string }
 // Runs the quiz-completion sweep on demand (same logic as the weekly scheduler):
-// DMs each instructor scheduled with a student this month who has incomplete quizzes.
-adminRouter.post('/admin/slack/quiz-check', async (req, res, next) => {
+// DMs each instructor scheduled THIS WEEK with a student who has incomplete quizzes.
+adminRouter.post('/admin/slack/quiz-check', async (_req, res, next) => {
   try {
     if (!isSlackConfigured()) {
       res.status(503).json({ error: 'Slack is not configured (SLACK_BOT_TOKEN missing)' });
       return;
     }
 
-    const { month: monthParam } = req.body as { month?: string };
-    const month =
-      monthParam && /^\d{4}-\d{2}$/.test(monthParam)
-        ? monthParam
-        : new Date().toISOString().slice(0, 7);
-
-    const result = await runQuizCompletionCheck(month);
-    res.json({ month, ...result });
+    const result = await runQuizCompletionCheck();
+    res.json(result);
   } catch (err) {
     next(err);
   }

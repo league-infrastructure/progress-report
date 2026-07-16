@@ -1,0 +1,1 @@
+ALTER TABLE `volunteer_event_schedule` ADD `students` text;

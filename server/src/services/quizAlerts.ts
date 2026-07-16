@@ -1,12 +1,12 @@
-import { and, count, eq, gte, lt, ne } from 'drizzle-orm';
+import { and, eq, gte, lt, ne } from 'drizzle-orm';
 import { db } from '../db';
 import {
-  studentAttendance,
   students,
   instructors,
   users,
   quizzes,
   quizLessons,
+  volunteerEventSchedule,
 } from '../db/schema';
 import { sendSlackDM } from './slack';
 
@@ -25,88 +25,80 @@ interface StudentGap {
   lessons: string[];
 }
 
+/** Start (Sunday 00:00) and end (next Sunday 00:00) of the week containing `ref`, in local time. */
+export function weekBounds(ref: Date): { weekStart: Date; weekEnd: Date } {
+  const weekStart = new Date(ref);
+  weekStart.setHours(0, 0, 0, 0);
+  weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // getDay(): 0 = Sunday
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  return { weekStart, weekEnd };
+}
+
 /**
- * Weekly sweep: for students who attended a session THIS month, find any quizzes
- * that are still `assigned` (never completed) and DM the instructor scheduled
- * with that student this month, warning that the quiz must be assigned/finished
- * before the work is considered complete.
+ * Weekly sweep: find students who have a quiz still `assigned` (never completed)
+ * and DM the instructor scheduled with that student THIS WEEK, warning that the
+ * quiz must be finished before the work is considered complete.
  *
- * "Scheduled this month" = the instructor with the most attendance for that
- * student in the current month (tiebreak: most all-time), mirroring the monthly
- * review reminder's primary-instructor rule.
+ * Recipient = the instructor on this week's scheduled event(s) the student is
+ * registered for (from `volunteer_event_schedule`, populated by the Pike13 sync
+ * from upcoming event occurrences). This means if a student moved on last week
+ * without testing, whoever has them scheduled this week gets the nudge.
  *
- * `month` is a 'YYYY-MM' string; defaults to the current calendar month. The
- * scoping to the month is deliberate: we only nudge about students actively
- * being taught now, and we attribute them to their current instructor.
+ * `now` is injectable for tests; defaults to the current time. Only quizzes with
+ * status != 'completed' are considered.
  */
 export async function runQuizCompletionCheck(
-  month: string = new Date().toISOString().slice(0, 7),
+  now: Date = new Date(),
 ): Promise<QuizAlertResult> {
-  const [year, mon] = month.split('-').map((n) => parseInt(n, 10));
-  const monthStart = new Date(year, mon - 1, 1);
-  const monthEnd = new Date(year, mon, 1);
   const appUrl = (process.env.APP_URL ?? 'http://localhost:5173').replace(/\/$/, '');
+  const { weekStart, weekEnd } = weekBounds(now);
 
-  // Students with attendance this month, and per-instructor session counts.
-  const monthlyRows = await db
+  // This week's scheduled events, each carrying its instructors and the students
+  // registered for it.
+  const scheduleRows = await db
     .select({
-      studentId: studentAttendance.studentId,
-      instructorId: studentAttendance.instructorId,
-      n: count(),
+      instructors: volunteerEventSchedule.instructors,
+      students: volunteerEventSchedule.students,
     })
-    .from(studentAttendance)
-    .where(and(gte(studentAttendance.attendedAt, monthStart), lt(studentAttendance.attendedAt, monthEnd)))
-    .groupBy(studentAttendance.studentId, studentAttendance.instructorId);
+    .from(volunteerEventSchedule)
+    .where(and(gte(volunteerEventSchedule.startAt, weekStart), lt(volunteerEventSchedule.startAt, weekEnd)));
 
-  if (monthlyRows.length === 0) return { sent: 0, notFound: 0, results: [] };
+  if (scheduleRows.length === 0) return { sent: 0, notFound: 0, results: [] };
 
-  // All-time counts for tie-breaking the "scheduled" instructor.
-  const allTimeRows = await db
-    .select({
-      studentId: studentAttendance.studentId,
-      instructorId: studentAttendance.instructorId,
-      n: count(),
-    })
-    .from(studentAttendance)
-    .groupBy(studentAttendance.studentId, studentAttendance.instructorId);
-
-  const allTimeByStudent = new Map<number, Map<number, number>>();
-  for (const r of allTimeRows) {
-    if (!allTimeByStudent.has(r.studentId)) allTimeByStudent.set(r.studentId, new Map());
-    allTimeByStudent.get(r.studentId)!.set(r.instructorId, Number(r.n));
+  // Resolve registered Pike13 person ids to local student ids. The schedule row
+  // may already carry a studentId, but we resolve by pike13SyncId to stay correct
+  // even for students created after the schedule row was written.
+  const allStudents = await db
+    .select({ id: students.id, name: students.name, pike13SyncId: students.pike13SyncId })
+    .from(students);
+  const studentByPike13 = new Map<string, { id: number; name: string }>();
+  for (const s of allStudents) {
+    if (s.pike13SyncId) studentByPike13.set(s.pike13SyncId, { id: s.id, name: s.name });
   }
 
-  // studentId -> Map<instructorId, monthlyCount>
-  const monthlyByStudent = new Map<number, Map<number, number>>();
-  for (const r of monthlyRows) {
-    if (!monthlyByStudent.has(r.studentId)) monthlyByStudent.set(r.studentId, new Map());
-    monthlyByStudent.get(r.studentId)!.set(r.instructorId, Number(r.n));
-  }
-
-  // Instructor scheduled with the student this month: highest monthly count,
-  // tiebreak highest all-time count.
-  function scheduledInstructorFor(studentId: number): number | null {
-    const monthly = monthlyByStudent.get(studentId);
-    if (!monthly || monthly.size === 0) return null;
-    const allTime = allTimeByStudent.get(studentId);
-    let best: number | null = null;
-    let bestMonthly = -1;
-    let bestAllTime = -1;
-    for (const [instrId, monthlyCount] of monthly) {
-      const allTimeCount = allTime?.get(instrId) ?? 0;
-      if (monthlyCount > bestMonthly || (monthlyCount === bestMonthly && allTimeCount > bestAllTime)) {
-        best = instrId;
-        bestMonthly = monthlyCount;
-        bestAllTime = allTimeCount;
-      }
+  // studentId -> instructorId scheduled with them this week. If a student is in
+  // multiple events, the last one wins (any scheduled instructor is a valid
+  // recipient; overlap is surfaced separately in the review UI).
+  const scheduledInstructorByStudent = new Map<number, number>();
+  for (const row of scheduleRows) {
+    const instrIds = (row.instructors ?? [])
+      .map((i) => i.instructorId)
+      .filter((id): id is number => id !== null);
+    if (instrIds.length === 0) continue;
+    for (const p of row.students ?? []) {
+      const local = p.studentId != null
+        ? { id: p.studentId }
+        : studentByPike13.get(String(p.pike13Id));
+      if (!local) continue;
+      // Attribute to the first instructor on the event (co-taught events share one).
+      scheduledInstructorByStudent.set(local.id, instrIds[0]);
     }
-    return best;
   }
 
-  const scheduledStudentIds = [...monthlyByStudent.keys()];
+  if (scheduledInstructorByStudent.size === 0) return { sent: 0, notFound: 0, results: [] };
 
-  // Incomplete (assigned, never completed) quizzes for the scheduled students,
-  // with their lesson names.
+  // Incomplete (assigned, never completed) quizzes with lesson names.
   const incompleteRows = await db
     .select({
       studentId: quizzes.studentId,
@@ -118,11 +110,10 @@ export async function runQuizCompletionCheck(
     .innerJoin(quizLessons, eq(quizzes.lessonId, quizLessons.id))
     .where(ne(quizzes.status, 'completed'));
 
-  // studentId -> gap (only for students scheduled this month)
-  const scheduledSet = new Set(scheduledStudentIds);
+  // Keep only students scheduled this week, collecting their outstanding lessons.
   const gapByStudent = new Map<number, StudentGap>();
   for (const r of incompleteRows) {
-    if (!scheduledSet.has(r.studentId)) continue;
+    if (!scheduledInstructorByStudent.has(r.studentId)) continue;
     let gap = gapByStudent.get(r.studentId);
     if (!gap) {
       gap = { studentId: r.studentId, studentName: r.studentName, lessons: [] };
@@ -133,16 +124,13 @@ export async function runQuizCompletionCheck(
 
   if (gapByStudent.size === 0) return { sent: 0, notFound: 0, results: [] };
 
-  // Group gaps under the instructor scheduled with each student this month.
+  // Group gaps under the instructor scheduled with each student this week.
   const byInstructor = new Map<number, StudentGap[]>();
   for (const gap of gapByStudent.values()) {
-    const instrId = scheduledInstructorFor(gap.studentId);
-    if (instrId === null) continue;
+    const instrId = scheduledInstructorByStudent.get(gap.studentId)!;
     if (!byInstructor.has(instrId)) byInstructor.set(instrId, []);
     byInstructor.get(instrId)!.push(gap);
   }
-
-  if (byInstructor.size === 0) return { sent: 0, notFound: 0, results: [] };
 
   // Resolve instructor names/emails.
   const instructorRows = await db
@@ -159,7 +147,7 @@ export async function runQuizCompletionCheck(
     gaps.sort((a, b) => a.studentName.localeCompare(b.studentName));
     const lines = gaps.map((g) => `• *${g.studentName}* — ${g.lessons.join(', ')}`).join('\n');
     const text = [
-      `:warning: *Quiz check-in* — you're scheduled with the following student${gaps.length === 1 ? '' : 's'} this month, and they have quizzes that still need to be completed before their work is considered complete:`,
+      `:warning: *Quiz check-in* — you're scheduled this week with the following student${gaps.length === 1 ? '' : 's'}, and they have quizzes that still need to be completed before their work is considered complete:`,
       '',
       lines,
       '',

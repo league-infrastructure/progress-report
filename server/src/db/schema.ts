@@ -197,6 +197,10 @@ export const volunteerEventSchedule = sqliteTable('volunteer_event_schedule', {
   endAt: integer('end_at', { mode: 'timestamp' }).notNull(),
   instructors: text('instructors', { mode: 'json' }).notNull().$type<Array<{ pike13Id: number; name: string; instructorId: number | null; studentCount: number }>>(),
   volunteers: text('volunteers', { mode: 'json' }).notNull().$type<Array<{ pike13Id: number; name: string }>>(),
+  // Students registered (not cancelled) for this upcoming event, resolved to
+  // local student ids where known. Lets us map a specific student to the
+  // instructor scheduled with them this week (used by the quiz-completion sweep).
+  students: text('students', { mode: 'json' }).$type<Array<{ pike13Id: number; name: string; studentId: number | null }>>(),
   updatedAt: integer('updated_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 

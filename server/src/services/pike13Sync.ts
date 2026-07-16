@@ -299,11 +299,19 @@ export async function runSync(
     const instrList: Array<{ pike13Id: number; name: string; instructorId: number | null; studentCount: number }> = [];
     const volList: Array<{ pike13Id: number; name: string }> = [];
 
-    // Count students registered for this specific event (exclude cancellations).
-    // All instructors in the same event get the same per-event count.
-    const eventStudentCount = (occ.people ?? []).filter(
+    // Students registered for this specific event (exclude cancellations).
+    // We store the Pike13 person id + name here; local student ids are resolved
+    // later (via students.pike13SyncId) so the quiz-completion sweep can map a
+    // student to the instructor scheduled with them this week. The student-sync
+    // pass that builds the id map runs after this block, so we don't resolve
+    // ids inline. All instructors in the same event share the same count.
+    const registeredPeople = (occ.people ?? []).filter(
       (p) => p.visit_state !== 'cancelled' && p.visit_state !== 'late_cancelled',
-    ).length;
+    );
+    const studentList = registeredPeople
+      .filter((p) => p.id && p.name)
+      .map((p) => ({ pike13Id: p.id!, name: p.name!, studentId: null }));
+    const eventStudentCount = registeredPeople.length;
 
     for (const staff of occ.staff_members ?? []) {
       const instructorId = pike13StaffIdToInstructorId.get(staff.id) ?? null;
@@ -329,6 +337,7 @@ export async function runSync(
         endAt: new Date(occ.end_at),
         instructors: instrList,
         volunteers: volList,
+        students: studentList,
       })
       .onConflictDoUpdate({
         target: schema.volunteerEventSchedule.eventOccurrenceId,
@@ -337,6 +346,7 @@ export async function runSync(
           endAt: new Date(occ.end_at),
           instructors: instrList,
           volunteers: volList,
+          students: studentList,
           updatedAt: new Date(),
         },
       });
