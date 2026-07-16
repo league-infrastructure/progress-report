@@ -48,17 +48,22 @@ export function weekBounds(ref: Date): { weekStart: Date; weekEnd: Date } {
  * `now` is injectable for tests; defaults to the current time. Only quizzes with
  * status != 'completed' are considered.
  */
+/** A student scheduled with an instructor in a given week. */
+export interface ScheduledStudent {
+  studentId: number;
+  studentName: string;
+  instructorId: number;
+}
+
 /**
- * Compute, for the week containing `now`, a map of instructorId -> the students
- * they are scheduled with this week who still have an incomplete quiz (with the
- * outstanding lesson names). Shared by the DM sweep and the per-instructor
- * self-check so both use identical "scheduled this week + incomplete" logic.
+ * For the week containing `now`, map studentId -> the student and the instructor
+ * scheduled with them this week (from `volunteer_event_schedule`). Shared by the
+ * quiz sweep and the commit-check sweep. If a student is in multiple events the
+ * last one wins (any scheduled instructor is a valid recipient).
  */
-export async function computeWeeklyQuizGaps(now: Date): Promise<Map<number, StudentGap[]>> {
+export async function getScheduledStudentsThisWeek(now: Date): Promise<Map<number, ScheduledStudent>> {
   const { weekStart, weekEnd } = weekBounds(now);
 
-  // This week's scheduled events, each carrying its instructors and the students
-  // registered for it.
   const scheduleRows = await db
     .select({
       instructors: volunteerEventSchedule.instructors,
@@ -76,14 +81,13 @@ export async function computeWeeklyQuizGaps(now: Date): Promise<Map<number, Stud
     .select({ id: students.id, name: students.name, pike13SyncId: students.pike13SyncId })
     .from(students);
   const studentByPike13 = new Map<string, { id: number; name: string }>();
+  const nameById = new Map<number, string>();
   for (const s of allStudents) {
+    nameById.set(s.id, s.name);
     if (s.pike13SyncId) studentByPike13.set(s.pike13SyncId, { id: s.id, name: s.name });
   }
 
-  // studentId -> instructorId scheduled with them this week. If a student is in
-  // multiple events, the last one wins (any scheduled instructor is a valid
-  // recipient; overlap is surfaced separately in the review UI).
-  const scheduledInstructorByStudent = new Map<number, number>();
+  const scheduled = new Map<number, ScheduledStudent>();
   for (const row of scheduleRows) {
     const instrIds = (row.instructors ?? [])
       .map((i) => i.instructorId)
@@ -91,15 +95,28 @@ export async function computeWeeklyQuizGaps(now: Date): Promise<Map<number, Stud
     if (instrIds.length === 0) continue;
     for (const p of row.students ?? []) {
       const local = p.studentId != null
-        ? { id: p.studentId }
+        ? { id: p.studentId, name: nameById.get(p.studentId) ?? p.name }
         : studentByPike13.get(String(p.pike13Id));
       if (!local) continue;
       // Attribute to the first instructor on the event (co-taught events share one).
-      scheduledInstructorByStudent.set(local.id, instrIds[0]);
+      scheduled.set(local.id, { studentId: local.id, studentName: local.name, instructorId: instrIds[0] });
     }
   }
+  return scheduled;
+}
 
-  if (scheduledInstructorByStudent.size === 0) return new Map();
+/**
+ * Compute, for the week containing `now`, a map of instructorId -> the students
+ * they are scheduled with this week who still have an incomplete quiz (with the
+ * outstanding lesson names). Shared by the DM sweep and the per-instructor
+ * self-check so both use identical "scheduled this week + incomplete" logic.
+ */
+export async function computeWeeklyQuizGaps(now: Date): Promise<Map<number, StudentGap[]>> {
+  const scheduled = await getScheduledStudentsThisWeek(now);
+  if (scheduled.size === 0) return new Map();
+
+  const scheduledInstructorByStudent = new Map<number, number>();
+  for (const s of scheduled.values()) scheduledInstructorByStudent.set(s.studentId, s.instructorId);
 
   // Incomplete (assigned, never completed) quizzes with lesson names.
   const incompleteRows = await db

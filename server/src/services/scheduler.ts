@@ -3,6 +3,7 @@ import { isSlackConfigured } from './slack';
 import { sendMonthlyReminders } from './slackReminder';
 import { runTrainingCheck } from './trainingAlerts';
 import { runQuizCompletionCheck } from './quizAlerts';
+import { runCommitCheck } from './commitAlerts';
 import { syncWithStoredToken } from './pike13Sync';
 import { db } from '../db';
 
@@ -76,4 +77,20 @@ export function startScheduler(): void {
   });
 
   console.log('[scheduler] Weekly quiz-completion check scheduled for Mondays at 09:00 UTC');
+
+  // Weekly commit check — Mondays at 09:15 UTC (after the sync). DMs each
+  // instructor the students they're scheduled with this week who pushed no code
+  // last week. New students (<=2 recorded classes) are exempt.
+  cron.schedule('15 9 * * 1', async () => {
+    if (!isSlackConfigured()) return;
+    console.log('[scheduler] Running weekly commit check');
+    try {
+      const result = await runCommitCheck();
+      console.log(`[scheduler] Commit check: DMs sent=${result.sent}, not found in Slack=${result.notFound}`);
+    } catch (err) {
+      console.error('[scheduler] Commit check failed:', err);
+    }
+  });
+
+  console.log('[scheduler] Weekly commit check scheduled for Mondays at 09:15 UTC');
 }

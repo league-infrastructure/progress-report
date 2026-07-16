@@ -97,6 +97,71 @@ export async function discoverLeagueRepos(githubUsername: string): Promise<strin
   return result;
 }
 
+interface GithubPushEvent {
+  type: string;
+  created_at: string;
+  repo: { name: string };
+}
+
+/**
+ * Whether the student pushed at least one commit to a LEAGUE curriculum repo in
+ * [since, until). Uses the public events feed (PushEvents), matching the same
+ * league name/org rules used elsewhere. Fail-open on API errors so we never
+ * falsely flag a student as "didn't commit" because GitHub was unreachable:
+ * returns `{ hasCommits: true, checked: false }` in that case.
+ *
+ * Throws GitHubUserNotFoundError only if the user does not exist.
+ */
+export async function hasLeagueCommitsInRange(
+  githubUsername: string,
+  since: Date,
+  until: Date,
+): Promise<{ hasCommits: boolean; checked: boolean }> {
+  const headers = ghHeaders();
+  const prefix = leagueOrgPrefix();
+
+  for (let page = 1; page <= 10; page++) {
+    let res: Response;
+    try {
+      res = await fetch(
+        `${GITHUB_API}/users/${encodeURIComponent(githubUsername)}/events?per_page=100&page=${page}`,
+        { headers },
+      );
+    } catch {
+      return { hasCommits: true, checked: false }; // fail-open
+    }
+    if (page === 1 && res.status === 404) throw new GitHubUserNotFoundError(githubUsername);
+    if (!res.ok) return { hasCommits: true, checked: false }; // fail-open
+
+    const events = (await res.json()) as GithubPushEvent[];
+    if (events.length === 0) break;
+
+    let pagedPastWindow = false;
+    for (const e of events) {
+      const at = new Date(e.created_at);
+      if (at < since) { pagedPastWindow = true; continue; }
+      if (e.type !== 'PushEvent' || !e.repo?.name || at >= until) continue;
+      const shortName = e.repo.name.split('/').pop() ?? e.repo.name;
+      if (isLeagueRepoName(shortName)) return { hasCommits: true, checked: true };
+      // Name doesn't obviously match — verify owner/parent org via the repo API.
+      try {
+        const rres = await fetch(`${GITHUB_API}/repos/${e.repo.name}`, { headers });
+        if (!rres.ok) return { hasCommits: true, checked: true }; // can't verify — count it
+        const info = (await rres.json()) as { owner: { login: string }; parent?: { owner: { login: string } } };
+        const ownerOrg = info.owner.login.toLowerCase();
+        const parentOrg = info.parent?.owner.login.toLowerCase() ?? '';
+        if (ownerOrg.startsWith(prefix) || parentOrg.startsWith(prefix)) return { hasCommits: true, checked: true };
+      } catch {
+        return { hasCommits: true, checked: true }; // can't verify — count it
+      }
+    }
+    // Once we've paged past the start of the window, older pages can't help.
+    if (pagedPastWindow) break;
+  }
+
+  return { hasCommits: false, checked: true };
+}
+
 interface GithubRepo {
   full_name: string;
   fork: boolean;

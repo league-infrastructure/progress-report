@@ -23,6 +23,7 @@ import sgMail from '@sendgrid/mail';
 import { isSlackConfigured } from '../services/slack';
 import { sendMonthlyReminders } from '../services/slackReminder';
 import { runQuizCompletionCheck } from '../services/quizAlerts';
+import { runCommitCheck } from '../services/commitAlerts';
 import { generateComplianceReport } from '../services/slackReport';
 import { generateReviewDraft, sendReview } from '../services/reviewGenerator';
 export const adminRouter = Router();
@@ -611,6 +612,24 @@ adminRouter.post('/admin/slack/quiz-check', async (_req, res, next) => {
     }
 
     const result = await runQuizCompletionCheck();
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/admin/slack/commit-check
+// Runs the weekly commit check on demand (same logic as the Monday scheduler):
+// DMs each instructor the students scheduled with them this week who pushed no
+// code last week.
+adminRouter.post('/admin/slack/commit-check', async (_req, res, next) => {
+  try {
+    if (!isSlackConfigured()) {
+      res.status(503).json({ error: 'Slack is not configured (SLACK_BOT_TOKEN missing)' });
+      return;
+    }
+
+    const result = await runCommitCheck();
     res.json(result);
   } catch (err) {
     next(err);
