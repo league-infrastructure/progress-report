@@ -4,6 +4,7 @@ import { eq } from 'drizzle-orm';
 import { verifySlackSignature } from '../middleware/verifySlack';
 import { generateComplianceReport, generateStudentStatusReport } from '../services/slackReport';
 import { sendMonthlyReminders } from '../services/slackReminder';
+import { runQuizCompletionCheck } from '../services/quizAlerts';
 import { isSlackConfigured, sendSlackDM, lookupSlackUserByEmail, postSlackMessage, postSlackBlocks } from '../services/slack';
 import { findReviewByStudentName, generateReviewDraft, sendReview, loadReviewForSend } from '../services/reviewGenerator';
 import { handleBotMessage } from '../services/slackBot';
@@ -256,10 +257,32 @@ slackRouter.post(
         break;
       }
 
+      case '/quiz-check': {
+        res.json({ response_type: 'ephemeral', text: ':hourglass: Running the quiz-completion sweep for this week…' });
+        runQuizCompletionCheck()
+          .then(({ sent, notFound, results }) => {
+            if (results.length === 0) {
+              return replyAsync(
+                response_url,
+                ':white_check_mark: No instructors need a nudge — every student scheduled this week has their quizzes completed (or no one is scheduled yet).',
+              );
+            }
+            const lines = results
+              .map((r) => `• *${r.instructorName}* — ${r.studentCount} student${r.studentCount === 1 ? '' : 's'}${r.dmSent ? '' : ' _(not found in Slack)_'}`)
+              .join('\n');
+            return replyAsync(
+              response_url,
+              `:white_check_mark: Quiz sweep done — ${sent} DM(s) delivered, ${notFound} instructor(s) not found in Slack.\n${lines}`,
+            );
+          })
+          .catch((err) => replyAsync(response_url, `:x: Failed: ${(err as Error).message}`));
+        break;
+      }
+
       default:
         res.json({
           response_type: 'ephemeral',
-          text: `:grey_question: Unknown command \`${command}\`. Available: \`/student-reports [YYYY-MM]\`, \`/remind-instructor [name] [YYYY-MM]\`, \`/reports-status [name] [YYYY-MM]\`, \`/student-status <name> [YYYY-MM]\`, \`/send-report <name> [YYYY-MM]\``,
+          text: `:grey_question: Unknown command \`${command}\`. Available: \`/student-reports [YYYY-MM]\`, \`/remind-instructor [name] [YYYY-MM]\`, \`/reports-status [name] [YYYY-MM]\`, \`/student-status <name> [YYYY-MM]\`, \`/send-report <name> [YYYY-MM]\`, \`/quiz-check\``,
         });
     }
   },
