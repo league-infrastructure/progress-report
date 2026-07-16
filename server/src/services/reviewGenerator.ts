@@ -66,6 +66,47 @@ export function toPlainReviewText(text: string): string {
     .replace(/[—–]/g, '-');
 }
 
+/**
+ * Draft a short, gentle parent note about the student not committing/pushing
+ * work recently. Written in the first person as the instructor, plain text, no
+ * em dashes — consistent with the monthly review conventions. This is a DRAFT
+ * only; the instructor reviews and sends it.
+ */
+export async function draftNoCommitParentNote(
+  studentName: string,
+  guardianName?: string | null,
+): Promise<string> {
+  const greeting = guardianName ? `Dear ${guardianName},` : 'Dear LEAGUE Family,';
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    // Fallback template when the API key isn't configured.
+    return [
+      greeting,
+      '',
+      `I wanted to check in about ${studentName}. I noticed they haven't pushed any new code to their project recently, which is how we track the work they do in class. Committing regularly helps ${studentName} build steady progress and lets us give better feedback.`,
+      '',
+      `Could you help encourage ${studentName} to save and push their work at the end of each session? I'm happy to walk them through it again in class. Please reach out if there's anything I can do to help.`,
+    ].join('\n');
+  }
+
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const message = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 512,
+    system: `You are an encouraging coding instructor writing a short, warm note to a parent/guardian.
+Write in the FIRST PERSON as the instructor ("I", "me"). Plain text only: no Markdown, no bold, no italics, no em dashes.
+The note gently raises that the student has not been pushing/committing code recently (which is how we track their in-class work), frames it positively, and asks the parent to encourage the student to save and push their work. Offer to help in class. Keep it 2 short paragraphs. No sign-off.`,
+    messages: [{
+      role: 'user',
+      content: `Write the note about ${studentName}. Start with the greeting line exactly: "${greeting}"`,
+    }],
+  });
+
+  const body = toPlainReviewText((message.content[0]?.type === 'text' ? message.content[0].text : '').trim());
+  // Ensure the greeting is present even if the model omitted it.
+  return body.startsWith(greeting) ? body : `${greeting}\n\n${body}`;
+}
+
 /** A quiz the student completed for a lesson/module they worked on this month. */
 export interface CompletedQuizInfo {
   lessonName: string;

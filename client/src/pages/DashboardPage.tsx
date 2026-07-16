@@ -4,6 +4,7 @@ import { Link, useSearch } from 'wouter'
 import { MonthPicker } from '../components/MonthPicker'
 import { Bell, RefreshCw } from 'lucide-react'
 import { getDefaultMonth } from '../lib/utils'
+import { CommitNotifications } from '../components/CommitNotifications'
 import type { PendingCheckinResponse } from '../types/checkin'
 
 interface DashboardData {
@@ -149,6 +150,8 @@ export function DashboardPage() {
           {syncMsg.text}
         </p>
       )}
+
+      <CommitNotifications />
 
       {showCheckinBanner && (
         <div className="checkin-banner">

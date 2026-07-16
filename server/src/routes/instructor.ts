@@ -1,9 +1,10 @@
 import { Router } from 'express';
-import { eq, and, count, gte, lt } from 'drizzle-orm';
+import { eq, and, count, gte, lt, desc } from 'drizzle-orm';
 import { db } from '../db';
-import { monthlyReviews, instructorStudents, students, pike13Tokens, studentAttendance, type ReviewStatus } from '../db/schema';
+import { monthlyReviews, instructorStudents, students, pike13Tokens, studentAttendance, instructorNotifications, type ReviewStatus } from '../db/schema';
 import { isActiveInstructor } from '../middleware/auth';
 import { runSync } from '../services/pike13Sync';
+import { draftNoCommitParentNote } from '../services/reviewGenerator';
 
 export const instructorRouter = Router();
 
@@ -198,6 +199,116 @@ instructorRouter.post('/instructor/sync/pike13', isActiveInstructor, async (req,
 
     const result = await runSync(db, accessToken);
     res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/instructor/notifications  — unacknowledged notifications for the instructor
+instructorRouter.get('/instructor/notifications', isActiveInstructor, async (req, res, next) => {
+  try {
+    const instructorId = req.session.user!.instructorId!;
+    const rows = await db
+      .select({
+        id: instructorNotifications.id,
+        kind: instructorNotifications.kind,
+        studentId: instructorNotifications.studentId,
+        studentName: students.name,
+        weekOf: instructorNotifications.weekOf,
+        message: instructorNotifications.message,
+        createdAt: instructorNotifications.createdAt,
+      })
+      .from(instructorNotifications)
+      .leftJoin(students, eq(instructorNotifications.studentId, students.id))
+      .where(and(
+        eq(instructorNotifications.instructorId, instructorId),
+        eq(instructorNotifications.acknowledged, false),
+      ))
+      .orderBy(desc(instructorNotifications.createdAt));
+
+    res.json(rows.map((r) => ({ ...r, createdAt: r.createdAt.toISOString() })));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/instructor/notifications/:id/acknowledge
+instructorRouter.post('/instructor/notifications/:id/acknowledge', isActiveInstructor, async (req, res, next) => {
+  try {
+    const instructorId = req.session.user!.instructorId!;
+    const id = parseInt(String(req.params.id), 10);
+    const [updated] = await db
+      .update(instructorNotifications)
+      .set({ acknowledged: true })
+      .where(and(eq(instructorNotifications.id, id), eq(instructorNotifications.instructorId, instructorId)))
+      .returning({ id: instructorNotifications.id });
+    if (!updated) {
+      res.status(404).json({ error: 'Notification not found' });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/instructor/notifications/:id/parent-note
+// Draft a short parent note about the student not committing, attach it to their
+// current-month review (creating a draft review if none exists), and return the
+// review id so the client can open it. Never sends to the parent.
+instructorRouter.post('/instructor/notifications/:id/parent-note', isActiveInstructor, async (req, res, next) => {
+  try {
+    const instructorId = req.session.user!.instructorId!;
+    const id = parseInt(String(req.params.id), 10);
+
+    const [notif] = await db
+      .select({
+        studentId: instructorNotifications.studentId,
+        weekOf: instructorNotifications.weekOf,
+        studentName: students.name,
+        guardianName: students.guardianName,
+      })
+      .from(instructorNotifications)
+      .leftJoin(students, eq(instructorNotifications.studentId, students.id))
+      .where(and(eq(instructorNotifications.id, id), eq(instructorNotifications.instructorId, instructorId)));
+
+    if (!notif || !notif.studentId) {
+      res.status(404).json({ error: 'Notification not found' });
+      return;
+    }
+
+    // Month is derived from the notice's week, defaulting to the current month.
+    const month = (notif.weekOf ?? new Date().toISOString().slice(0, 10)).slice(0, 7);
+    const draft = await draftNoCommitParentNote(notif.studentName ?? 'your student', notif.guardianName);
+
+    // Find or create this instructor's review for the student+month.
+    const [existing] = await db
+      .select({ id: monthlyReviews.id, status: monthlyReviews.status })
+      .from(monthlyReviews)
+      .where(and(
+        eq(monthlyReviews.instructorId, instructorId),
+        eq(monthlyReviews.studentId, notif.studentId),
+        eq(monthlyReviews.month, month),
+      ));
+
+    let reviewId: number;
+    if (existing) {
+      if (existing.status === 'sent') {
+        res.status(409).json({ error: 'This student\'s review for that month has already been sent' });
+        return;
+      }
+      await db.update(monthlyReviews)
+        .set({ body: draft, status: 'draft', updatedAt: new Date() })
+        .where(eq(monthlyReviews.id, existing.id));
+      reviewId = existing.id;
+    } else {
+      const [created] = await db.insert(monthlyReviews)
+        .values({ instructorId, studentId: notif.studentId, month, status: 'draft', body: draft })
+        .returning({ id: monthlyReviews.id });
+      reviewId = created.id;
+    }
+
+    res.json({ reviewId, body: draft });
   } catch (err) {
     next(err);
   }

@@ -1,9 +1,12 @@
 import { count, eq, inArray } from 'drizzle-orm';
 import { db } from '../db';
-import { studentAttendance, students, instructors, users } from '../db/schema';
+import { studentAttendance, students, instructors, users, instructorNotifications } from '../db/schema';
 import { sendSlackDM } from './slack';
 import { hasLeagueCommitsInRange } from './github';
 import { getScheduledStudentsThisWeek, weekBounds } from './quizAlerts';
+
+/** Notification kind for the weekly "didn't commit last week" alert. */
+export const NO_COMMIT_KIND = 'no_commit';
 
 export interface CommitAlertResult {
   sent: number;
@@ -58,7 +61,7 @@ export async function runCommitCheck(now: Date = new Date()): Promise<CommitAler
   for (const r of ghRows) githubById.set(r.id, r.githubUsername);
 
   // instructorId -> students who didn't commit last week.
-  const byInstructor = new Map<number, Array<{ studentName: string }>>();
+  const byInstructor = new Map<number, Array<{ studentId: number; studentName: string }>>();
 
   for (const s of scheduled.values()) {
     // Exempt brand-new students.
@@ -80,10 +83,28 @@ export async function runCommitCheck(now: Date = new Date()): Promise<CommitAler
     if (committed.hasCommits) continue; // committed (or couldn't verify) — no alert
 
     if (!byInstructor.has(s.instructorId)) byInstructor.set(s.instructorId, []);
-    byInstructor.get(s.instructorId)!.push({ studentName: s.studentName });
+    byInstructor.get(s.instructorId)!.push({ studentId: s.studentId, studentName: s.studentName });
   }
 
   if (byInstructor.size === 0) return { sent: 0, notFound: 0, results: [] };
+
+  // Record one in-app notification per flagged student, scoped to this week so
+  // re-running the sweep is idempotent (unique on instructor+kind+student+week).
+  const weekOf = weekStart.toISOString().slice(0, 10);
+  for (const [instrId, list] of byInstructor) {
+    for (const s of list) {
+      await db
+        .insert(instructorNotifications)
+        .values({
+          instructorId: instrId,
+          kind: NO_COMMIT_KIND,
+          studentId: s.studentId,
+          weekOf,
+          message: `${s.studentName} did not push any code last week.`,
+        })
+        .onConflictDoNothing();
+    }
+  }
 
   const instructorRows = await db
     .select({ id: instructors.id, name: users.name, email: users.email })

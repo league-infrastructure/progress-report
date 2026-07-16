@@ -61,6 +61,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await db.delete(schema.instructorNotifications).where(inArray(schema.instructorNotifications.studentId, [committed, noCommit, newStudent]));
   await db.delete(schema.studentAttendance).where(inArray(schema.studentAttendance.studentId, [committed, noCommit, newStudent]));
   await db.delete(schema.volunteerEventSchedule).where(eq(schema.volunteerEventSchedule.eventOccurrenceId, evtOcc));
   await db.delete(schema.students).where(inArray(schema.students.id, [committed, noCommit, newStudent]));
@@ -68,12 +69,13 @@ afterAll(async () => {
   await db.delete(schema.users).where(eq(schema.users.email, 'ca-instr@test.local'));
 });
 
-beforeEach(() => {
+beforeEach(async () => {
   mockHasCommits.mockReset();
   mockHasCommits.mockImplementation(async (username: string) => {
     if (username === 'committed-kid') return { hasCommits: true, checked: true };
     return { hasCommits: false, checked: true };
   });
+  await db.delete(schema.instructorNotifications).where(inArray(schema.instructorNotifications.studentId, [committed, noCommit, newStudent]));
 });
 
 describe('runCommitCheck', () => {
@@ -103,5 +105,25 @@ describe('runCommitCheck', () => {
   it('returns empty when nothing is scheduled this week', async () => {
     const result = await runCommitCheck(new Date('2020-01-08T12:00:00'));
     expect(result.results).toEqual([]);
+  });
+
+  it('creates an in-app notification per flagged student, idempotently', async () => {
+    await runCommitCheck(NOW);
+    let notifs = await db.select().from(schema.instructorNotifications)
+      .where(eq(schema.instructorNotifications.studentId, noCommit));
+    expect(notifs).toHaveLength(1);
+    expect(notifs[0].kind).toBe('no_commit');
+    expect(notifs[0].acknowledged).toBe(false);
+
+    // Re-running the same week must not duplicate.
+    await runCommitCheck(NOW);
+    notifs = await db.select().from(schema.instructorNotifications)
+      .where(eq(schema.instructorNotifications.studentId, noCommit));
+    expect(notifs).toHaveLength(1);
+
+    // The committed student gets no notification.
+    const none = await db.select().from(schema.instructorNotifications)
+      .where(eq(schema.instructorNotifications.studentId, committed));
+    expect(none).toHaveLength(0);
   });
 });

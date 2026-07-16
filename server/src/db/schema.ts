@@ -157,6 +157,24 @@ export const adminNotifications = sqliteTable('admin_notifications', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
 });
 
+// Per-instructor in-app notifications (e.g. "student didn't commit last week").
+// One row per (instructor, kind, student, week) so the weekly commit sweep is
+// idempotent — re-running it doesn't create duplicates.
+export const instructorNotifications = sqliteTable(
+  'instructor_notifications',
+  {
+    id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
+    instructorId: integer('instructor_id').notNull().references(() => instructors.id),
+    kind: text('kind').notNull(), // e.g. 'no_commit'
+    studentId: integer('student_id').references(() => students.id),
+    weekOf: text('week_of'), // YYYY-MM-DD of the week start this notice concerns
+    message: text('message').notNull(),
+    acknowledged: integer('acknowledged', { mode: 'boolean' }).notNull().default(false),
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [unique().on(t.instructorId, t.kind, t.studentId, t.weekOf)],
+);
+
 export const volunteerHours = sqliteTable(
   'volunteer_hours',
   {
