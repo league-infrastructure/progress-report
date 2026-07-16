@@ -371,6 +371,13 @@ export function ReviewEditorPage() {
               <span className="var-chip" title="AI fills this: highlights and achievements" style={{ color: 'var(--color-primary)' }}>{'{{highlights}}'}</span>
               <span className="var-chip" title="AI fills this: instructor notes and next steps" style={{ color: 'var(--color-primary)' }}>{'{{instructorNotes}}'}</span>
             </div>
+            {!review.githubUsername && (
+              <p style={{ margin: '8px 0 0', fontSize: 13, color: '#92400e', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, padding: '8px 12px' }}>
+                <strong>Generate from GitHub is unavailable:</strong> {review.studentName} has no GitHub
+                username linked, so there's no activity to draft from. Add their GitHub username to the
+                GitHub field in Pike13 and re-sync, or write the review manually below.
+              </p>
+            )}
             <textarea
               className="textarea"
               value={body}
