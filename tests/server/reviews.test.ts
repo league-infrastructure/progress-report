@@ -314,3 +314,82 @@ describe('Reviews API shared-instructor note', () => {
     expect(res.body.sharedWith).toEqual([]);
   });
 });
+
+describe('POST /api/reviews/:id/absorb-shared', () => {
+  const testApp = buildTestApp();
+
+  async function asPrimary() {
+    const agent = request.agent(testApp);
+    await agent.post('/test/login').send(instrUser(instructorId));
+    return agent;
+  }
+
+  afterEach(async () => {
+    await db.delete(schema.studentAttendance).where(eq(schema.studentAttendance.studentId, studentId));
+    await db.delete(schema.monthlyReviews).where(
+      and(eq(schema.monthlyReviews.studentId, studentId), eq(schema.monthlyReviews.instructorId, altInstructorId)),
+    );
+    // Reset the primary review body between tests.
+    await db.update(schema.monthlyReviews)
+      .set({ body: null, status: 'pending' })
+      .where(eq(schema.monthlyReviews.id, reviewId));
+  });
+
+  it('appends the other instructor\'s body and deletes their review', async () => {
+    await db.insert(schema.studentAttendance).values({
+      studentId, instructorId: altInstructorId, attendedAt: new Date(2025, 10, 8), eventOccurrenceId: 'occ-abs-1',
+    });
+    const [alt] = await db.insert(schema.monthlyReviews).values({
+      instructorId: altInstructorId, studentId, month: '2025-11', status: 'draft', body: 'Gavin worked on loops with them.',
+    }).returning();
+    await db.update(schema.monthlyReviews).set({ body: 'My existing note.' }).where(eq(schema.monthlyReviews.id, reviewId));
+
+    const agent = await asPrimary();
+    const res = await agent.post(`/api/reviews/${reviewId}/absorb-shared`).send({ fromInstructorId: altInstructorId });
+
+    expect(res.status).toBe(200);
+    expect(res.body.body).toContain('My existing note.');
+    expect(res.body.body).toContain('Gavin worked on loops with them.');
+    // The alt instructor still shows (they attended), but their review is gone,
+    // so their status reverts to 'none' — they no longer owe a note.
+    expect(res.body.sharedWith).toHaveLength(1);
+    expect(res.body.sharedWith[0]).toMatchObject({ instructorId: altInstructorId, reviewStatus: 'none' });
+
+    // Alt review row is gone.
+    const remaining = await db.select().from(schema.monthlyReviews).where(eq(schema.monthlyReviews.id, alt.id));
+    expect(remaining).toHaveLength(0);
+  });
+
+  it('works when the other instructor has no review yet (nothing to merge)', async () => {
+    await db.insert(schema.studentAttendance).values({
+      studentId, instructorId: altInstructorId, attendedAt: new Date(2025, 10, 8), eventOccurrenceId: 'occ-abs-2',
+    });
+    await db.update(schema.monthlyReviews).set({ body: 'Mine only.' }).where(eq(schema.monthlyReviews.id, reviewId));
+
+    const agent = await asPrimary();
+    const res = await agent.post(`/api/reviews/${reviewId}/absorb-shared`).send({ fromInstructorId: altInstructorId });
+
+    expect(res.status).toBe(200);
+    expect(res.body.body).toBe('Mine only.');
+  });
+
+  it('rejects an instructor who did not work with the student this month', async () => {
+    // No attendance for altInstructor this month.
+    const agent = await asPrimary();
+    const res = await agent.post(`/api/reviews/${reviewId}/absorb-shared`).send({ fromInstructorId: altInstructorId });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/did not work with this student/i);
+  });
+
+  it('rejects absorbing your own review', async () => {
+    const agent = await asPrimary();
+    const res = await agent.post(`/api/reviews/${reviewId}/absorb-shared`).send({ fromInstructorId: instructorId });
+    expect(res.status).toBe(400);
+  });
+
+  it('requires fromInstructorId', async () => {
+    const agent = await asPrimary();
+    const res = await agent.post(`/api/reviews/${reviewId}/absorb-shared`).send({});
+    expect(res.status).toBe(400);
+  });
+});

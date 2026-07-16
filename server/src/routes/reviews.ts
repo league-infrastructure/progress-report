@@ -6,6 +6,7 @@ import { isActiveInstructor } from '../middleware/auth';
 import { sendReviewEmail, sendTestReviewEmail } from '../services/email';
 import { sendPike13Note, buildPike13NoteText } from '../services/pike13Notes';
 import { generateReviewDraft } from '../services/reviewGenerator';
+import { sendSlackDM } from '../services/slack';
 
 export const reviewsRouter = Router();
 
@@ -259,6 +260,120 @@ reviewsRouter.put('/reviews/:id', async (req, res, next) => {
       .returning();
 
     res.json(formatReview(updated, existing.studentName));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/reviews/:id/absorb-shared
+// Body: { fromInstructorId: number }
+// Take over a shared student: append the other instructor's review body (if any)
+// into this review, then drop the other instructor's review for this student+month
+// so they no longer owe a note. The other instructor is notified via Slack.
+reviewsRouter.post('/reviews/:id/absorb-shared', async (req, res, next) => {
+  try {
+    const instructorId = req.session.user!.instructorId!;
+    const id = parseInt(req.params.id, 10);
+    const { fromInstructorId } = req.body as { fromInstructorId?: number };
+
+    if (!fromInstructorId || Number.isNaN(fromInstructorId)) {
+      res.status(400).json({ error: 'fromInstructorId is required' });
+      return;
+    }
+    if (fromInstructorId === instructorId) {
+      res.status(400).json({ error: 'Cannot absorb your own review' });
+      return;
+    }
+
+    // The caller's review must exist, belong to them, and not be sent.
+    const [mine] = await db
+      .select({ review: monthlyReviews, studentName: students.name })
+      .from(monthlyReviews)
+      .innerJoin(students, eq(monthlyReviews.studentId, students.id))
+      .where(and(eq(monthlyReviews.id, id), eq(monthlyReviews.instructorId, instructorId)));
+
+    if (!mine) {
+      res.status(404).json({ error: 'Review not found' });
+      return;
+    }
+    if (mine.review.status === 'sent') {
+      res.status(409).json({ error: 'Cannot modify a sent review' });
+      return;
+    }
+
+    const { studentId, month } = mine.review;
+
+    // Guard: the other instructor must actually share this student this month
+    // (has attendance), so this can't be used to delete an unrelated review.
+    const [yr, mo] = month.split('-').map((n) => parseInt(n, 10));
+    const monthStart = new Date(yr, mo - 1, 1);
+    const monthEnd = new Date(yr, mo, 1);
+    const [shares] = await db
+      .select({ instructorId: studentAttendance.instructorId })
+      .from(studentAttendance)
+      .where(
+        and(
+          eq(studentAttendance.studentId, studentId),
+          eq(studentAttendance.instructorId, fromInstructorId),
+          gte(studentAttendance.attendedAt, monthStart),
+          lt(studentAttendance.attendedAt, monthEnd),
+        ),
+      )
+      .limit(1);
+
+    if (!shares) {
+      res.status(400).json({ error: 'That instructor did not work with this student this month' });
+      return;
+    }
+
+    // The other instructor's review for this student+month (may not exist).
+    const [theirs] = await db
+      .select({ review: monthlyReviews, instructorName: users.name, instructorEmail: users.email })
+      .from(monthlyReviews)
+      .innerJoin(instructors, eq(monthlyReviews.instructorId, instructors.id))
+      .innerJoin(users, eq(instructors.userId, users.id))
+      .where(
+        and(
+          eq(monthlyReviews.studentId, studentId),
+          eq(monthlyReviews.month, month),
+          eq(monthlyReviews.instructorId, fromInstructorId),
+        ),
+      );
+
+    // Append their body into mine when they have written something.
+    let mergedBody = mine.review.body ?? '';
+    if (theirs?.review.body && theirs.review.body.trim()) {
+      const otherFirst = (theirs.instructorName ?? 'the other instructor').split(' ')[0];
+      const block = `From ${otherFirst}'s sessions with ${mine.studentName}:\n${theirs.review.body.trim()}`;
+      mergedBody = mergedBody.trim() ? `${mergedBody.trim()}\n\n${block}` : block;
+    }
+
+    const [updated] = await db
+      .update(monthlyReviews)
+      .set({ body: mergedBody, status: 'draft', updatedAt: new Date() })
+      .where(eq(monthlyReviews.id, id))
+      .returning();
+
+    // Drop the other instructor's review for this student+month only. Their
+    // assignment and other months are untouched.
+    if (theirs) {
+      await db.delete(monthlyReviews).where(eq(monthlyReviews.id, theirs.review.id));
+    }
+
+    // Notify the displaced instructor (best-effort — never fail the request).
+    if (theirs?.instructorEmail) {
+      const me = req.session.user!.name ?? 'another instructor';
+      const monthLabel = new Date(yr, mo - 1, 15).toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      const appUrl = (process.env.APP_URL ?? '').replace(/\/$/, '');
+      const link = appUrl ? `\n${appUrl}/reviews?month=${month}` : '';
+      sendSlackDM(
+        theirs.instructorEmail,
+        `:information_source: ${me} has taken over the ${monthLabel} progress review for *${mine.studentName}*, so you no longer need to send a note for them this month.${link}`,
+      ).catch(() => { /* best-effort */ });
+    }
+
+    const sharedWith = await findSharedInstructors(studentId, month, instructorId);
+    res.json({ ...formatReview(updated, mine.studentName), sharedWith });
   } catch (err) {
     next(err);
   }

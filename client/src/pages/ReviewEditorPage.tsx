@@ -134,6 +134,26 @@ export function ReviewEditorPage() {
     },
   })
 
+  const absorbMutation = useMutation({
+    mutationFn: async (fromInstructorId: number) => {
+      const res = await fetch(`/api/reviews/${id}/absorb-shared`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fromInstructorId }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error((data as { error?: string }).error ?? 'Failed to take over student')
+      }
+      return res.json() as Promise<ReviewDto>
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData(['review', id], updated)
+      setBody(updated.body ?? '')
+      setDirty(false)
+    },
+  })
+
   const sendMutation = useMutation({
     mutationFn: async () => {
       const res = await fetch(`/api/reviews/${id}/send`, { method: 'POST' })
@@ -251,12 +271,36 @@ export function ReviewEditorPage() {
           </div>
           <ul style={{ margin: 0, paddingLeft: 18 }}>
             {review.sharedWith.map((s) => (
-              <li key={s.instructorId} style={{ marginBottom: 2 }}>
+              <li key={s.instructorId} style={{ marginBottom: 6 }}>
                 <strong>{s.name}</strong> ({s.dates.join(', ')}) —{' '}
                 {sharedNoteStatus(s)}
+                {!isSent && (
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    style={{ marginLeft: 8, padding: '2px 8px', fontSize: 12 }}
+                    disabled={absorbMutation.isPending}
+                    onClick={() => {
+                      const ok = window.confirm(
+                        `Take over ${review.studentName} from ${s.name}?\n\n` +
+                        `This will add ${s.name.split(' ')[0]}'s note (if any) to your review and remove ` +
+                        `${s.name.split(' ')[0]}'s ${month} review for ${review.studentName}. ` +
+                        `${s.name.split(' ')[0]} will be notified.`,
+                      )
+                      if (ok) absorbMutation.mutate(s.instructorId)
+                    }}
+                  >
+                    {absorbMutation.isPending ? 'Taking over…' : 'Take over student'}
+                  </button>
+                )}
               </li>
             ))}
           </ul>
+          {absorbMutation.isError && (
+            <p style={{ marginTop: 8, marginBottom: 0, color: 'var(--color-danger)' }}>
+              {(absorbMutation.error as Error).message}
+            </p>
+          )}
         </div>
       )}
 
