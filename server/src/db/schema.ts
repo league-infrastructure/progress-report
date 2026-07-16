@@ -184,6 +184,23 @@ export const studentAttendance = sqliteTable(
   (t) => [unique().on(t.studentId, t.instructorId, t.eventOccurrenceId)],
 );
 
+// Records that one instructor took over a shared student's monthly review from
+// another. Used to drop the taken-over instructor from the review page's
+// shared-instructor note (deleting their review row alone is indistinguishable
+// from "never wrote one").
+export const reviewTakeovers = sqliteTable(
+  'review_takeovers',
+  {
+    id: integer('id', { mode: 'number' }).primaryKey({ autoIncrement: true }),
+    studentId: integer('student_id').notNull().references(() => students.id),
+    month: text('month').notNull(), // YYYY-MM
+    fromInstructorId: integer('from_instructor_id').notNull().references(() => instructors.id),
+    byInstructorId: integer('by_instructor_id').notNull().references(() => instructors.id),
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull().$defaultFn(() => new Date()),
+  },
+  (t) => [unique().on(t.studentId, t.month, t.fromInstructorId)],
+);
+
 export const volunteerSchedule = sqliteTable('volunteer_schedule', {
   volunteerName: text('volunteer_name').primaryKey(),
   isScheduled: integer('is_scheduled', { mode: 'boolean' }).notNull().default(false),

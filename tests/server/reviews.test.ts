@@ -329,6 +329,7 @@ describe('POST /api/reviews/:id/absorb-shared', () => {
     await db.delete(schema.monthlyReviews).where(
       and(eq(schema.monthlyReviews.studentId, studentId), eq(schema.monthlyReviews.instructorId, altInstructorId)),
     );
+    await db.delete(schema.reviewTakeovers).where(eq(schema.reviewTakeovers.studentId, studentId));
     // Reset the primary review body between tests.
     await db.update(schema.monthlyReviews)
       .set({ body: null, status: 'pending' })
@@ -350,14 +351,15 @@ describe('POST /api/reviews/:id/absorb-shared', () => {
     expect(res.status).toBe(200);
     expect(res.body.body).toContain('My existing note.');
     expect(res.body.body).toContain('Gavin worked on loops with them.');
-    // The alt instructor still shows (they attended), but their review is gone,
-    // so their status reverts to 'none' — they no longer owe a note.
-    expect(res.body.sharedWith).toHaveLength(1);
-    expect(res.body.sharedWith[0]).toMatchObject({ instructorId: altInstructorId, reviewStatus: 'none' });
+    // After takeover the other instructor is dropped from the note entirely.
+    expect(res.body.sharedWith).toEqual([]);
 
-    // Alt review row is gone.
+    // Alt review row is gone, and the takeover is recorded.
     const remaining = await db.select().from(schema.monthlyReviews).where(eq(schema.monthlyReviews.id, alt.id));
     expect(remaining).toHaveLength(0);
+    const takeover = await db.select().from(schema.reviewTakeovers)
+      .where(and(eq(schema.reviewTakeovers.studentId, studentId), eq(schema.reviewTakeovers.fromInstructorId, altInstructorId)));
+    expect(takeover).toHaveLength(1);
   });
 
   it('works when the other instructor has no review yet (nothing to merge)', async () => {
@@ -371,6 +373,21 @@ describe('POST /api/reviews/:id/absorb-shared', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.body).toBe('Mine only.');
+  });
+
+  it('drops the taken-over instructor from the shared note on a later GET', async () => {
+    await db.insert(schema.studentAttendance).values({
+      studentId, instructorId: altInstructorId, attendedAt: new Date(2025, 10, 8), eventOccurrenceId: 'occ-abs-3',
+    });
+
+    const agent = await asPrimary();
+    const takeover = await agent.post(`/api/reviews/${reviewId}/absorb-shared`).send({ fromInstructorId: altInstructorId });
+    expect(takeover.status).toBe(200);
+
+    // Even though the alt instructor still has attendance, they're gone from the note.
+    const res = await agent.get(`/api/reviews/${reviewId}`);
+    expect(res.status).toBe(200);
+    expect(res.body.sharedWith).toEqual([]);
   });
 
   it('rejects an instructor who did not work with the student this month', async () => {

@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { eq, and, ne, gte, lt, inArray } from 'drizzle-orm';
 import { db } from '../db';
-import { monthlyReviews, students, instructors, users, pike13Tokens, studentAttendance } from '../db/schema';
+import { monthlyReviews, students, instructors, users, pike13Tokens, studentAttendance, reviewTakeovers } from '../db/schema';
 import { isActiveInstructor } from '../middleware/auth';
 import { sendReviewEmail, sendTestReviewEmail } from '../services/email';
 import { sendPike13Note, buildPike13NoteText } from '../services/pike13Notes';
@@ -61,8 +61,17 @@ async function findSharedInstructors(
     )
     .orderBy(studentAttendance.attendedAt);
 
+  // Instructors already taken over for this student+month are dropped from the
+  // note entirely — the reviewing instructor has absorbed their review.
+  const takenOver = await db
+    .select({ fromInstructorId: reviewTakeovers.fromInstructorId })
+    .from(reviewTakeovers)
+    .where(and(eq(reviewTakeovers.studentId, studentId), eq(reviewTakeovers.month, month)));
+  const takenOverIds = new Set(takenOver.map((t) => t.fromInstructorId));
+
   const byInstructor = new Map<number, SharedInstructor>();
   for (const r of rows) {
+    if (takenOverIds.has(r.instructorId)) continue;
     let entry = byInstructor.get(r.instructorId);
     if (!entry) {
       entry = { instructorId: r.instructorId, name: r.name, dates: [], reviewStatus: 'none', sentAt: null };
@@ -359,6 +368,13 @@ reviewsRouter.post('/reviews/:id/absorb-shared', async (req, res, next) => {
     if (theirs) {
       await db.delete(monthlyReviews).where(eq(monthlyReviews.id, theirs.review.id));
     }
+
+    // Record the takeover so the other instructor is dropped from the shared
+    // note going forward (even if they had never started a review).
+    await db
+      .insert(reviewTakeovers)
+      .values({ studentId, month, fromInstructorId, byInstructorId: instructorId })
+      .onConflictDoNothing();
 
     // Notify the displaced instructor (best-effort — never fail the request).
     if (theirs?.instructorEmail) {
