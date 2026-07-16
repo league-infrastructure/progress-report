@@ -2,8 +2,27 @@ import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useParams, useLocation } from 'wouter'
 import { Mail, Save, Send, GitCommit } from 'lucide-react'
-import type { ReviewDto } from '../types/review'
+import type { ReviewDto, SharedInstructor } from '../types/review'
 import type { TemplateDto } from '../types/template'
+
+/** Human phrasing for whether a shared instructor has sent their own note. */
+function sharedNoteStatus(s: SharedInstructor): string {
+  const first = s.name.split(' ')[0]
+  switch (s.reviewStatus) {
+    case 'sent': {
+      const when = s.sentAt
+        ? ` on ${new Date(s.sentAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+        : ''
+      return `${first} already sent their note${when}.`
+    }
+    case 'draft':
+      return `${first} has a draft started but hasn't sent their note yet.`
+    case 'pending':
+    case 'none':
+    default:
+      return `${first} hasn't sent their note yet.`
+  }
+}
 
 async function fetchReview(id: string): Promise<ReviewDto> {
   const res = await fetch(`/api/reviews/${id}`)
@@ -224,21 +243,21 @@ export function ReviewEditorPage() {
       </div>
 
       {review.sharedWith && review.sharedWith.length > 0 && (
-        <p style={{ marginBottom: 16, borderRadius: 8, padding: '10px 14px', fontSize: 13, background: '#fffbeb', color: '#92400e', border: '1px solid #fde68a' }}>
-          {review.sharedWith.length === 1 ? (
-            <>
-              <strong>{review.sharedWith[0].name}</strong> also worked with {review.studentName} this
-              month ({review.sharedWith[0].dates.join(', ')}), so some of this student's work may
-              overlap with their sessions.
-            </>
-          ) : (
-            <>
-              Other instructors also worked with {review.studentName} this month, so some of this
-              student's work may overlap with their sessions:{' '}
-              {review.sharedWith.map((s) => `${s.name} (${s.dates.join(', ')})`).join('; ')}.
-            </>
-          )}
-        </p>
+        <div style={{ marginBottom: 16, borderRadius: 8, padding: '10px 14px', fontSize: 13, background: '#fffbeb', color: '#92400e', border: '1px solid #fde68a' }}>
+          <div style={{ marginBottom: 6 }}>
+            {review.sharedWith.length === 1 ? 'Another instructor' : 'Other instructors'} also worked
+            with {review.studentName} this month, so some of this student's work may overlap with
+            their sessions:
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 18 }}>
+            {review.sharedWith.map((s) => (
+              <li key={s.instructorId} style={{ marginBottom: 2 }}>
+                <strong>{s.name}</strong> ({s.dates.join(', ')}) —{' '}
+                {sharedNoteStatus(s)}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {isSent && (

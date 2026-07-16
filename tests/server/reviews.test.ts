@@ -1,7 +1,7 @@
 import request from 'supertest';
 import express from 'express';
 import session from 'express-session';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import * as schema from '../../server/src/db/schema';
 import { reviewsRouter } from '../../server/src/routes/reviews';
 import { errorHandler } from '../../server/src/middleware/errorHandler';
@@ -238,6 +238,14 @@ describe('Reviews API shared-instructor note', () => {
 
   afterEach(async () => {
     await db.delete(schema.studentAttendance).where(eq(schema.studentAttendance.studentId, studentId));
+    // Remove any alt-instructor review seeded for this student/month.
+    await db.delete(schema.monthlyReviews).where(
+      and(
+        eq(schema.monthlyReviews.studentId, studentId),
+        eq(schema.monthlyReviews.instructorId, altInstructorId),
+        eq(schema.monthlyReviews.month, '2025-11'),
+      ),
+    );
   });
 
   it('returns empty sharedWith when no other instructor worked with the student', async () => {
@@ -258,8 +266,30 @@ describe('Reviews API shared-instructor note', () => {
     const res = await agent.get(`/api/reviews/${reviewId}`);
     expect(res.status).toBe(200);
     expect(res.body.sharedWith).toHaveLength(1);
-    expect(res.body.sharedWith[0]).toMatchObject({ instructorId: altInstructorId, name: 'Alt Instructor' });
+    expect(res.body.sharedWith[0]).toMatchObject({
+      instructorId: altInstructorId,
+      name: 'Alt Instructor',
+      reviewStatus: 'none', // alt has no review for this student/month
+      sentAt: null,
+    });
     expect(res.body.sharedWith[0].dates).toHaveLength(2);
+  });
+
+  it('reports the shared instructor\'s review status as sent when they have sent theirs', async () => {
+    await db.insert(schema.studentAttendance).values({
+      studentId, instructorId: altInstructorId, attendedAt: new Date(2025, 10, 6), eventOccurrenceId: 'occ-sent',
+    });
+    const sentAt = new Date(2025, 10, 30);
+    await db.insert(schema.monthlyReviews).values({
+      instructorId: altInstructorId, studentId, month: '2025-11', status: 'sent', sentAt,
+    });
+
+    const agent = await asPrimary();
+    const res = await agent.get(`/api/reviews/${reviewId}`);
+    expect(res.status).toBe(200);
+    expect(res.body.sharedWith).toHaveLength(1);
+    expect(res.body.sharedWith[0].reviewStatus).toBe('sent');
+    expect(res.body.sharedWith[0].sentAt).toBe(sentAt.toISOString());
   });
 
   it('does not count the requesting instructor as sharing', async () => {

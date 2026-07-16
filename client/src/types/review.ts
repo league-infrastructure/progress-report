@@ -5,6 +5,10 @@ export interface SharedInstructor {
   instructorId: number;
   name: string;
   dates: string[];
+  /** Status of that instructor's own review for this student this month. */
+  reviewStatus: 'sent' | 'draft' | 'pending' | 'none';
+  /** ISO timestamp they sent their review, if sent. */
+  sentAt: string | null;
 }
 
 export interface ReviewDto {

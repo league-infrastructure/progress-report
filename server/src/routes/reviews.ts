@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { eq, and, ne, gte, lt } from 'drizzle-orm';
+import { eq, and, ne, gte, lt, inArray } from 'drizzle-orm';
 import { db } from '../db';
 import { monthlyReviews, students, instructors, users, pike13Tokens, studentAttendance } from '../db/schema';
 import { isActiveInstructor } from '../middleware/auth';
@@ -11,17 +11,25 @@ export const reviewsRouter = Router();
 
 reviewsRouter.use(isActiveInstructor);
 
+/** Whether the shared instructor has their own review for this student+month. */
+type SharedReviewStatus = 'sent' | 'draft' | 'pending' | 'none';
+
 /** One other instructor who also worked with this student during the month. */
 interface SharedInstructor {
   instructorId: number;
   name: string;
   dates: string[]; // human-readable session dates, e.g. "Tue, May 6"
+  /** Status of THIS instructor's own review for the student this month. */
+  reviewStatus: SharedReviewStatus;
+  /** ISO timestamp the shared instructor sent their review, if sent. */
+  sentAt: string | null;
 }
 
 /**
  * Find instructors OTHER than `excludeInstructorId` who have recorded
  * attendance for `studentId` within the review's month. Lets the review page
- * warn that another instructor shares this student, so their work may overlap.
+ * warn that another instructor shares this student, so their work may overlap,
+ * and show whether that instructor has already sent their own note.
  */
 async function findSharedInstructors(
   studentId: number,
@@ -56,13 +64,41 @@ async function findSharedInstructors(
   for (const r of rows) {
     let entry = byInstructor.get(r.instructorId);
     if (!entry) {
-      entry = { instructorId: r.instructorId, name: r.name, dates: [] };
+      entry = { instructorId: r.instructorId, name: r.name, dates: [], reviewStatus: 'none', sentAt: null };
       byInstructor.set(r.instructorId, entry);
     }
     entry.dates.push(
       r.attendedAt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
     );
   }
+
+  if (byInstructor.size === 0) return [];
+
+  // Look up each shared instructor's own review for this student + month, so we
+  // can tell the reviewing instructor whether the other instructor has already
+  // sent their note.
+  const reviewRows = await db
+    .select({
+      instructorId: monthlyReviews.instructorId,
+      status: monthlyReviews.status,
+      sentAt: monthlyReviews.sentAt,
+    })
+    .from(monthlyReviews)
+    .where(
+      and(
+        eq(monthlyReviews.studentId, studentId),
+        eq(monthlyReviews.month, month),
+        inArray(monthlyReviews.instructorId, [...byInstructor.keys()]),
+      ),
+    );
+
+  for (const r of reviewRows) {
+    const entry = byInstructor.get(r.instructorId);
+    if (!entry) continue;
+    entry.reviewStatus = (r.status as SharedReviewStatus) ?? 'none';
+    entry.sentAt = r.sentAt ? r.sentAt.toISOString() : null;
+  }
+
   return [...byInstructor.values()];
 }
 
